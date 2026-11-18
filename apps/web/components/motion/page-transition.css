@@ -34,3 +34,12 @@ html[data-vt="theme"] :is(.site-header, .d-nav-ind, .private-ind) { view-transit
 ::view-transition-group(ent-name) { animation-duration: 300ms; animation-timing-function: var(--ease); z-index: 101; }
 ::view-transition-old(ent-name) { animation-duration: 150ms; animation-timing-function: var(--ease); }
 ::view-transition-new(ent-name) { animation-duration: 300ms; animation-timing-function: var(--ease); }
+
+/* The home page's map travels into /harta's (owner, 18 November 2026; lib/map-arrival.ts): a county clicked there opens
+   here, and the map itself goes from its card to this page's frame, growing, over 420 ms with --ease, while the pages
+   cross-fade; both maps keep their proportions inside the moving box. /harta's camera then glides into the county.
+   Forward by that click only; reduced motion gives no name. */
+::view-transition-group(map-travel) { animation-duration: 420ms; animation-timing-function: var(--ease); z-index: 99; }
+::view-transition-old(map-travel), ::view-transition-new(map-travel) { width: 100%; height: 100%; object-fit: contain; }
+::view-transition-old(map-travel) { animation: page-out 260ms var(--ease) both; }
+::view-transition-new(map-travel) { animation: page-in 300ms var(--ease) 80ms both; }

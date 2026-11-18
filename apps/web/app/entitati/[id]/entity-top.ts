@@ -154,6 +154,30 @@ export function tipLeft(index: number, count: number, width: number, tipWidth: n
   return Math.min(Math.max(0, center - tipWidth / 2), Math.max(0, width - tipWidth));
 }
 
+/**
+ * The profile's signals by name, the Esențial form of its score (owner, 18 November 2026): the patterns that count (in
+ * the score, most points first), then the signals outside the score, then, last, the patterns found but too few to count
+ * („găsit, prea puțin”, drawn quieter), each group in the signals page's tab order. `points` holds only the criteria
+ * that add points. Without a computed score nothing is called too few: those patterns come last, plain.
+ */
+export function signalNames(
+  signalTypes: readonly string[],
+  points: Readonly<Partial<Record<string, number>>>,
+  riskCodes: ReadonlySet<string>,
+  order: readonly string[],
+  hasScore: boolean,
+): { code: string; quiet: boolean }[] {
+  const at = (code: string) => { const i = order.indexOf(code); return i < 0 ? order.length : i; };
+  const byOrder = (a: string, b: string) => at(a) - at(b);
+  const counting = hasScore ? signalTypes.filter((c) => (points[c] ?? 0) > 0).sort((a, b) => (points[b] ?? 0) - (points[a] ?? 0)) : [];
+  const rest = signalTypes.filter((c) => !counting.includes(c));
+  return [
+    ...counting.map((code) => ({ code, quiet: false })),
+    ...rest.filter((c) => !riskCodes.has(c)).sort(byOrder).map((code) => ({ code, quiet: false })),
+    ...rest.filter((c) => riskCodes.has(c)).sort(byOrder).map((code) => ({ code, quiet: hasScore })),
+  ];
+}
+
 /** The current calendar year in Romania: the chart's year in progress. */
 export const bucharestYear = (now = new Date()): number =>
   Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric" }).format(now));

@@ -126,7 +126,9 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
   // is its place in the bar, so the same elements stay and their widths tween; one the tab adds grows from nothing.
   const motion = useChartMotion();
   if (fact.status === "loading") return <MixGhost />;
-  if (fact.status === "none") return <section className="qb qb-mix" aria-label="Din care">
+  // Esențial (lib/view-mode.ts): „Din care” is a second-level breakdown with narrower questions (owner, 18 November 2026);
+  // its ghost (a Ghost, which takes no mark) goes by esential-intreaba.css.
+  if (fact.status === "none") return <section className="qb qb-mix" aria-label="Din care" data-only="complet">
     <p className="qb-mix-head qb-tipwrap">Din care: {fact.precompute ? "nu e calculat pe această selecție" : "nu a putut fi calculat acum"}
       {fact.precompute && <> <HelpTip tip={{ title: "Din care", text: "Pe toată țara, cu un domeniu foarte mare, cu luni, cu sediul firmelor sau cu o plajă scrisă de mână, compoziția cere un calcul pregătit noaptea. Cifra de mai sus e completă." }} /></>}</p>
   </section>;
@@ -136,7 +138,7 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
   const tab = chosen && tabs.includes(chosen) ? chosen : tabs[0]!;
   const rows: readonly MixRow[] = tab === "offers" ? mix.offers!.rows : mix[tab];
   const contracts = mix.procedure.filter((r) => r.value !== "da").reduce((t, r) => t + r.value_ron, 0);
-  return <section className="qb qb-mix" aria-label="Din care">
+  return <section className="qb qb-mix" aria-label="Din care" data-only="complet">
     <div className="qb-mix-top qb-tipwrap">
       <span className="qb-mix-head">Din care</span>
       {tabs.length === 1 && <span className="qb-mix-head">· {TABS[tab]}</span>}

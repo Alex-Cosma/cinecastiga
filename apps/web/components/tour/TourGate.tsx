@@ -21,6 +21,8 @@ function seen(): boolean {
 function markSeen(): void {
   try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch { /* the cookie below is enough */ }
   document.cookie = `${TOUR_SEEN_COOKIE}=1; path=/; max-age=31536000; samesite=lax`;
+  // The header switch asks about the mode once the tour is out of the way (app/ModeSwitch.tsx).
+  window.dispatchEvent(new Event("cc:tour-closed"));
 }
 const automated = () => navigator.webdriver === true || /bot|crawl|spider|slurp|lighthouse|headless/i.test(navigator.userAgent);
 

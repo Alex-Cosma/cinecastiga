@@ -25,10 +25,11 @@ import { Facts, RecordHead, RecordPage, RecordSection, SignalList, Sources, type
 import RecordTitle from "@/components/record/RecordTitle";
 import "@/components/record/record-pages.css";
 import "./notice.css";
+import { NOTICE_PAGE_SIZE, noticePage, noticePages } from "./paging";
 
 /**
  * Award-notice page, the "mother" of its contracts: one procedure, N records, keyed by SICAP's ca_notice_id. Each
- * record links to its /contracte page; big frameworks (max ~2.700 records) paginate via ?p=. SEAP republishes an award
+ * record links to its /contracte page; ten a page, via ?p= (owner, 18 November 2026). SEAP republishes an award
  * notice under the same number when it adds call-offs; the date shown is this version's, next to the first contract
  * across its versions (owner, 21 October 2026). Record template of 7 November 2026.
  */
@@ -38,7 +39,7 @@ export const dynamic = "force-dynamic";
 /** One read per request and address: the tab title and the page share it (the query string keys the filters). */
 const noticeDetail = cache((caid: string, query: string) => {
   const sp = Object.fromEntries(new URLSearchParams(query));
-  return getAwardNoticeDetail(caid, Math.max(1, Number(sp["p"]) || 1), 50, readFilters(LOT_COLUMNS, (key) => sp[key]));
+  return getAwardNoticeDetail(caid, noticePage(sp["p"]), NOTICE_PAGE_SIZE, readFilters(LOT_COLUMNS, (key) => sp[key]));
 });
 const queryOf = (sp: Record<string, string | undefined>) => new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => e[1] !== undefined)).toString();
 
@@ -68,7 +69,7 @@ export default async function NoticePage({ params, searchParams }: {
   if (!n) notFound();
 
   const ted = n.tedNoticeNo ? tedPublicationNumber(n.tedNoticeNo) : null;
-  const pages = Math.max(1, Math.ceil(n.nShown / n.pageSize));
+  const pages = noticePages(n.nShown, n.pageSize);
   const scope = { caid: String(caid) };
   // No #anchor in the address: the pager brings the list into view from code, so Back from a record returns to its row
   // (UX audit Z7-20).
@@ -114,8 +115,9 @@ export default async function NoticePage({ params, searchParams }: {
         }}
         meta={[
           <span className="record-kind" key="k">Anunț de atribuire</span>,
-          // The procedure is in Atribuirea (Z7-07); on a phone the number gives way (it is in Sources).
-          n.noticeNo && <span key="n" className={n.versionDate ? "record-meta-wide" : undefined}>{n.noticeNo}</span>,
+          // The procedure is in Atribuirea (Z7-07); on a phone the number gives way (it is in Sources). Complet only
+          // (owner, 18 November 2026).
+          n.noticeNo && { only: "complet", node: <span key="n" className={n.versionDate ? "record-meta-wide" : undefined}>{n.noticeNo}</span> },
           n.versionDate && <span key="v">Versiunea din {formatCalendarDate(n.versionDate)}</span>,
         ]}
         actions={<>
@@ -125,10 +127,11 @@ export default async function NoticePage({ params, searchParams }: {
       />
 
       {/* The award's signals, as on its contracts (Z7-18): whoever arrives on the notice first sees the lead. */}
-      <SignalList flags={n.flags} authorityId={n.authority?.entityId ?? null}
+      <SignalList flags={n.flags} authorityId={n.authority?.entityId ?? null} modeMarks
         fallbackEvidence={(f) => f.evidence?.["value"] != null ? <>{procedureLabel(String(f.evidence?.["procedure"] ?? n.procedureType ?? ""))} · {awardValueLabel(f.evidence)}: {formatRonFull(Number(f.evidence?.["value"]))}{noticeContractsNote(f.evidence!) ? ` · ${noticeContractsNote(f.evidence!).trim()}` : ""}</> : null} />
 
-      <RecordSection id="atribuire" title="Atribuirea">
+      {/* The declared value against the one found, the offers, the procedure, the versions: Complet only (owner, 18 November 2026). */}
+      <RecordSection id="atribuire" title="Atribuirea" only="complet">
         <Facts facts={[
           awarded && { label: <Term hold="line" tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: <>{lei(awarded)}{gapNote && <small>{gapNote}</small>}</>, wide: !!gapNote },
           offers && { label: <>Oferte <InfoMark title="Oferte" text={Number(e.lowestOffer) === Number(e.highestOffer) ? "Cea mai mică = cea mai mare." : "De la cea mai mică la cea mai mare."} /></>, value: offers },
@@ -175,12 +178,14 @@ export default async function NoticePage({ params, searchParams }: {
           <tbody>
             {n.lots.map((l) => {
               const lot = rowLot(l);
+              // The row's kind qualifies its value and stays; its number exists only in Complet (owner, 18 November 2026).
+              const kinds = [l.financialKind === "framework" && "plafon de acord-cadru", l.financialKind === "calloff" && "comandă subsecventă", l.financialKind === "amendment" && "act adițional, neadăugat", l.financialKind === "review" && "tip neclar, de verificat", l.temporarilyExcluded && "exclus temporar din totaluri"].filter(Boolean).join(" · ");
               return <tr key={l.natId}>
                 <th scope="row" className="lot-object">
                   <Link prefetch={false} href={`/contracte/${l.natId}`} title={lot ? cleanName(l.title) : undefined}>{lot
                     ? <>{lot.no && <span className="lot-no">Lot {lot.no}</span>}{cleanName(lot.object)}</>
                     : cleanName(isGenericTitle(l.title) ? meaningfulLot(l.lotsCaption, null) ?? l.title : l.title) || (l.contractNo ? `Contractul nr. ${l.contractNo}` : "Contractul")}</Link>
-                  <small>{[l.contractNo && `nr. ${l.contractNo}`, l.financialKind === "framework" && "plafon de acord-cadru", l.financialKind === "calloff" && "comandă subsecventă", l.financialKind === "amendment" && "act adițional, neadăugat", l.financialKind === "review" && "tip neclar, de verificat", l.temporarilyExcluded && "exclus temporar din totaluri"].filter(Boolean).join(" · ")}</small>
+                  <small data-only={kinds ? undefined : "complet"}>{l.contractNo && <span data-only="complet">nr. {l.contractNo}{kinds && " · "}</span>}{kinds}</small>
                 </th>
                 <td data-label="Câștigător">
                   {l.winners.length === 0 ? "—" : l.winners.map((w, i) => (
@@ -198,7 +203,8 @@ export default async function NoticePage({ params, searchParams }: {
         </>}
       </PendingRegion>
 
-      <Sources sources={sources} />
+      {/* The original is the head's „Verifică în SEAP”; TED is a secondary source: Complet only (owner, 18 November 2026). */}
+      <Sources sources={sources} only="complet" />
     </RecordPage>
   );
 }

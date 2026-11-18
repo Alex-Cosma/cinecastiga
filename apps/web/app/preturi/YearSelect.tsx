@@ -12,7 +12,8 @@ export default function YearSelect({ action, year, years, labels, keep }: {
 }) {
   const router = useRouter();
   const [, start] = useTransition();
-  return <form className="pr-year-form" method="get" action={action} onSubmit={(e) => e.preventDefault()}>
+  // Esențial (owner, 18 November 2026): hidden while at its default (every year); set from a link it shows.
+  return <form className="pr-year-form" data-only={year === null ? "complet" : undefined} method="get" action={action} onSubmit={(e) => e.preventDefault()}>
     {Object.entries(keep).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
     <label className="pr-field pr-year">An
       <select name="an" value={year ?? ""} onChange={(e) => {

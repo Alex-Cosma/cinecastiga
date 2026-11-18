@@ -76,8 +76,13 @@
 }
 
 /* Z7-16: a direct acquisition's products, each line's total and their sum; on a phone one short row per product
-   („15 kg × 2,30 lei = 34,50 lei”), the first ten, then „Arată toate” (ItemsMore.tsx). */
-.record-item-line, .record-items-more { display: none; }
+   („15 kg × 2,30 lei = 34,50 lei”). The first ten, then „Arată toate” (ItemsMore.tsx), at every width (owner,
+   18 November 2026; until then only on a phone); print shows every line. */
+.record-item-line { display: none; }
+.record-items-wrap:not([data-all]) .record-item-later { display: none; }
+.record-items-more { display: inline-flex; align-items: center; min-height: 40px; margin-top: 10px; padding: 0 16px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 15px/1.2 var(--body); cursor: pointer; }
+.record-items-more:hover { border-color: var(--accent-line); }
+@media print { .record-items-wrap:not([data-all]) .record-item-later { display: table-row; } .record-items-more { display: none; } }
 .record-entry .record-items tfoot td { padding-top: 12px; border-bottom: 0; font-weight: 600; }
 .record-items-note { margin-top: 6px; font-size: 13px; color: var(--ink2); }
 @media (max-width: 700px) {
@@ -85,12 +90,11 @@
   .record-entry .record-items tbody td:not(:first-child):not(.record-item-line) { display: none; }
   .record-entry .record-items .record-item-line { display: block; margin-top: 2px; font-size: 14px; color: var(--ink2); font-variant-numeric: tabular-nums; }
   .record-item-line b { font-weight: 600; color: var(--ink); }
-  .record-items-wrap:not([data-all]) .record-item-later { display: none; }
   .record-entry .record-items tfoot { display: block; }
   .record-entry .record-items tfoot tr { display: flex; justify-content: space-between; gap: 12px; border-bottom: 0; }
   .record-entry .record-items tfoot td { display: block; padding-top: 10px; }
   .record-entry .record-items tfoot td.record-num { text-align: right; }
-  .record-items-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 16px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 15px/1.2 var(--body); cursor: pointer; }
+  .record-items-more { min-height: 44px; margin-top: 8px; }
 }
 
 /* Z7-05: a signal's links (its cases, its rule, why it is not proof) are 44 px targets on a phone. */

@@ -144,7 +144,9 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
         )}
         {/* The analysis pages: one group of buttons at the row's end (owner, 6 November 2026), not tabs. */}
         {items.some((it) => !it.id) && (
-          <span className="subnav-tools" role="group" aria-label="Analize">
+          // Esențial (owner, 18 November 2026): Radiografie, Legături and Comparații belong to Complet and the signals are
+          // named in the page's top, each a link to its page, so the group goes whole.
+          <span className="subnav-tools" role="group" aria-label="Analize" data-only="complet">
             {items.filter((it) => !it.id && it.href).map((it) => it.hint ? (
               <HintLink key={it.href} href={it.href!} hint={it.hint} dataBand={it.band} className={it.thin ? "is-thin" : undefined}
                 ariaLabel={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>

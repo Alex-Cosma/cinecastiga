@@ -20,7 +20,10 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import EntityYears from "./EntityYears";
-import { bucharestYear, entityTitle, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
+import { bucharestYear, entityTitle, ledgerTotals, RISK_SCALE_SLAB, signalNames, yearsModel } from "./entity-top";
+import { signalTip } from "@/lib/ask/signal-tips";
+import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
+import InfoMark from "@/components/InfoMark";
 import { countyKnown } from "@/lib/counties";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
@@ -220,12 +223,17 @@ export default async function EntityPage({
   // rf-2026.22 (S8): no record in this role for 24 months reads "Inactiv"; the score and its evidence stay.
   const lastActivity = profile?.roles.find((r) => r.role === role)?.lastActivity ?? null;
   const historic = riskHistoric(lastActivity);
-  // The header's tags (owner, 6 November 2026): the score's note, then inactivity.
-  const headFlags: { title: string; text: string; label?: string }[] = [
-    ...(scoreNote ? [scoreNote] : []),
+  // The header's tags (owner, 6 November 2026): the score's note, then inactivity. Esențial has no score (owner,
+  // 18 November 2026): the score's note is Complet's, and „Inactiv” explains itself there without the score's sentence.
+  const inactiveLabel = lastActivity && lastMonthWords(lastActivity) ? `Inactiv · ultima ${lastMonthWords(lastActivity)}` : "Inactiv";
+  const inactiveText = `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni.`;
+  const headFlags: { title: string; text: string; label?: string; only?: "complet" | "esential" }[] = [
+    ...(scoreNote ? [{ ...scoreNote, only: "complet" as const }] : []),
     // In Ask's words, with the month of the last record (UX audit Z5-15, 16 November 2026); its explanation unchanged.
-    ...(historic ? [{ title: "Inactiv", label: lastActivity && lastMonthWords(lastActivity) ? `Inactiv · ultima ${lastMonthWords(lastActivity)}` : "Inactiv",
-      text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
+    ...(historic ? [
+      { title: "Inactiv", label: inactiveLabel, text: `${inactiveText} Scorul și dovezile rămân; clasamentele nu-l arată implicit.`, only: "complet" as const },
+      { title: "Inactiv", label: inactiveLabel, text: inactiveText, only: "esential" as const },
+    ] : []),
   ];
   // rf-2026.22 (S4b, S9b, S10): why a profile with signals has no score.
   const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
@@ -250,6 +258,15 @@ export default async function EntityPage({
   const scoreSplit = hasRiskScore && row.score > 0 && Object.values(points).some((n) => (n ?? 0) > 0);
   // The entity's signals page opens on the pattern with the most points (else its first signal); its tabs lead to the rest.
   const firstSignal = (Object.entries(points) as [string, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0] ?? signalTypes[0];
+  // Esențial's form of the top's risk cell (owner, 18 November 2026): the same signals by name, from the counts and
+  // points read above (the bar's criteria are those with points and parts), each with its meaning on hover.
+  const namedSignals = signalNames(signalTypes,
+    Object.fromEntries((Object.entries(points) as [RiskCriterion, number][]).filter(([c, n]) => n > 0 && row.scoreParts[c])),
+    new Set(Object.keys(SIGNAL_GUIDANCE)), FLAG_ORDER, hasRiskScore);
+  const signalHint = (code: string, quiet: boolean) => {
+    const meaning = (Object.hasOwn(SIGNAL_GUIDANCE, code) ? signalTip({ code }, role)?.text : null) ?? FLAG_META[code]?.short ?? flagLabel(code);
+    return quiet ? `Găsit, prea puțin ca să conteze. ${meaning}` : meaning;
+  };
   // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026). "Semnale"
   // first, the signals page being hard to find from here (owner, 6 November 2026).
   const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
@@ -311,8 +328,12 @@ export default async function EntityPage({
           )}
           {/* Tags beside the role, each with its reason on hover or tap (owner, 6 November 2026; beside the role since UX audit
               Z5-15): the buyer's regime or an in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
-          {headFlags.length > 0 && <div className="ehead-flags">
-            {headFlags.map((f) => <Term key={f.title} tip hold="box" className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>)}
+          {/* A tag of one mode only sits in a box that takes no room of its own (display: contents), so Complet is unchanged. */}
+          {headFlags.length > 0 && <div className="ehead-flags" data-only={headFlags.every((f) => f.only === "complet") ? "complet" : undefined}>
+            {headFlags.map((f) => {
+              const tag = <Term key={`${f.title}-${f.only ?? ""}`} tip hold="box" className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>;
+              return f.only ? <span key={`${f.title}-${f.only}`} data-only={f.only} style={{ display: "contents" }}>{tag}</span> : tag;
+            })}
           </div>}
           </div>
           <h1 className="page-title">{cleanName(row.name)}</h1>
@@ -321,11 +342,13 @@ export default async function EntityPage({
               <span>{[profile.isPublicCompany ? "companie publică" : null, profile.isForeign ? entityCountryLabel(true, profile.countryCode) : null].filter(Boolean).join(" · ")}</span>
             ) : null}
             {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
-            {cui ? <span className="mono">CUI {cui}</span> : null}
+            {/* Esențial (owner, 18 November 2026): the name and county say who it is; the CUI, the registries, the registry
+                dates and names are for whoever checks (Complet). */}
+            {cui ? <span className="mono" data-only="complet">CUI {cui}</span> : null}
             {/* The registries check this CUI, so they sit beside it as quiet links (owner, 4 November 2026). No
                 e-licitatie entity link: SICAP has no per-entity page, and every record deep-links to its source. */}
             {registryCui ? (
-              <span className="ehead-reg">
+              <span className="ehead-reg" data-only="complet">
                 {registryLinks(registryCui, cleanName(row.name)).map((l) => (
                   <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
                     {l.label} <span aria-hidden="true">↗</span>
@@ -335,19 +358,20 @@ export default async function EntityPage({
             ) : null}
             {/* Since when the firm exists and which years its records cover, without opening a block (UX audit Z5-17). */}
             {registered && registryCui !== null && (registered.on || registered.year) ? (
-              <span className="ent-tip">înființată {registered.on ? `${registered.on.slice(5, 7)}.${registered.on.slice(0, 4)}` : registered.year}{" "}
+              <span className="ent-tip" data-only="complet">înființată {registered.on ? `${registered.on.slice(5, 7)}.${registered.on.slice(0, 4)}` : registered.year}{" "}
                 <Term tip title="Înființată" text={`Data primei înmatriculări a acestui CUI la Registrul Comerțului${registered.on ? `: ${formatCalendarDate(registered.on)}` : ""}.`} /></span>
             ) : null}
             {txCounts.dateFrom && txCounts.dateTo ? (
               <span>înregistrări {txCounts.dateFrom.slice(0, 4) === txCounts.dateTo.slice(0, 4) ? txCounts.dateFrom.slice(0, 4) : `${txCounts.dateFrom.slice(0, 4)}–${txCounts.dateTo.slice(0, 4)}`}</span>
             ) : null}
             {registryNames.length > 0 ? (
-              <span className="ent-tip">
+              <span className="ent-tip" data-only="complet">
                 în registru: {registryNames.slice(0, 2).join(" · ")} <Term tip id="nume-registru" />
               </span>
             ) : null}
             {cuiUncorroborated ? (
-              <span title={registryCollision
+              // The CUI's own warning goes with the CUI (both or neither).
+              <span data-only="complet" title={registryCollision
                 ? "La verificarea manuală, ONRC înregistrează acest număr la o altă firmă decât cea din SEAP. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."
                 : "Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."}>
                 număr necoroborat cu ONRC
@@ -366,7 +390,9 @@ export default async function EntityPage({
         </div>
       </div>
       {/* The same analyses on a phone, where the tab row scrolls sideways and would hide them. */}
-      <nav className="ehead-views" aria-label="Analize">
+      {/* Esențial (owner, 18 November 2026): Radiografie, Legături and Comparații belong to Complet, and the signals are
+          named in the top, each a link to its page; the row goes whole (here and beside the tabs, SectionNav). */}
+      <nav className="ehead-views" aria-label="Analize" data-only="complet">
         {views.map((v) => <HintLink key={v.href} href={v.href} hint={v.hint} dataBand={v.band} className={v.thin ? "is-thin" : undefined}
           ariaLabel={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n">{v.note}</span>}</HintLink>)}
       </nav>
@@ -403,7 +429,8 @@ export default async function EntityPage({
           are the chart's legend) and the value per year. The score's criteria are on its bar, each a link to its page on
           /semnale (owner, 6 November 2026). */}
       <div className={`ent-top${years ? "" : " ent-top--no-years"}`}>
-        <div className="ent-risk">
+        {/* The score, its bar and bands, the peers and the method: Complet's (owner, 18 November 2026). */}
+        <div className="ent-risk" data-only="complet">
           <p className="ent-risk-read">
             <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
             {/* rf-2026.22 (S7): the score reads only the direct acquisitions; how much of the money that is waits in the
@@ -435,12 +462,28 @@ export default async function EntityPage({
           })()}
           {(hasRiskScore || signalTypes.length > 0) && <Link href="/metodologie#indice" className="ent-risk-method">Cum se calculează →</Link>}
         </div>
+        {/* Esențial's risk, in words (owner, 18 November 2026): every pattern found by name, each a link to its page with
+            its meaning on hover, those found but too few to count last and dashed, then the one „Pistă, nu dovadă”. With
+            no signal there is no box and the ledger takes the strip (esential-entitate.css). */}
+        {namedSignals.length > 0 && (
+          <div className="ent-sigwords" data-only="esential">
+            <p className="ent-sigwords-h">Semnale</p>
+            <ul>
+              {namedSignals.map(({ code, quiet }) => (
+                <li key={code}>
+                  <HintLink href={entitySignalsUrl(code)} hint={signalHint(code, quiet)} className={`flag-badge${quiet ? " is-quiet" : ""}`}>{flagLabel(code)}</HintLink>
+                </li>
+              ))}
+            </ul>
+            <p className="ent-sigwords-foot">Pistă, nu <span className="ent-sigwords-keep">dovadă <InfoMark title="De știut" text="Un tipar e o pistă de verificat, nu o dovadă." /></span></p>
+          </div>
+        )}
         <div className="ent-activity">
         <table className="ent-ledger">
           <thead><tr><th scope="col"><span className="sr-only">Felul achiziției</span></th><th scope="col">Înregistrări</th><th scope="col">Valoare</th></tr></thead>
           <tbody>
             <tr>
-              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-da" />{ledger.nDa > 0
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-da" data-only="complet" />{ledger.nDa > 0
                 ? <TableLink href="?tip=directe#achizitii" filter={{ tip: { kind: "options", values: ["directe"] } }}>Achiziții directe&nbsp;→</TableLink>
                 : <span>Achiziții directe</span>}</span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa)}</td>
@@ -448,28 +491,29 @@ export default async function EntityPage({
             </tr>
             {ledger.nCt > 0 && (
               <tr>
-                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><TableLink href="?tip=contracte#achizitii" filter={{ tip: { kind: "options", values: ["contracte"] } }}>Contracte prin proceduri&nbsp;→</TableLink></span></th>
+                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" data-only="complet" /><TableLink href="?tip=contracte#achizitii" filter={{ tip: { kind: "options", values: ["contracte"] } }}>Contracte prin proceduri&nbsp;→</TableLink></span></th>
                 <td className="ent-ledger-n">{formatInt(ledger.nCt)}</td>
                 <td>{formatRon(Number(ledger.valueCt))}</td>
               </tr>
             )}
             <tr className="ent-ledger-total">
-              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> {subjects.nConsortium > 0
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" data-only="complet" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> {subjects.nConsortium > 0
                 // The contracts in a consortium join this explanation (owner, 17 November 2026; before: a line of their own under the top).
                 ? <Term tip title={glossaryEntry("valoare-inregistrata").title} text={`${glossaryEntry("valoare-inregistrata").text} ${roCount(subjects.nConsortium, "Un contract", "contracte")} în consorțiu.`} />
                 : <Term tip id="valoare-inregistrata" />}</span></span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa + ledger.nCt)}</td>
               <td>{formatRon(Number(txCounts.valueExact))}</td>
             </tr>
+            {/* A firm's employees and turnover from its balance sheet: Complet's (owner, 18 November 2026). */}
             {role === "supplier" && registryCui !== null && profile?.employees != null && (
-              <tr className="ent-ledger-fin">
+              <tr className="ent-ledger-fin" data-only="complet">
                 <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span>Angajați (bilanț {profile.employeesYear})</span></span></th>
                 <td className="ent-ledger-n" />
                 <td>{formatInt(profile.employees)}</td>
               </tr>
             )}
             {role === "supplier" && registryCui !== null && profile?.netTurnover != null && profile.netTurnover > 0 && (
-              <tr className="ent-ledger-fin">
+              <tr className="ent-ledger-fin" data-only="complet">
                 <th scope="row"><span className="ent-ledger-label"><i className={`ent-sw${years?.turnover ? " ent-sw-turnover" : ""}`} /><span>Cifră de afaceri ({profile.employeesYear})</span></span></th>
                 <td className="ent-ledger-n" />
                 <td>{formatRon(profile.netTurnover)}</td>
@@ -490,6 +534,11 @@ export default async function EntityPage({
       {reps.length > 0 && (() => {
         const people = reps.filter((r, i) => !isFillerRep(r.personName) || reps.findIndex((x) => isFillerRep(x.personName)) === i);
         const others = people.some((r) => !isFillerRep(r.personName) && ((r.nOtherFirms > 0 && r.personKey) || r.nOtherOnrcOnly > 0));
+        // Esențial keeps Conducere strict (owner, 18 November 2026): the name, the role and „încă N firme →”; the birth
+        // note and „N firme fără achiziții publice” are Complet's. A cell left without a link says „—” (and a phone drops
+        // it, as it drops Complet's empty ones); a column without any link goes whole.
+        const linked = (r: (typeof people)[number]) => !isFillerRep(r.personName) && r.nOtherFirms > 0 && !!r.personKey;
+        const othersOnly = others && !people.some(linked) ? "complet" : undefined;
         return (
         <section className="section" id="conducere">
           <h2 className="ent-tip">Conducere <Term tip id="conducere-onrc" /></h2>
@@ -499,7 +548,7 @@ export default async function EntityPage({
               <tr>
                 <th>Persoană</th>
                 <th>Calitate</th>
-                {others && <th>Alte firme reprezentate</th>}
+                {others && <th data-only={othersOnly}>Alte firme reprezentate</th>}
               </tr>
             </thead>
             <tbody>
@@ -507,28 +556,29 @@ export default async function EntityPage({
                 <tr key={`filler-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
                   <td className="rep-name"><span className="rep-n rep-none">fără reprezentant declarat</span></td>
                   <td className="county rep-cal">{r.calitate ?? "—"}</td>
-                  {others && <td className="rep-other" data-empty="1" />}
+                  {others && <td className="rep-other" data-empty="1" data-only={othersOnly} />}
                 </tr>
               ) : (
                 <tr key={`${r.personName}-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
                   <td className="rep-name">
                     <span className="rep-n">{cleanName(r.personName)}</span>
                     {(r.birthYear || r.birthDateImplausible) && (
-                      <span className="county rep-b">
+                      <span className="county rep-b" data-only="complet">
                         {" "}
                         {birthNote({ ...r, birthLocality: r.birthLocality ? cleanName(r.birthLocality) : null })}
                       </span>
                     )}
                   </td>
                   <td className="county rep-cal">{r.calitate ?? "—"}</td>
-                  {others && <td className="rep-other" data-empty={r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 ? "1" : undefined}>
+                  {others && <td className="rep-other" data-empty={r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 ? "1" : undefined}
+                    data-only={othersOnly} data-esential-empty={linked(r) ? undefined : "1"}>
                     {r.nOtherFirms > 0 && r.personKey ? (
                       <a href={personFirmsUrl(r.personKey, cleanName(r.personName))}>
                         {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} →
                       </a>
                     ) : null}
                     {r.nOtherOnrcOnly > 0 && (
-                      <span className="county">
+                      <span className="county" data-only="complet">
                         {r.nOtherFirms > 0 ? " + " : ""}
                         {r.nOtherOnrcOnly === 1
                           ? "o firmă fără achiziții publice"
@@ -536,6 +586,7 @@ export default async function EntityPage({
                       </span>
                     )}
                     {r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 && "—"}
+                    {!linked(r) && r.nOtherOnrcOnly > 0 && <span data-only="esential">—</span>}
                   </td>}
                 </tr>
               ))}
@@ -607,7 +658,9 @@ export default async function EntityPage({
       )}
 
       {/* What the numbers include and how the risk is formed: the last blocks before the footer (owner, 1 November 2026). */}
-      <details className="data-context entity-data-context">
+      {/* Both folds are context and method: Complet's (owner, 18 November 2026); „valoare înregistrată” stays at the
+          total's (?) and in the footer. */}
+      <details className="data-context entity-data-context" data-only="complet">
         <summary>Ce includ aceste cifre?</summary>
         <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
           cu valoare pozitivă de cel mult 1 miliard lei.
@@ -631,7 +684,7 @@ export default async function EntityPage({
       </details>
 
       {/* Only where a score can be (UX audit Z5-14): under the minimum of direct acquisitions there is none to explain. */}
-      {hasRiskScore && row.nDas >= RISK_MIN_DAS && <details className="data-context entity-data-context" id="calcul-scor">
+      {hasRiskScore && row.nDas >= RISK_MIN_DAS && <details className="data-context entity-data-context" id="calcul-scor" data-only="complet">
         <summary>Cum se formează riscul?</summary>
         <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
           pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea

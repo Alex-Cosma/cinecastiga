@@ -23,7 +23,8 @@ export default function SubclassesPill({ words, subclasses, onInclude }: { words
     setEnd(box.current.getBoundingClientRect().right > document.documentElement.clientWidth - 8);
   }, [open]);
   return (
-    <span className="cq-subclasses" ref={root}
+    // Esențial (lib/view-mode.ts): the same words are in „Limite”; „Include-le” changes the question (owner, 18 November 2026).
+    <span className="cq-subclasses" ref={root} data-only="complet"
       onKeyDown={(event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); button.current?.focus(); } }}>
       <button ref={button} type="button" className="cq-pill" aria-expanded={open} aria-controls={id} onClick={() => setOpen((value) => !value)}>
         <span>{words}<span aria-hidden="true"> ›</span></span>

@@ -4,17 +4,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { countyMap } from "@/lib/map";
 import { formatInt, formatRon } from "@/lib/format";
 import {
-  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, TOUR_WIDE_QUERY, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent,
+  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SEARCH_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, TOUR_WIDE_QUERY, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent,
   tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden, type TourData,
 } from "@/lib/tour";
+import { setViewMode } from "@/components/mode/mode-engine";
+import { DEFAULT_VIEW_MODE, VIEW_MODE_LABEL, type ViewMode } from "@/lib/view-mode";
 import "./tour.css";
 
 /**
- * The welcome tour (lib/tour.ts): a full-screen dialog over the page. Six steps: the visitor's county and subject,
- * then five ideas shown with that county's real figures. On the second idea the visitor first guesses how many of
+ * The welcome tour (lib/tour.ts): a full-screen dialog over the page. Seven steps: the visitor's county and subject,
+ * five ideas shown with that county's real figures, then the choice between Esențial and Complet (lib/view-mode.ts). On the second idea the visitor first guesses how many of
  * 100 acquisitions are direct; the dots follow the slider, then move to the real split. The map of the first step folds into a corner and the
- * acquisitions become 200 dots that change with each idea. "Continuă" on the last step, the search, dissolves the
- * tour and leaves its question in the home page's search field. "Sari peste" and Escape close it at any step.
+ * acquisitions become 200 dots that change with each idea. „Începe” on the last step sets the chosen mode, dissolves the
+ * tour and leaves the search step's question in the home page's search field. "Sari peste" and Escape close it at any step.
  */
 const COUNTIES = [...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro"));
 const SIGNAL_DOT = new Set(TOUR_SIGNAL_DOTS);
@@ -65,6 +67,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
   const [asked, setAsked] = useState<string | null>(null), [understood, setUnderstood] = useState<{ query: string; sentence: string } | null>(null);
   const [tip, setTip] = useState<{ dot: number; left: number; top: number; arrow: number } | null>(null);
   const [leaving, setLeaving] = useState(false);
+  // The last step's choice. Esențial is chosen from the start: it is what a reader who skips the tour gets too.
+  const [mode, setMode] = useState<ViewMode>(DEFAULT_VIEW_MODE);
   // How the signal step says to open an example: a finger taps, a mouse points (UX audit Z1-35). The tour renders in the
   // browser only (TourGate loads it without server rendering), so the media query is read at once.
   const [touch] = useState(() => typeof window !== "undefined" && window.matchMedia("(hover: none)").matches);
@@ -102,10 +106,12 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     root.current?.scrollTo({ top: 0, behavior: calm() ? "auto" : "smooth" });
   }, []);
   const finish = useCallback(() => {
+    // The page under the tour is not seen yet: it changes at once, and the tour dissolves over it.
+    setViewMode(mode, { animate: false });
     if (calm()) { onFinish(query, county); return; }
     setLeaving(true);
     window.setTimeout(() => onFinish(query, county), 620);
-  }, [onFinish, query, county]);
+  }, [onFinish, query, county, mode]);
   const forward = useCallback(() => { if (step === 0 && !chosen) return; if (step === TOUR_LAST_STEP) finish(); else go(step + 1); }, [chosen, finish, go, step]);
   // „Continuă” on a narrow screen: a press first shows the rest of the step, the next one goes on (lib/tour.ts,
   // tourRestHidden). A press without a pointer, from the keyboard or an assistive technology, goes on at once:
@@ -131,7 +137,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
 
   // How the site reads the question on the search step: the real interpreter's own sentence.
   useEffect(() => {
-    if (step !== TOUR_LAST_STEP || !query) return;
+    if (step !== TOUR_SEARCH_STEP || !query) return;
     const controller = new AbortController();
     fetch(`/api/intent?q=${encodeURIComponent(query)}`, { signal: controller.signal }).then((response) => (response.ok ? response.json() : null))
       .then((json: { sentence?: string } | null) => { if (json?.sentence) setUnderstood({ query, sentence: json.sentence }); }, () => {});
@@ -209,10 +215,24 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             <h1>Caută cu cuvintele tale.</h1>
             <p>Scrie un subiect, un loc, o instituție sau o firmă. Îți arătăm cum am înțeles întrebarea, ca să o poți corecta.</p>
           </>}
+          {step === 6 && <>
+            <h1>Cât vrei să vezi?</h1>
+            <p>Schimbi oricând, din comutatorul de sus.</p>
+          </>}
         </div>
       </section>
 
       <section className="tr-vis">
+        {step === 6 && <div className="tr-modes" role="radiogroup" aria-label="Cât vrei să vezi">
+          <button type="button" role="radio" aria-checked={mode === "esential"} className="tr-mode" onClick={() => setMode("esential")}>
+            <svg viewBox="0 0 160 96" aria-hidden="true"><rect x="14" y="14" width="62" height="7" rx="3.5" className="tr-m-ink" /><rect x="14" y="31" width="92" height="15" rx="4" className="tr-m-accent" /><g className="tr-m-line"><rect x="14" y="58" width="132" height="5" rx="2.5" /><rect x="14" y="69" width="132" height="5" rx="2.5" /><rect x="14" y="80" width="96" height="5" rx="2.5" /></g></svg>
+            <b>{VIEW_MODE_LABEL.esential}</b><span>Doar răspunsul: cine, cât și de la cine.</span>
+          </button>
+          <button type="button" role="radio" aria-checked={mode === "complet"} className="tr-mode" onClick={() => setMode("complet")}>
+            <svg viewBox="0 0 160 96" aria-hidden="true"><rect x="10" y="9" width="46" height="6" rx="3" className="tr-m-ink" /><g className="tr-m-soft"><rect x="10" y="21" width="22" height="6" rx="3" /><rect x="35" y="21" width="22" height="6" rx="3" /><rect x="60" y="21" width="22" height="6" rx="3" /><rect x="85" y="21" width="22" height="6" rx="3" /></g><rect x="10" y="33" width="58" height="10" rx="3" className="tr-m-accent" /><g className="tr-m-bars"><rect x="78" y="47" width="7" height="10" /><rect x="88" y="40" width="7" height="17" /><rect x="98" y="44" width="7" height="13" /><rect x="108" y="35" width="7" height="22" /><rect x="118" y="42" width="7" height="15" /><rect x="128" y="38" width="7" height="19" /></g><g className="tr-m-line"><rect x="10" y="48" width="58" height="4" rx="2" /><rect x="10" y="56" width="50" height="4" rx="2" /><rect x="10" y="65" width="140" height="4" rx="2" /><rect x="10" y="72" width="140" height="4" rx="2" /><rect x="10" y="79" width="140" height="4" rx="2" /><rect x="10" y="86" width="104" height="4" rx="2" /></g></svg>
+            <b>{VIEW_MODE_LABEL.complet}</b><span>Și filtre, comparații, scoruri și metodă.</span>
+          </button>
+        </div>}
         <div className="tr-head">
           <div className="tr-map">
             <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} role="group" aria-label="Harta județelor. Aceleași opțiuni sunt în lista de județe.">
@@ -288,7 +308,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
           (tour.css), on phones the row keeps its place (UX audit Z1-35). */}
       <button type="button" className="tr-btn tr-nav-back" onClick={() => go(step - 1)} aria-hidden={step === 0 || undefined} tabIndex={step === 0 ? -1 : undefined}>Înapoi</button>
       <span className="tr-count">{step + 1} din {TOUR_LAST_STEP + 1}</span>
-      <button type="button" className="tr-btn tr-btn-primary" onClick={press} disabled={step === 0 && !chosen}>Continuă</button>
+      <button type="button" className="tr-btn tr-btn-primary" onClick={press} disabled={step === 0 && !chosen}>{step === TOUR_LAST_STEP ? "Începe" : "Continuă"}</button>
     </footer>
   </div>;
 }

@@ -35,7 +35,9 @@ export default function EntityCrumb({ id, name, role, bothRoles = false, current
         {sub && <><span className="sep" aria-hidden="true">·</span><span aria-current="page">{sub}</span></>}
         {children}
       </p>
-      <p className="ent-crumb-sisters">
+      {/* Esențial (owner, 18 November 2026): Radiografie, Legături and Comparații belong to Complet, and „Semnale” alone is
+          no menu, so the row goes; on those pages (inside CompletOnly's data-whole) it stays. */}
+      <p className="ent-crumb-sisters" data-only="complet">
         {sisters.map((s, i) => <span key={s.label}>{i > 0 && <span aria-hidden="true"> · </span>}
           {s.label === current && !sub ? <b aria-current="page">{s.label}</b> : <Link prefetch={false} href={s.href}>{s.label}</Link>}</span>)}
       </p>
@@ -49,7 +51,7 @@ export function CrumbGhost({ current, sub, authority = true }: { current: Analys
     <div className="ent-crumb" aria-hidden="true">
       <p className="ent-crumb-trail"><span className="ent-crumb-name"><G.Line inline w="26ch" /></span><span className="sep">·</span><span>{current}</span>
         {sub && <><span className="sep">·</span><span>{sub}</span></>}</p>
-      <p className="ent-crumb-sisters">{["Semnale", ...(authority ? ["Radiografie"] : []), "Legături", "Comparații"].join(" · ")}</p>
+      <p className="ent-crumb-sisters" data-only="complet">{["Semnale", ...(authority ? ["Radiografie"] : []), "Legături", "Comparații"].join(" · ")}</p>
     </div>
   );
 }

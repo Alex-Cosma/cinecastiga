@@ -3,9 +3,9 @@ import { LEAD_RULE } from "@/lib/unit-prices";
 import { countWord, formatLei } from "@/lib/unit-prices-shared";
 
 /** How the comparison is made, folded under the list (owner: terse copy, details on demand). The lead's rule is read
- * from LEAD_RULE, so the words follow the mart. */
+ * from LEAD_RULE, so the words follow the mart. The method is Complet's (owner, 18 November 2026). */
 export default function PriceMethod() {
-  return <details className="pr-method">
+  return <details className="pr-method" data-only="complet">
     <summary>Cum am comparat</summary>
     <ul>
       <li><b>Sursa.</b> Liniile achizițiilor directe acceptate din SEAP: denumirea scrisă de instituție, cantitatea, unitatea și prețul pe unitate, fără TVA. Sunt valori contractate, nu plăți.</li>

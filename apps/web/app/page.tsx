@@ -20,19 +20,25 @@ import { getCoverage } from "@/lib/coverage";
 export const dynamic = "force-dynamic";
 const questionHref = askHref;
 // The first card is „Ce a cumpărat primăria ta?” (TownHallTile; owner, 13 November 2026, in place of „Cine repară drumurile?”).
+// `complet`: the card exists only in Complet (lib/view-mode.ts; owner, 18 November 2026). Esențial keeps the town hall,
+// the hospitals and who wins; the communes repeat the town hall's card and the two clouds are the scatter answers.
 const QUESTIONS = [
   { title: "Ce cumpără spitalele?", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: HOSPITALS_BREAKDOWN_SPEC },
   { title: "Cine câștigă contractele?", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: CONTRACT_WINNERS_SPEC },
-  { title: "Ce cumpără comunele?", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC },
-  { title: "Cine iese din tipar?", kind: "outlier", label: "SEMNALE", action: "Vezi instituțiile", spec: AUTHORITY_CLOUD_SPEC },
-  { title: "Ce firme depind de un singur client?", kind: "dependence", label: "DEPENDENȚĂ", action: "Vezi firmele", spec: FIRM_DEPENDENCE_CLOUD_SPEC },
-] satisfies { title: string; kind: string; label: string; action: string; spec: AskSpec }[];
+  { title: "Ce cumpără comunele?", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC, complet: true },
+  { title: "Cine iese din tipar?", kind: "outlier", label: "SEMNALE", action: "Vezi instituțiile", spec: AUTHORITY_CLOUD_SPEC, complet: true },
+  { title: "Ce firme depind de un singur client?", kind: "dependence", label: "DEPENDENȚĂ", action: "Vezi firmele", spec: FIRM_DEPENDENCE_CLOUD_SPEC, complet: true },
+] satisfies { title: string; kind: string; label: string; action: string; spec: AskSpec; complet?: boolean }[];
 
+// „Atribuiri publicate în TED” leads to /supra-prag, a Complet-only page: the card exists only in Complet (owner,
+// 18 November 2026); Esențial's two cards share a row (components/mode/esential-acasa-harta.css).
 const PATHS = [
   { href: "/semnale", kind: "signals", title: "Semnale care merită verificate" },
   { href: "/domenii", kind: "domains", title: "Ce cumpără instituțiile" },
-  { href: "/supra-prag", kind: "ted", title: "Atribuiri publicate în TED" },
+  { href: "/supra-prag", kind: "ted", title: "Atribuiri publicate în TED", complet: true },
 ];
+/** The mark of a block that exists only in Complet (lib/view-mode.ts). */
+const onlyComplet = (complet: boolean | undefined) => (complet ? { "data-only": "complet" } : {});
 // Twelve stars of the European flag, rounded so server and client agree.
 const EU_RING = Array.from({ length: 12 }, (_, k) => [Math.round((104 + 36 * Math.cos(k * Math.PI / 6)) * 10) / 10, Math.round((52 + 36 * Math.sin(k * Math.PI / 6)) * 10) / 10]);
 
@@ -90,12 +96,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <h1 id="d-hero-title">Sunt banii tăi.<br /><span>Vezi unde ajung.</span></h1>
         <p className="d-hero-description">De la strada ta la marile contracte. Urmărește cine cumpără, cine câștigă și ce întrebări merită puse.</p>
         <DiscoverySearch hero />
-        <div className="d-quick-links"><span>Încearcă:</span><Link href="/cauta?q=Cluj"><DiscoveryIcon name="pin" />Cluj</Link><Link href="/cauta?q=drumuri">Drumuri</Link><Link href="/cauta?q=iluminat">Iluminat</Link></div>
+        {/* Esențial (owner, 18 November 2026): the examples, the national strip and the investigation invite exist only in
+            Complet; the search, the county map and the starting questions are the home's essentials. */}
+        <div className="d-quick-links" data-only="complet"><span>Încearcă:</span><Link href="/cauta?q=Cluj"><DiscoveryIcon name="pin" />Cluj</Link><Link href="/cauta?q=drumuri">Drumuri</Link><Link href="/cauta?q=iluminat">Iluminat</Link></div>
       </div>
       <DiscoveryMap counties={headline.counties} />
     </section>
 
-    <section className="d-national-strip" aria-label="Datele din arhiva publică">
+    <section className="d-national-strip" aria-label="Datele din arhiva publică" data-only="complet">
       <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b></div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
@@ -111,15 +119,15 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
     <section className="d-starts" aria-labelledby="d-starts-title">
       <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
-      <div className="d-question-grid"><TownHallTile number="01" art={<QuestionArt kind="townhall" />} />{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind}>
+      <div className="d-question-grid"><TownHallTile number="01" art={<QuestionArt kind="townhall" />} />{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind} {...onlyComplet(question.complet)}>
         <div className="d-question-top"><span>{question.label}</span><span>0{index + 2}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}<CardGo /></h3><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
       </Link>)}</div>
     </section>
 
-    <section className="d-paths" aria-label="Alte direcții">{PATHS.map((item) => <Link className="d-path-card" href={item.href} key={item.href}>
+    <section className="d-paths" aria-label="Alte direcții">{PATHS.map((item) => <Link className="d-path-card" href={item.href} key={item.href} {...onlyComplet(item.complet)}>
       <PathArt kind={item.kind} /><div className="d-path-head"><h3>{item.title}<CardGo /></h3><span><DiscoveryIcon name="arrow" /></span></div>
     </Link>)}</section>
 
-    {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
+    {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title" data-only="complet"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
   </div>;
 }

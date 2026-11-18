@@ -19,8 +19,9 @@ export interface SumRow {
   main?: boolean;
 }
 
-export default function RecordSums({ title, rows, note }: { title: string; rows: SumRow[]; note?: ReactNode }) {
-  return <div className="record-sums">
+/** `only`: the table exists only in Complet (a contract, owner 18 November 2026; the head then says what it said). */
+export default function RecordSums({ title, rows, note, only }: { title: string; rows: SumRow[]; note?: ReactNode; only?: "complet" | undefined }) {
+  return <div className="record-sums" data-only={only}>
     <h3>{title}</h3>
     <ol>
       {rows.map((r) => <li key={r.key} className={r.main ? "is-main" : undefined}>

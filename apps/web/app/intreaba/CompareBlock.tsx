@@ -17,7 +17,15 @@ import {
   cardSpan, consortiumWords, facingRows, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatRow, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
 } from "./compare-answer";
 import { useChartMotion, type ChartMotion } from "./answer/chart-motion";
+import { completIf } from "./esential";
 import "./compare.css";
+
+/*
+ * Esențial (lib/view-mode.ts, owner 18 November 2026): the two cards keep who, the period, the amount, the signals in words
+ * with one „pistă, nu dovadă” and the records; the split by channel, the context rows, the score and the sections under
+ * the cards („Pe ani”, the shared partners, the domains, the contracts won together) are marked Complet's.
+ */
+const SIGNALS_TIP = { title: "Semnale", text: "Semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate." };
 
 /**
  * Two institutions or two firms side by side, on one selection: totals by
@@ -70,7 +78,7 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
       {data.shared && <Partners data={data} firms={firms} shared={shared} />}
       <Domains a={a} b={b} firms={firms} />
       {data.joint && data.joint.total > 0 && (
-        <section className="cmp-section">
+        <section className="cmp-section" data-only="complet">
           <h3>Câștigate împreună · {countWords(data.joint.total, "contract", "contracte")} <Term tip title="Câștigate împreună" text="Contracte în care ambele firme sunt printre câștigători: în asociere sau acorduri-cadru cu mai mulți furnizori. Suma este cota celor două, nu valoarea întregului contract." /></h3>
           <ul className="cmp-joint">
             {data.joint.rows.map((row) => (
@@ -127,17 +135,17 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
         : <p className="cmp-big">{formatRon(e.value)}</p>}
       {e.streams && dataset === "all" && total > 0 && (
         <>
-          <div className={`cmp-split ${motion.enter("cm-x")}`} ref={motion.join} aria-hidden="true">
+          <div className={`cmp-split ${motion.enter("cm-x")}`} ref={motion.join} aria-hidden="true" data-only="complet">
             <i className="cm-tw" style={{ width: `${(contracts!.value / total) * 100}%` }} />
             <i className="cm-tw" style={{ width: `${(e.streams.da.value / total) * 100}%` }} />
           </div>
-          <p className="cmp-legend">
+          <p className="cmp-legend" data-only="complet">
             <span>Proceduri · {formatRon(contracts!.value)} · {formatInt(contracts!.count)}</span>
             <span>Directe · {formatRon(e.streams.da.value)} · {formatInt(e.streams.da.count)}</span>
           </p>
         </>
       )}
-      <dl className="cmp-kv">
+      <dl className="cmp-kv" data-only="complet">
         {/* On direct acquisitions there are no offers (final §3.3): the row is not drawn. */}
         {dataset !== "da" && contracts && contracts.count > 0 && contracts.singleBid !== null && (
           <div>
@@ -243,8 +251,10 @@ function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b
         {sides.map(({ e, key }) => <span key={key} className="cmp-ab-val" role="cell">{value(e)}</span>)}
       </div>
       {rows.map((row) => (
-        <div key={row.key} className="cmp-ab-row" role="row">
-          <span className="cmp-ab-label" role="rowheader">{row.label}{row.tip && <> {"id" in row.tip ? <Term id={row.tip.id} tip /> : <Term tip title={row.tip.title} text={row.tip.text} />}</>}</span>
+        <div key={row.key} className="cmp-ab-row" role="row" data-only={row.key === "flags" ? undefined : "complet"}>
+          <span className="cmp-ab-label" role="rowheader">{row.key === "flags"
+            ? <><span data-only="complet">{row.label}</span><span data-only="esential">Semnale · pistă, nu dovadă</span></>
+            : row.label}{row.tip && <> {"id" in row.tip ? <Term id={row.tip.id} tip /> : <Term tip title={row.tip.title} text={row.tip.text} />}</>}</span>
           <span className="cmp-ab-val" role="cell">{row.a ?? "–"}</span>
           <span className="cmp-ab-val" role="cell">{row.b ?? "–"}</span>
         </div>
@@ -268,14 +278,18 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
   // A saved answer from before rf-2026.18 has no score: it keeps the index it showed.
   const score = e.score ?? null;
   const scored = e.hasProfile && (score !== null ? score > 0 : e.cri !== null && e.cri > 0);
+  // Esențial: the score and its band go (the owner's risk decision); the signals' names stay under one „pistă, nu dovadă”.
+  // A card without a signal named keeps no box there.
+  const named = e.flags.length;
   return (
-    <div className={`cmp-risk${scored ? "" : " cmp-risk-none"}`}>
-      <p>
+    <div className={`cmp-risk${scored ? "" : " cmp-risk-none"}`} data-only={completIf(named === 0)}>
+      <p data-only="complet">
         {!e.hasProfile ? "Fără profil de risc: prea puține achiziții directe"
           : score !== null ? <>Risc <b>{riskScoreText(score)}</b> · {riskLabel(score).replace(/^risc · /, "")}{score > 0 && <> · {countWords(e.nFlags, "tipar", "tipare")}</>}</>
           : <>Indice de risc <b>{formatDecimal(e.cri ?? 0, 2)}</b> · {countWords(e.nFlags, "semnal", "semnale")}</>}
         {" "}<Term id="profil-risc" tip />
       </p>
+      {named > 0 && <p data-only="esential">{countWords(named, "semnal", "semnale")} · pistă, nu dovadă <Term tip title={SIGNALS_TIP.title} text={SIGNALS_TIP.text} /></p>}
       {e.flags.length > 0 && (
         <div className="cmp-flags">{e.flags.map((flag) => <span key={flag} title={FLAG_META[flag]?.short}>{flagLabel(flag)}</span>)}</div>
       )}
@@ -302,7 +316,7 @@ function Years({ a, b, partial }: { a: CompareEntity; b: CompareEntity; partial:
   const read = (column: YearColumn) => yearReadout(column, { a: nameA, b: nameB });
   const shown = columns.find((c) => c.key === chosen) ?? null;
   return (
-    <section className="cmp-section">
+    <section className="cmp-section" data-only="complet">
       <h3>Pe ani</h3>
       <p className="cmp-key"><span className="cmp-key-a">{nameA}</span><span className="cmp-key-b">{nameB}</span>{partial.length > 0 && <span>hașurat = an acoperit parțial</span>}</p>
       {t.el}
@@ -338,7 +352,7 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
   const both = data.shared!;
   if (both.total === 0) {
     return (
-      <section className="cmp-section">
+      <section className="cmp-section" data-only="complet">
         <h3>{firms ? "Clienți" : "Furnizori"}</h3>
         <p className="cmp-none">{firms ? "Niciun client comun." : "Niciun furnizor comun."}</p>
         <div className="cmp-two" {...motion.root}>
@@ -361,7 +375,7 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
     return <span className="cmp-mirror-track"><i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i></span>;
   };
   return (
-    <section className="cmp-section">
+    <section className="cmp-section" data-only="complet">
       <h3>{shared ? "Pe fiecare client comun" : firms ? "Clienți comuni" : "Furnizori comuni"} · {countWords(both.total, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}{shared && <> <Term id="clienti-comuni" tip /></>}</h3>
       {shared && anyJoint && <p className="cmp-key"><span className="cmp-key-a">{shortName(a.name)}</span><span className="cmp-key-b">{shortName(b.name)}</span><span className="cmp-key-joint">câștigat împreună</span></p>}
       <div className="cmp-mirror" {...motion.root}>
@@ -405,7 +419,7 @@ function Domains({ a, b, firms }: { a: CompareEntity; b: CompareEntity; firms: b
   if (!a.domains?.length && !b.domains?.length) return null;
   const more = [a, b].some((e) => (e.domains?.length ?? 0) > SHOWN_DOMAINS);
   return (
-    <section className="cmp-section">
+    <section className="cmp-section" data-only="complet">
       <h3>{firms ? "Ce vinde fiecare" : "Ce cumpără fiecare"}</h3>
       <div className="cmp-two" {...motion.root}>
         {[a, b].map((e, i) => {

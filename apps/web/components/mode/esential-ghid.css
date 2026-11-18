@@ -1,0 +1,37 @@
+/* Esențial (lib/view-mode.ts): layout rules of the guide and methodology pages that a data-only mark cannot express.
+   Every selector starts with html[data-mode="esential"]. */
+
+/* The guide's lanes (/metodologie, owner, 18 November 2026). „Povestea” and „Regulile” belong to Complet: the tab row is
+   hidden while the guide's own lane („Pe scurt”) is shown or one section is open alone. A lane opened from a link shows
+   whole (data-whole on the lane, with Complet's line), and with it the tabs, its way back to „Pe scurt”. */
+html[data-mode="esential"] .mt:has(#lane-scurt:not([hidden])) .mt-lanes,
+html[data-mode="esential"] .mt[data-alone] .mt-lanes { display: none; }
+html[data-mode="esential"] .mt .mt-lane > .mode-line { margin-top: 24px; margin-bottom: 0; }
+
+/* „Pe scurt”: „Vezi semnalele” alone keeps the room the line about invented names and the other ways onward gave it. */
+html[data-mode="esential"] #lane-scurt > .mt-go-row.mt-top { margin: 20px 0 22px; }
+/* Reduced motion draws the three steps one under the other; the row under them held only the share button. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-mode="esential"] .mt-stage .mt-stage-nav { display: none; }
+}
+
+/* One section alone (owner, 18 November 2026): „Despre cinecâștigă?” (#despre), „Ce date avem și unde sunt limitele”
+   (#acoperire, the footer's „Surse, acoperire și actualizare”) and the request template (#req) live in the Complet
+   lanes; a link to one of them opens just that section under the page's title, with „Înapoi la ghid” and without
+   Complet's line. MethodologyBehavior marks the page root with data-alone=<id> when such a link opens its lane (or the
+   page loads with its anchor) and clears it when a lane is shown any other way. */
+html[data-mode="esential"] .mt:not([data-alone]) .mt-alone-back,
+html[data-mode="esential"] .mt[data-alone] .mt-lede,
+html[data-mode="esential"] .mt[data-alone] .mt-lane > .mode-line,
+html[data-mode="esential"] .mt[data-alone="despre"] #lane-reguli > :not(#despre),
+html[data-mode="esential"] .mt[data-alone="acoperire"] #lane-reguli > :not(#detalii),
+html[data-mode="esential"] .mt[data-alone="acoperire"] #detalii > :not(#acoperire),
+html[data-mode="esential"] .mt[data-alone="req"] #lane-poveste > :not(#pista),
+html[data-mode="esential"] .mt[data-alone="req"] #pista > :not(.mt-tpl),
+/* „Numerele … le iei din fișierul „Descarcă înregistrările””: Esențial has no export. */
+html[data-mode="esential"] .mt[data-alone="req"] .mt-tpl > .mt-how { display: none; }
+/* The section opens at the top of the page: a margin taller than all that is left above it. */
+html[data-mode="esential"] .mt[data-alone] :is(#despre, #acoperire, #req) { scroll-margin-top: 100vh; }
+html[data-mode="esential"] .mt[data-alone] .mt-lane .mt-ref { padding-top: 12px; }
+html[data-mode="esential"] .mt[data-alone="req"] #pista { padding-top: 12px; }
+html[data-mode="esential"] .mt[data-alone="despre"] #despre { margin-top: 12px; }

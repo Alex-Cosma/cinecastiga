@@ -1,0 +1,21 @@
+/* Esențial (lib/view-mode.ts): layout rules of the acasa-harta pages that a data-only mark cannot express (columns by position, grids that close up).
+   Every selector starts with html[data-mode="esential"]. */
+
+/* Home (owner, 18 November 2026): two ways further in are left („Semnale care merită verificate”, „Ce cumpără
+   instituțiile”; the TED card is Complet's), so on wide screens they share the row in two columns instead of leaving a
+   third of it empty. Phones keep one card per row. */
+@media (min-width: 701px) {
+  html[data-mode="esential"] .d-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Hartă, the ranking (owner, 18 November 2026): a row is the area's name and its figure; the place and the bar are
+   Complet's (MapExplorer marks them), so their columns go and the figures keep their widths (harta.css). */
+html[data-mode="esential"] .mx-row { grid-template-columns: minmax(0, 1fr) 64px; }
+html[data-mode="esential"] .mx-rows.is-lei .mx-row { grid-template-columns: minmax(0, 1fr) 78px; }
+html[data-mode="esential"] .mx-rows.has-total .mx-row { grid-template-columns: minmax(0, 1fr) 74px 66px; }
+@media (max-width: 640px) {
+  html[data-mode="esential"] .mx-rows.has-total .mx-row { grid-template-columns: minmax(0, 1fr) 72px 62px; }
+}
+
+/* Hartă, a UAT's panel: the rows of „Pe ce?” and „Cui?” without their bars (UatPanel marks them): the name and the share. */
+html[data-mode="esential"] .mx-p-rows li { grid-template-columns: minmax(0, 1fr) 38px; }

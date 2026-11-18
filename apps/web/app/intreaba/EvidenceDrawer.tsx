@@ -15,6 +15,7 @@ import { flagLabel } from "@/lib/flags";
 import { RISK_CRITERIA, riskFact, riskScoreText, riskPoints } from "@/lib/risk-score";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
+import { useViewer } from "@/lib/use-viewer";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
 import { closeThenLeave } from "../../components/motion/leave";
@@ -100,7 +101,7 @@ function SourcesGhost({ listGroup, streams, toolsOpen }: { listGroup: boolean; s
         <tbody><G.Rows n={SOURCES_PAGE} as="tr" cells={(i) => <>
           <td><span className="ev-contract-title"><G.Line w={GHOST_TITLES[i]!} /></span><span className="ev-muted"><G.Line inline w="30ch" /></span></td>
           <td><div className="ev-party ev-party-buyer"><a><G.Line inline w="24ch" /></a></div><div className="ev-party ev-party-supplier"><span className="ev-party-arrow">→</span><a><G.Line inline w="20ch" /></a></div></td>
-          <td><strong className="ev-row-value"><G.Line inline w="11ch" /></strong><details className="ev-record-details g-quiet"><summary>Detalii importate</summary></details></td>
+          <td><strong className="ev-row-value"><G.Line inline w="11ch" /></strong><details className="ev-record-details g-quiet" data-only="complet"><summary>Detalii importate</summary></details></td>
           <td><span className="ev-seap g-quiet">SEAP ↗</span></td>
         </>} /></tbody>
       </table>
@@ -155,6 +156,12 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   // The question fixes the buyers' county (a county, a locality, one institution): the rows leave it out (Z3-03).
   const sameCounty = countyFixed(spec, scope);
   const titleCount = (result || busy) && <span className="ev-title-count"> · <span>{result ? records(result.sourceTotal) : <G.Line inline w="19ch" />}</span></span>;
+  /*
+   * Esențial (lib/view-mode.ts, owner 18 November 2026): the list keeps its search, kind and order (the table's filters
+   * stay everywhere), its rows with the SEAP link and its pages; the exports, the imported details and the risk score's
+   * formula are Complet's. The footer stays for a signed-in reader's „Urmărește” and „Salvează în anchetă”.
+   */
+  const viewer = useViewer();
 
   useEffect(() => {
     const node = dialog.current;
@@ -265,7 +272,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         <p className="ev-exact-total">Suma în precizia stocată: <strong>{formatEvidenceAmount(result.sourceValue, true)}</strong>. Afișarea principală este rotunjită la bani; CSV păstrează toate zecimalele, inclusiv cotele firmelor în asociere.</p>
         {filtered && <p className="ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</p>}
         {result.scopeNotes.map((note, i) => <p key={i}>{note}</p>)}
-        {result.profile && <>
+        {result.profile && <div data-only="complet">
           <p>Riscul adună punctele tiparelor din achizițiile directe, pe tot istoricul, de la 0 la 100. Nu este o probabilitate de corupție. <Link href="/metodologie">Vezi metodologia →</Link></p>
           {result.profiles.map((p) => {
             // A saved drawer never holds these: they are read live, so every profile has its score (rf-2026.18).
@@ -280,7 +287,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
             </div>;
           })}
           {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
-        </>}
+        </div>}
       </details>}
       <div className={`ev-tools${toolsOpen ? " is-open" : ""}`}>
       <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen} aria-controls="ev-filters ev-sort" onClick={() => setToolsOpen((open) => !open)}>Caută / filtrează</button>
@@ -312,7 +319,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
               {/* Z3-03: the buyer one quiet line, „→” the firm under it; the county only when the question leaves it open. */}
               <td data-label="Instituție și furnizor"><div className="ev-party ev-party-buyer"><EntityName id={r.authorityId} role="authority">{r.authorityId ? r.authority ?? `Instituție #${r.authorityId}` : r.authority ?? "Instituție neprecizată"}</EntityName></div>{r.county && !sameCounty && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<div className="ev-party ev-party-supplier"><span className="ev-party-arrow" aria-hidden="true">→</span><EntityName id={r.supplierId} role="supplier">{r.supplierId ? r.supplier ?? `Furnizor #${r.supplierId}` : r.supplier ?? "Furnizor neprecizat"}</EntityName></div></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
-                <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
+                <details className="ev-record-details" data-only="complet"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
               </td>
               <td data-label="Sursă">{note && <span className="ev-state">{note}</span>}{links.seap ? <a className="ev-seap" href={links.seap} target="_blank" rel="noopener noreferrer" aria-label={`Deschide ${r.daCode ?? r.refId} în SEAP`}>SEAP ↗</a> : <span className="ev-source-missing">Fără ID SEAP în import</span>}{links.ted && <a className="ev-ted" href={links.ted} target="_blank" rel="noopener noreferrer" aria-label="Același anunț în TED">TED ↗</a>}</td>
             </tr>;
@@ -320,10 +327,10 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         </table>}
       </div>
       {result && !error && result.total > result.pageSize && <nav className="ev-pagination" aria-label="Pagini de înregistrări"><button type="button" disabled={busy || result.page === 0} onClick={() => setPage(result.page - 1)}>← Înapoi</button><span>Pagina {count(result.page + 1)} din {count(Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={busy || (result.page + 1) * result.pageSize >= result.total} onClick={() => setPage(result.page + 1)}>Înainte →</button></nav>}
-      {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}
+      {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit" data-only="complet">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
-    <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" blocked={watchBlocked} />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
+    <footer className="ev-footer" data-only={!viewer.userId && !onSave ? "complet" : undefined}><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" blocked={watchBlocked} />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")} data-only="complet">{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")} data-only="complet">{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
       title, headline: `${records(result.sourceTotal)} · ${formatEvidenceAmount(result.sourceValue)}`,
       pills: [], evidenceScope: scope ?? null, evidenceOptions: peer?.selection.kind === "comparison" ? {} : { search, state, stream }, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
       dateFrom: result.dateFrom, dateTo: result.dateTo, profile: result.profile, scopeNotes: result.scopeNotes,

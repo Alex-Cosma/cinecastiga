@@ -38,7 +38,7 @@ export function StripLegend({ bins = false, dots, prices }: { bins?: boolean; do
   </ul>;
 }
 
-function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: string | null; order: PriceOrder }) {
+function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: number; county: string | null; order: PriceOrder; quiet?: boolean }) {
   const title = s.packLabel ? `${s.name}, ${s.packLabel}` : s.name;
   // The lead the strip names: the largest by lei above the median (the same for the same address).
   const named = s.named;
@@ -51,7 +51,7 @@ function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: stri
     + (s.mixed ? " Mărci diferite: citește denumirile." : "") + (seasonal ? " Sezonul poate explica o parte." : "");
   const shown = Math.min(s.leads, STRIP_LEADS);
   const head = s.leads > 0 ? `${s.leads > shown ? `Cele mai mari ${shown} din ${s.leads}` : s.leads === 1 ? "Singurul preț peste dublu" : `Toate cele ${s.leads}`}, după ${order === "multiplu" ? "multiplu" : "lei peste mediană"}.` : null;
-  return <StripRow className={`pr-row${s.leads ? "" : " pr-row-quiet"}`} label={sentence} leads={s.leads} head={head}
+  return <StripRow className={`pr-row${s.leads ? "" : " pr-row-quiet"}`} completOnly={quiet} label={sentence} leads={s.leads} head={head}
     query={{ family: s.family, pack: s.pack, year: s.year, county, byRatio: order === "multiplu", per: s.per }}
     summary={<>
       <span className="pr-label">
@@ -88,19 +88,24 @@ function medianHead(strips: readonly PriceStrip[]): string {
 /** Strips without a lead fold behind one line once a county or a year leaves this many of them. */
 const FOLD_FROM = 4;
 
-export default function PriceStrips({ strips, county, order, narrowed }: {
+export default function PriceStrips({ strips, county, order, narrowed, whole = false }: {
   strips: PriceStrip[]; county: string | null; order: PriceOrder;
   /** A county or a year is chosen: products without a lead there are folded, not listed one by one. */
   narrowed: boolean;
+  /** No group or product is chosen: the whole list. */
+  whole?: boolean;
 }) {
   const withLeads = strips.filter((s) => s.leads > 0), without = strips.filter((s) => s.leads === 0);
   const fold = narrowed && without.length >= FOLD_FROM;
+  // Esențial (owner, 18 November 2026): the whole list shows only the products with a price above double; a product
+  // or a group chosen in the picker shows its strips with or without one.
+  const quiet = whole && withLeads.length > 0;
   const open = fold ? withLeads : strips;
   const key = (s: PriceStrip) => `${s.family}|${s.pack}|${s.year ?? "toti"}`;
   return <div className="pr-strips">
     <StripLegend dots={`cele mai mari, cel mult ${STRIP_DOTS} pe produs`} prices="Valori contractate, fără TVA." />
     <div className="pr-head" aria-hidden="true"><span>Produs · {medianHead(strips)}</span><StripAxis /><span>Peste dublu</span></div>
-    {open.map((s, i) => <Strip key={key(s)} s={s} i={i} county={county} order={order} />)}
+    {open.map((s, i) => <Strip key={key(s)} s={s} i={i} county={county} order={order} quiet={quiet && s.leads === 0} />)}
     {fold && withLeads.length === 0 && <p className="pr-none pr-none-all">Niciun preț peste dublu{county ? ` în ${county}` : ""} pentru această alegere.</p>}
     {fold && <details className="pr-fold">
       <summary>{countWord(without.length, "un produs", "produse")} fără prețuri peste dublu{county ? ` în ${county}` : ""}</summary>

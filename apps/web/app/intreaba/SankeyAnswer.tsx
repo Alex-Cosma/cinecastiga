@@ -72,7 +72,7 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
             {evidence && <button type="button" className="qb-rec qb-flow-rec" aria-label={`Înregistrările: ${node.full}`}
               onClick={() => evidence.open(undefined, node.scope, node.scopeLabel)}>{countWords(node.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}
           </div>
-          {actions.length > 0 && <RowMenu name={node.full} actions={actions} />}
+          {actions.length > 0 && <RowMenu name={node.full} actions={actions} only="complet" />}
         </div>;
       })}
     </div>
@@ -107,7 +107,7 @@ function FlowChart({ view, menu }: { view: SankeyView; menu: (node: FlowNode, si
         <span className="qb-flow-fig">{formatRon(node.value)} · {node.share}</span>
         <span className="qb-flow-facts">{node.single ?? node.facts}</span>
       </div>
-      {actions.length > 0 && <RowMenu name={node.full} actions={actions} />}
+      {actions.length > 0 && <RowMenu name={node.full} actions={actions} only="complet" />}
     </div>;
   });
   return <div className="qb-flow" style={{ height: geo.height }} {...motion.root}>

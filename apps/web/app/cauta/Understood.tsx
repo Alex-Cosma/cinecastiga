@@ -204,7 +204,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  const showLiteral=!t.question&&Boolean(fromWords.place||fromWords.period||t.subject||t.placeAlone);
  return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
   {sentence&&<div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence">{marked.segments.map((x,i)=>x.key?part(x.key,x.text):<Fragment key={i}>{x.text}</Fragment>)}{marked.missing.map(key=><Fragment key={key}> · {part(key,menus[key]!.label)}</Fragment>)}</span>
-   {showLiteral&&<Link prefetch={false} className="topic-understood-literal" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
+   {showLiteral&&<Link prefetch={false} className="topic-understood-literal" data-only="complet" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
   {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din {t.subject.parts.length} · <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link> <InfoMark title="Un domeniu" text={`„Pe scurt” numără doar domeniul ales, unul din cele ${t.subject.parts.length} numărate la „${t.subject.label}”. Listele de mai jos caută în continuare cuvântul, în toate domeniile.`}/></p>}
   {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
@@ -315,12 +315,13 @@ function AnswerHead({scope,filters,compare,townHall,institutions=false,ghost=fal
  * The closing row: how the answer was counted (the CPV classes, what is left out, the limits of the calculation),
  * folded, and the ways on. The summary's words are known before the answer, so its ghost is the same line. The
  * subject's own note („Include și semnalizarea rutieră…") is the first of the limits (owner, 17 November 2026: it was a
- * box under the list).
+ * box under the list). The whole row is Complet's: method, a literal search and a second way into the same records
+ * („în N înregistrări” stays) (owner, 18 November 2026).
  */
 function AnswerFoot({answer,caveats,literalHref,full,ghost=false}:{answer:Answer;caveats:string[];literalHref?:string|undefined;full:boolean;ghost?:boolean}){
  const n=answer.cpv.length;
  const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu CPV':`${n} domenii CPV`}</small>}</span></>;
- return <div className="topic-answer-foot">
+ return <div className="topic-answer-foot" data-only="complet">
   {ghost?<div className="topic-answer-how"><p className="topic-answer-how-summary">{summary}</p></div>
   :<details className="topic-answer-how"><summary className="topic-answer-how-summary">{summary}</summary><div className="topic-answer-how-body">
    {n>0?<><p>Numărăm achizițiile după încadrarea oficială (CPV), nu după titlu.</p>
@@ -404,9 +405,11 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
    return <li key={r.entityId??r.name} className="topic-answer-row">
     <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
     <span className="topic-answer-what"><EntityName id={r.entityId} role={role}>{cleanName(r.name)}</EntityName>
-     <small>{recordsWord(r.count)}{part!=null&&<> · {shareText(part)} din total</>}</small></span>
+     <small data-only="complet">{recordsWord(r.count)}{part!=null&&<> · {shareText(part)} din total</>}</small></span>
     <span className="topic-answer-amount">{formatRon(r.value)}</span>
    </li>;}):null;
+ // `data-answer` below: how „Pe scurt” ended. Under a whole question Esențial hides the word lists unless it failed or
+ // found nothing (esential-cauta-domenii.css; owner, 18 November 2026).
  const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{LIST_LABEL[kind]}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
  const rail=total&&<div className="topic-answer-rail">
   {led&&list&&<p className="topic-answer-label">Total</p>}
@@ -415,7 +418,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
   {shape!=='value'&&<p className="topic-answer-sub">fără valoare înregistrată</p>}
  </div>;
  const failed=ready.failed||(!total&&!sides);
- return <section className="topic-answer g-content" aria-label="Răspuns pe scurt">
+ return <section className="topic-answer g-content" aria-label="Răspuns pe scurt" data-answer={failed?'failed':shape}>
   {head}
   {failed?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
    :shape==='empty'?<><div className="topic-answer-empty" role="status"><p className="topic-answer-empty-line">{answer.empty}</p>
@@ -447,7 +450,7 @@ function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.Re
    :<li key={i} className={`topic-answer-row${kind==='records'?' is-record':''}`}><span className="topic-answer-rank">{i+1}</span>
     <span className="topic-answer-what">{kind==='records'
      ?<><span className="topic-answer-title"><G.Line w="96%"/><G.Line w={`${widths[i]}%`}/><G.Line w="30%" only="phone"/></span><small className="topic-answer-parties"><G.Line w="64%"/><G.Line w="40%" only="phone"/></small></>
-     :<><span><G.Line w={`${widths[i]}%`}/></span><small><G.Line inline w="11em"/></small></>}</span>
+     :<><span><G.Line w={`${widths[i]}%`}/></span><small data-only="complet"><G.Line inline w="11em"/></small></>}</span>
     <span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div>;
  const rail=<div className="topic-answer-rail">{led&&list&&<p className="topic-answer-label">Total</p>}
   <p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p>
@@ -467,12 +470,12 @@ function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.Re
  */
 export function ReadingGhost({answer}:{answer:boolean}){
  return <>
-  <Ghost as="section" className="topic-understood topic-question" name="topic-understood" wait="client" label="Citim căutarea…"><div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence topic-g-fill"><G.Line w="56%" only="not-phone"/><G.Lines w={[]} phone={['96%','88%','42%']}/></span><span className="topic-understood-literal g-phone" aria-hidden="true"><G.Line inline w="10em"/></span></div></Ghost>
+  <Ghost as="section" className="topic-understood topic-question" name="topic-understood" wait="client" label="Citim căutarea…"><div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence topic-g-fill"><G.Line w="56%" only="not-phone"/><G.Lines w={[]} phone={['96%','88%','42%']}/></span><span className="topic-understood-literal g-phone" data-only="complet" aria-hidden="true"><G.Line inline w="10em"/></span></div></Ghost>
   {answer&&<Ghost as="section" className="topic-answer" name="topic-answer" wait="client">
    <div className="topic-answer-head"><h2><G.Line inline w="4.2em"/></h2><p className="topic-answer-scope"><G.Line inline w="14em"/></p></div>
    <div className="topic-answer-body has-list"><div className="topic-answer-rail"><p className="topic-answer-label"><G.Line inline w="3em"/></p><p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p><p className="topic-answer-count"><G.Line w="9em"/></p></div>
-    <div className="topic-answer-main"><p className="topic-answer-label"><G.Line inline w="8em"/></p><ol className="topic-answer-list is-suppliers" role="list" aria-hidden="true">{[58,46,52].map((w,i)=><li key={i} className="topic-answer-row"><span className="topic-answer-rank">{i+1}</span><span className="topic-answer-what"><span><G.Line w={`${w}%`}/></span><small><G.Line inline w="11em"/></small></span><span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div></div>
-   <div className="topic-answer-foot"><div className="topic-answer-how"><p className="topic-answer-how-summary"><G.Line inline w="9em"/></p></div><div className="topic-answer-actions"><G.Line inline w="13em"/></div></div>
+    <div className="topic-answer-main"><p className="topic-answer-label"><G.Line inline w="8em"/></p><ol className="topic-answer-list is-suppliers" role="list" aria-hidden="true">{[58,46,52].map((w,i)=><li key={i} className="topic-answer-row"><span className="topic-answer-rank">{i+1}</span><span className="topic-answer-what"><span><G.Line w={`${w}%`}/></span><small data-only="complet"><G.Line inline w="11em"/></small></span><span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div></div>
+   <div className="topic-answer-foot" data-only="complet"><div className="topic-answer-how"><p className="topic-answer-how-summary"><G.Line inline w="9em"/></p></div><div className="topic-answer-actions"><G.Line inline w="13em"/></div></div>
   </Ghost>}
  </>;
 }
@@ -487,13 +490,17 @@ export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;
   return()=>abort.abort();},[first]);
  const county=place?.kind==='locality'?place.detail.split(' · ')[1]:null;
  const subjects=[...(t?.otherSubjects.map(s=>s.label)??[]),...(related?.q===first?related.items:[])].filter((s,i,a)=>a.findIndex(x=>x.toLowerCase()===s.toLowerCase())===i&&s.toLowerCase()!==effective.q.toLowerCase()).slice(0,4);
- return <div className="topic-broader"><p>Încearcă mai larg:</p><ul>
+ const asks=Boolean(t?.trusted&&!t.question&&t.sentence&&t.askHref);
+ // Esențial keeps the wider searches and Întreabă; the document search and the related subjects are Complet's, and a
+ // list left with nothing is not drawn there (owner, 18 November 2026).
+ const kept=Boolean(county||effective.place||effective.from||t?.alsoTry.length||asks);
+ return <div className="topic-broader" data-only={kept?undefined:'complet'}><p>Încearcă mai larg:</p><ul>
   {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${fold(county)}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
   {effective.place&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:'',from:effective.from,to:effective.to})}>„{effective.q}” în toată țara</Link></li>}
   {effective.from&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:effective.place,from:'',to:''})}>„{effective.q}” în toți anii</Link></li>}
   {t?.alsoTry.map(w=><li key={w}><Link prefetch={false} href={searchHref(scope,{q:w,place:effective.place,from:effective.from,to:effective.to})}>Doar „{w}”</Link></li>)}
-  {t?.trusted&&!t.question&&t.sentence&&t.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
-  <li><button type="button" className="topic-text-button" onClick={onDocuments}>Caută „{effective.q}” în documentele pregătite</button></li>
-  {subjects.map(s=><li key={s}><Link prefetch={false} href={searchHref(scope,{q:s,place:effective.place,from:effective.from,to:effective.to})}>Subiect apropiat: {capital(s)}</Link></li>)}
+  {asks&&t?.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
+  <li data-only="complet"><button type="button" className="topic-text-button" onClick={onDocuments}>Caută „{effective.q}” în documentele pregătite</button></li>
+  {subjects.map(s=><li key={s} data-only="complet"><Link prefetch={false} href={searchHref(scope,{q:s,place:effective.place,from:effective.from,to:effective.to})}>Subiect apropiat: {capital(s)}</Link></li>)}
  </ul></div>;
 }

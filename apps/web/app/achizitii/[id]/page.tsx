@@ -89,7 +89,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const notes = [
     !purchase || x.counted || sameParty ? null : outWhy ? <>Nu intră în totaluri <InfoMark title="Motivul" text={outWhy} /></> : "Nu intră în totaluri.",
     x.valueSuspect === true && purchase && "Valoare neplauzibilă față de estimare: o verificăm separat.",
-    sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
+    // The method page is Complet only (owner, 18 November 2026): its link goes, the note stays.
+    sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
   ];
   const h = x.pairHistory, s = x.slicing;
   // The same order as on a contract (Z7-12): the history with the institution, then its share of the firm, its size.
@@ -123,18 +124,20 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
         <ClipButton kind="da" refId={id} label={title} />
       </>}
     />
-    <SignalList flags={x.flags} authorityId={d.authorityId} supplierId={d.supplierId}
+    <SignalList flags={x.flags} authorityId={d.authorityId} supplierId={d.supplierId} modeMarks
       note={(f) => f.code === "da_first_month" ? firmAgeNote(f.evidence?.registered_on, d.publishedAt ?? d.finalizedAt) : null} />
-    <RecordSection id="date" title="Datele achiziției">
+    {/* Complet only (owner, 18 November 2026): the head has the date. Without any date the section keeps its one line
+        „Lipsesc din sursă: …”, the only place that says the date is missing. */}
+    <RecordSection id="date" title="Datele achiziției" only={d.publishedAt || d.finalizedAt ? "complet" : undefined}>
       <Facts facts={[
-        d.estimate != null && { label: "Valoare estimată", value: amount(d.estimate) },
-        (d.publishedAt || d.finalizedAt) && { label: "Publicată → finalizată (ora României)", value: <>{d.publishedAt ? formatCalendarDate(d.publishedAt, true) : "—"} → {d.finalizedAt ? formatCalendarDate(d.finalizedAt, true) : "—"}{duration && <small>în {duration}</small>}</> },
-        (d.cpvName || d.cpvCode) && { label: "Domeniu CPV", value: d.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
-        d.acquisitionType && { label: "Tipul achiziției", value: d.acquisitionType },
+        d.estimate != null && { label: "Valoare estimată", value: amount(d.estimate), only: "complet" },
+        (d.publishedAt || d.finalizedAt) && { label: "Publicată → finalizată (ora României)", value: <>{d.publishedAt ? formatCalendarDate(d.publishedAt, true) : "—"} → {d.finalizedAt ? formatCalendarDate(d.finalizedAt, true) : "—"}{duration && <small>în {duration}</small>}</>, only: "complet" },
+        (d.cpvName || d.cpvCode) && { label: "Domeniu CPV", value: d.cpvName ?? <span className="record-quiet">Denumire neprecizată</span>, only: "complet" },
+        d.acquisitionType && { label: "Tipul achiziției", value: d.acquisitionType, only: "complet" },
       ]} />
       <MissingLine fields={missing} />
       {/* The codes, for citing and checking (Z7-29). */}
-      <SeapDetails facts={[
+      <SeapDetails only="complet" facts={[
         d.code && { label: "Cod SEAP", value: d.code },
         { label: "ID SEAP", value: id },
         d.cpvCode && { label: "Cod CPV", value: d.cpvCode },
@@ -146,7 +149,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
           product and the first ten, then the rest on demand. */}
       <ItemsMore count={x.items.length}>
       <table className="record-items">
-        <thead><tr><th scope="col">Produs sau serviciu</th><th scope="col" className="record-num">Cantitate</th><th scope="col">Unitate</th><th scope="col" className="record-num">Preț unitar</th><th scope="col" className="record-num">Total</th></tr></thead>
+        <thead><tr><th scope="col">Produs sau serviciu</th><th scope="col" className="record-num">Cantitate</th><th scope="col">Unitate</th><th scope="col" className="record-num" data-only="complet">Preț unitar</th><th scope="col" className="record-num">Total</th></tr></thead>
         <tbody>{x.items.map((it, i) => { const total = lineTotal(it.quantity, it.unitPriceRon); return <tr key={i} className={i >= 10 ? "record-item-later" : undefined}>
           <td>{it.name ?? "Denumire neprecizată"}{(() => {
             // The line's price per kilogram, litre or piece beside its product's median that year (unit prices, owner 11 November 2026).
@@ -154,7 +157,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
             if (!p) return null;
             const ratio = p.median ? p.pricePerUnit / p.median : null;
             // Marked only for the mart's lead (p.lead), never from the multiple alone.
-            return <span className={`record-unit-price${p.lead ? " is-lead" : ""}`}>
+            // Price context: Complet only (owner, 18 November 2026).
+            return <span className={`record-unit-price${p.lead ? " is-lead" : ""}`} data-only="complet">
               {formatUnitPrice(p.pricePerUnit)} {p.per}
               {p.median != null && <> · mediana {p.year}: {formatUnitPrice(p.median)}{ratio != null && ratio >= 1.25 && <b> · {p.lead ? ratioWords(ratio) : formatRatio(ratio)}</b>}</>}
               {" · "}<Link href={d.authorityId
@@ -165,19 +169,21 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
           })()}</td>
           <td className="record-num" data-label="Cantitate:">{formatQuantity(it.quantity)}</td>
           <td data-label="Unitate:">{it.unit ?? "—"}</td>
-          <td className="record-num" data-label="Preț unitar:">{it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "—"}</td>
+          <td className="record-num" data-label="Preț unitar:" data-only="complet">{it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "—"}</td>
           <td className="record-num" data-label="Total:">{total != null ? `${formatExactDecimal(total)} lei` : "—"}</td>
           <td className="record-item-line">{formatQuantity(it.quantity)} {it.unit ?? ""} × {it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "preț nepublicat"}{total != null && <> = <b>{formatExactDecimal(total)} lei</b></>}</td>
         </tr>; })}</tbody>
-        {sums.counted > 0 && <tfoot><tr><td colSpan={4}>{sums.counted === sums.lines ? `Suma celor ${countWords(sums.lines, "linie", "linii")}` : `Suma celor ${countWords(sums.counted, "linie", "linii")} cu preț, din ${sums.lines}`}</td><td className="record-num">{formatExactDecimal(sums.sum)} lei</td></tr></tfoot>}
+        {/* The sum's label spans the columns before Total: four in Complet, three in Esențial (no unit price). */}
+        {sums.counted > 0 && <tfoot><tr>{([[4, "complet"], [3, "esential"]] as const).map(([span, only]) => <td key={only} colSpan={span} data-only={only}>{sums.counted === sums.lines ? `Suma celor ${countWords(sums.lines, "linie", "linii")}` : `Suma celor ${countWords(sums.counted, "linie", "linii")} cu preț, din ${sums.lines}`}</td>)}<td className="record-num">{formatExactDecimal(sums.sum)} lei</td></tr></tfoot>}
       </table>
       {/* A sum equal to the closing value is seen in the sum row and the head's figure; a difference is said. */}
       {sums.note && sums.note !== "Egală cu valoarea de închidere." && <p className="record-items-note">{sums.note}</p>}
       </ItemsMore>
     </RecordSection>}
-    <RecordSection id="parti" title={purchase ? "Instituție și furnizor" : "Instituție și ofertant"}>
+    <RecordSection id="parti" title={purchase ? "Instituție și furnizor" : "Instituție și ofertant"} only="complet">
       <PartyList institution={{ name: authority, place: countyLabel(x.authorityCounty) }} parties={parties} />
     </RecordSection>
-    <Sources sources={[{ href: daUrl(id), label: `Achiziția directă ${d.code ?? id} în SEAP`, external: true }]} />
+    {/* The same link as the head's „Verifică în SEAP”: Complet only (owner, 18 November 2026). */}
+    <Sources sources={[{ href: daUrl(id), label: `Achiziția directă ${d.code ?? id} în SEAP`, external: true }]} only="complet" />
   </RecordPage>;
 }

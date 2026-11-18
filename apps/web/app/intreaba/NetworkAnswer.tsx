@@ -24,6 +24,8 @@ import {
   type NetworkRelation, type NetworkRowView,
 } from "./network-answer";
 import { useChartMotion } from "./answer/chart-motion";
+import { MAX_FACTS } from "./answer/RowFacts";
+import { completIf, networkOrderAtDefault } from "./esential";
 import "./relations.css";
 
 /*
@@ -70,6 +72,11 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
   const empty = networkEmpty(data, list);
   const noun = partnerNoun(data);
   const years = networkSinceChoices(data.complete);
+  // Esențial (lib/view-mode.ts, owner 18 November 2026): the share of the first ones, the one-offs and the joint share go
+  // (second-level); where a row shows a signal, the one line that signals are leads, not proof, takes their place. The
+  // order goes while it is the default (a link can set another). The groups by year stay.
+  const signals = views.some((view) => view.facts.slice(0, MAX_FACTS).some((fact) => fact.tone === "signal"));
+  const orderSet = !networkOrderAtDefault(spec);
   const menus = views.map((view, i) => {
     const records = evidence ? () => evidence.open(undefined, view.scope, view.scopeLabel) : undefined;
     return evidence?.exclude ? entityRowActions(spec, { id: view.entityId, name: view.name }, {
@@ -90,16 +97,19 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
       </div>
       <CountGroups label="Ce parteneri" groups={networkButtons(data, relation)} value={list} onChange={(value) => { if (value !== list) onList?.(value as NetworkList); }} />
     </div>
-    {!empty && <div className="qb-net-head">
-      <p className="qb-net-summary qb-tipwrap">
-        {summary.parts.length > 0 && <span>{summary.parts.join(" · ")}</span>}
-        {/* The partners with one record: an (i) after the share of the first ones (owner, 17 November 2026: less small print). */}
-        {summary.oneOff && <>{summary.parts.length > 0 ? " " : ""}<InfoMark title="O singură înregistrare" text={summary.oneOff} /></>}
-        {/* The space before each part stays outside its nowrap: the line may break there (S4 tests: „· 95,3% în asociere (?)” ran 56 px past a 390 px screen, its (?) out of reach). */}
-        {summary.joint && <>{summary.parts.length > 0 || summary.oneOff ? " " : ""}<span className="qb-nowrap">{summary.parts.length > 0 || summary.oneOff ? "· " : ""}{summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
+    {!empty && <div className="qb-net-head" data-only={completIf(!signals && !data.unknownSeat && !orderSet)}>
+      <p className="qb-net-summary qb-tipwrap" data-only={completIf(!signals && !data.unknownSeat)}>
+        <span data-only="complet">
+          {summary.parts.length > 0 && <span>{summary.parts.join(" · ")}</span>}
+          {/* The partners with one record: an (i) after the share of the first ones (owner, 17 November 2026: less small print). */}
+          {summary.oneOff && <>{summary.parts.length > 0 ? " " : ""}<InfoMark title="O singură înregistrare" text={summary.oneOff} /></>}
+          {/* The space before each part stays outside its nowrap: the line may break there (S4 tests: „· 95,3% în asociere (?)” ran 56 px past a 390 px screen, its (?) out of reach). */}
+          {summary.joint && <>{summary.parts.length > 0 || summary.oneOff ? " " : ""}<span className="qb-nowrap">{summary.parts.length > 0 || summary.oneOff ? "· " : ""}{summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
+        </span>
+        {signals && <span data-only="esential">Semnalele sunt piste de verificat, nu dovezi.</span>}
         {data.unknownSeat ? <span className="qb-net-unknown">{unknownSeatWords(data.unknownSeat)}</span> : null}
       </p>
-      <span className="qb-row qb-net-order">
+      <span className="qb-row qb-net-order" data-only={completIf(!orderSet)}>
         <span className="qb-strip-label">Ordonează</span>
         <Segmented label="Ordonează" size="sm" value={networkOrder(spec)}
           options={relation ? ORDER_OPTIONS.map((option) => option.value === "years" ? { ...option, disabled: relationWaits(relation) } : option) : ORDER_OPTIONS} onChange={(value) => { if (value !== networkOrder(spec)) onOrder?.(value as NetworkOrder); }} />
@@ -149,15 +159,17 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
 function NetworkRowItem({ view, actions, onRecords, picked = false }: { view: NetworkRowView; actions: ReturnType<typeof entityRowActions>; onRecords?: () => void; picked?: boolean }) {
   return <div className={`qb-arow qb-nrow${picked ? " is-picked" : ""}`} role="listitem" tabIndex={-1} data-qb-arow="" data-entity={view.entityId}>
     <div className="qb-nrow-main">
-      <div className="qb-arow-name"><EntityName id={view.entityId} role={view.scope.role === "authority" ? "authority" : "supplier"}>{view.name}</EntityName>{view.place && <small>{view.place}</small>}</div>
+      {/* Esențial (lib/view-mode.ts, owner 18 November 2026): the seat and employees, the share and the band of years go;
+          the period in words stays under the band's place. */}
+      <div className="qb-arow-name"><EntityName id={view.entityId} role={view.scope.role === "authority" ? "authority" : "supplier"}>{view.name}</EntityName>{view.place && <small data-only="complet">{view.place}</small>}</div>
       <RowFacts facts={view.facts} />
     </div>
     <div className="qb-nrow-val">
       <span className="qb-num">{view.value}</span>
-      <small>{view.share}</small>
+      <small data-only="complet">{view.share}</small>
     </div>
     {view.band.length > 0 && <div className="qb-nrow-years">
-      <span className="qb-years-band" role="img" aria-label={view.bandLabel}>
+      <span className="qb-years-band" role="img" aria-label={view.bandLabel} data-only="complet">
         {view.band.map((cell) => <i key={cell.year} className={`qb-yc${cell.on ? " is-on" : ""}${cell.partial ? " is-partial" : ""}${cell.gap ? " is-gap" : ""}`} title={cell.label} />)}
       </span>
       <small>{view.yearsText}</small>
@@ -165,7 +177,7 @@ function NetworkRowItem({ view, actions, onRecords, picked = false }: { view: Ne
     {onRecords && <button type="button" className="qb-rec qb-nrow-rec" aria-label={`${view.records}: ${view.name}`} onClick={onRecords}>
       {view.records}<span className="qb-glyph" aria-hidden="true">→</span>
     </button>}
-    {actions.length > 0 && <RowMenu name={view.name} actions={actions} />}
+    {actions.length > 0 && <RowMenu name={view.name} actions={actions} only="complet" />}
   </div>;
 }
 

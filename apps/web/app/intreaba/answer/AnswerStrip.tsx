@@ -14,6 +14,9 @@ import type { KitTip } from "../builder/kit-types";
  * tests: „Ponderile” and „Doar clienții comuni” opened at the page's top).
  */
 
+/** Esențial's mark (lib/view-mode.ts): "complet" on a control that is Complet's only (owner, 18 November 2026). */
+type Only = "complet" | undefined;
+
 export default function AnswerStrip({ label = "Ajustează răspunsul", rows = false, children }: { label?: string; rows?: boolean; children: ReactNode }) {
   return <div className={`qb-strip${rows ? " qb-strip--rows" : ""} qb-tipwrap`} role="group" aria-label={label}>{children}</div>;
 }
@@ -32,8 +35,8 @@ export function StripRow({ label, tip, children }: { label: string; tip?: KitTip
  * readers only there (`smHide`). A control whose options carry a number keeps
  * the whole width there, its words under it (`wide`).
  */
-export function StripLabelled({ before, after, title, smHide = false, wide = false, children }: { before?: string; after?: string; title?: string; smHide?: boolean; wide?: boolean; children: ReactNode }) {
-  return <span className={`qb-row${wide ? " qb-row--wide" : ""}`}>
+export function StripLabelled({ before, after, title, smHide = false, wide = false, only, children }: { before?: string; after?: string; title?: string; smHide?: boolean; wide?: boolean; only?: Only; children: ReactNode }) {
+  return <span className={`qb-row${wide ? " qb-row--wide" : ""}`} data-only={only}>
     {/* A phone's title of the control („Cota din valoare”, UX audit Z3-28): the words after it go, its (?) comes beside it. */}
     {title && <span className="cq-strip-title">{title}</span>}
     {before && <span className={`qb-strip-label${smHide ? " qb-strip-label--sm-hide" : ""}`}>{before}</span>}
@@ -43,19 +46,19 @@ export function StripLabelled({ before, after, title, smHide = false, wide = fal
 }
 
 /** The end of the strip: "Vizual | Tabel" (`wideOnly`: a view the phone does not have, the flow's list being both). */
-export function StripEnd({ wideOnly = false, children }: { wideOnly?: boolean; children: ReactNode }) {
-  return <span className={`qb-strip-end${wideOnly ? " cq-strip-end-wide" : ""}`}>{children}</span>;
+export function StripEnd({ wideOnly = false, only, children }: { wideOnly?: boolean; only?: Only; children: ReactNode }) {
+  return <span className={`qb-strip-end${wideOnly ? " cq-strip-end-wide" : ""}`} data-only={only}>{children}</span>;
 }
 
 /** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer), a link where the level has its own address. */
-export function Suggest({ text, action = "Detaliază", onClick, href }: { text: string; action?: string; onClick?: () => void; href?: string }) {
+export function Suggest({ text, action = "Detaliază", onClick, href, only }: { text: string; action?: string; onClick?: () => void; href?: string; only?: Only }) {
   const inner = <>{text}<span aria-hidden="true">·</span><b>{action}<span className="qb-glyph" aria-hidden="true">›</span></b></>;
-  return href ? <a className="qb-suggest" href={href}>{inner}</a> : <button type="button" className="qb-suggest" onClick={onClick}>{inner}</button>;
+  return href ? <a className="qb-suggest" href={href} data-only={only}>{inner}</a> : <button type="button" className="qb-suggest" onClick={onClick} data-only={only}>{inner}</button>;
 }
 
 /** The thread of a drill-down ("Domenii: toate › Construcții"): each step goes back; the current one is text. */
-export function Crumbs({ label, items, current, drill = false }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string; drill?: boolean }) {
-  return <nav className="qb-crumbs" aria-label={label}>
+export function Crumbs({ label, items, current, drill = false, only }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string; drill?: boolean; only?: Only }) {
+  return <nav className="qb-crumbs" aria-label={label} data-only={only}>
     <span>{label}:</span>
     {items.map((item, index) => <span className="qb-crumb" key={`${index}:${item.label}`}>
       {item.href ? <a href={item.href} data-drill={drill ? "up" : undefined}>{item.label}</a> : <button type="button" onClick={item.onClick}>{item.label}</button>}

@@ -21,7 +21,7 @@ import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import InfoMark from "@/components/InfoMark";
-import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party, type RecordValue, type Source } from "@/components/record/Record";
+import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type ModePart, type Party, type RecordValue, type Source } from "@/components/record/Record";
 import RecordSums, { type SumRow } from "@/components/record/RecordSums";
 import SeapDetails from "@/components/record/SeapDetails";
 import { consortiumShareLabel } from "@/lib/consortium";
@@ -81,9 +81,11 @@ function valueLabel(c: ContractDetail, shown: boolean) {
  */
 function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean): RecordValue {
   // A framework's place in the totals is said by its sums table when the table lists its call-offs (owner, 17 November
-  // 2026: less small print); the head says it only when the page has no such table.
+  // 2026: less small print); the head says it only when the page has no such table. Esențial hides the table, so there
+  // the head says it in both cases (owner, 18 November 2026).
   const framework = c.financialKind === "framework";
-  const totals = framework && sumsSayTotals ? null : totalsNote(c);
+  const said = (note: ReactNode): ReactNode | ModePart => framework && sumsSayTotals ? (note ? { only: "esential", node: note } : null) : note;
+  const totals = said(totalsNote(c));
   const state = contractValueState(c);
   if (state === "amount") return { amount: `${formatExactDecimal(c.contractValueExact!)} ${currency}`, label: valueLabel(c, true), notes: [moneyNote(c), totals] };
   if (state === "foreign") return {
@@ -92,7 +94,7 @@ function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean):
   };
   return {
     amount: <span className="record-amount-words is-quiet">Valoare nepublicată</span>, label: valueLabel(c, false),
-    notes: [c.amountStatus === "legacy_unknown" ? null : moneyNote(c), framework ? (sumsSayTotals ? null : "SEAP nu publică valoarea acestui acord-cadru; se numără comenzile lui.") : totals],
+    notes: [c.amountStatus === "legacy_unknown" ? null : moneyNote(c), framework ? said("SEAP nu publică valoarea acestui acord-cadru; se numără comenzile lui.") : totals],
   };
 }
 
@@ -122,16 +124,19 @@ const totalsNote = (c: ContractDetail) =>
   c.financialKind === "framework" ? "Separat de totaluri: se numără comenzile subsecvente."
   : c.financialKind === "amendment" ? "Act adițional: nu se adaugă la totaluri."
   : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
-  : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`}>Motivul</Link></>
-  : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
-  : c.aboveValueCap ? <>Peste 1 mld. lei: filtru al site-ului, în afara totalurilor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
+  : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`} data-only="complet">Motivul</Link></>
+  : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
+  : c.aboveValueCap ? <>Peste 1 mld. lei: filtru al site-ului, în afara totalurilor. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
   : null;
 
-export default async function ContractPage({ params }: { params: Promise<{ nid: string }> }) {
+export default async function ContractPage({ params, searchParams }: { params: Promise<{ nid: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await ghostHold();
   const { nid } = await params;
   const c = await contractDetail(nid);
   if (!c) notFound();
+  // The documents exist only in Complet, unless the address opens one (a saved quote, a shared reader): then they show
+  // in Esențial too, as a filter set from a link does (owner, 18 November 2026).
+  const documentAsked = !!(await searchParams)["document"];
 
   const [files, userId, x] = await Promise.all([getContractFiles(nid), sessionUserId(), getContractContext(c)]);
   const { title: headline, lotNo, lotLine: lot, lotLabel } = titleParts(c, files.notice?.title ?? null);
@@ -215,6 +220,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
       : `Comenzile lui declarate în SEAP (${formatInt(f.calloffs)}) însumează ${formatExactDecimal(f.declaredRon!)} lei, de ${times} ori plafonul de ${formatExactDecimal(f.ceilingRon!)} lei.${repeats}${counted}`;
     return text || null;
   })();
+  // Esențial keeps two facts of the award (owner, 18 November 2026): how many bid, when the number is published, and a
+  // call-off's framework row when it carries the warning on this order's amount; with neither, the section goes.
+  const offersPublished = tenders != null || (c.isSingleBidder === true && !singleBidSignal);
   const sumsTitle = `Sumele, de la ${x.ted?.estimateRon != null ? "estimare" : sums.some((r) => r.key === "of") ? "oferte" : "anunț"} la ${fw && fw.calloffs > 0 ? "comenzi" : c.financialKind === "calloff" ? "comandă" : c.financialKind === "framework" ? "acordul-cadru" : c.financialKind === "amendment" ? "actul adițional" : "contract"}`;
 
   const republished = c.publications.length > 1;
@@ -239,6 +247,8 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         </>}
         lot={lot}
         lotLabel={lotLabel}
+        // The lots' shared title, under a lot that became the title: Complet only (owner, 18 November 2026).
+        lotOnly={lotLabel !== "Lot" ? "complet" : undefined}
         parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
         value={headValue(c, currency, fw !== null)}
         meta={[
@@ -246,7 +256,8 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
           <span className="record-kind" key="k">{c.financialKind === "calloff" ? <Term tip hold="line" id="acord-cadru">{kind}</Term> : kind}</span>,
           c.contractDate && <span key="d">Semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span className="record-quiet"> · <Term tip hold="line" title="Dată improbabilă" text="Data din sursă e anterioară arhivei (2018): valoarea rămâne în totaluri, fără an.">dată improbabilă</Term></span>}</span>,
           // The procedure and the single offer are said in Atribuirea, the lead in the signal (Z7-07): once each.
-          c.contractNo && <span key="n">nr. {c.contractNo}</span>,
+          // The internal number exists only in Complet (owner, 18 November 2026).
+          c.contractNo && { only: "complet", node: <span key="n">nr. {c.contractNo}</span> },
         ]}
         actions={<>
           {c.caNoticeId && <a className="record-seap" href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>}
@@ -256,26 +267,27 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
 
       <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
 
-      <SignalList flags={c.flags} authorityId={c.authority?.entityId ?? null}
+      <SignalList flags={c.flags} authorityId={c.authority?.entityId ?? null} modeMarks
         fallbackEvidence={(f) => f.evidence?.["value"] != null ? <>{procedureLabel(String(f.evidence?.["procedure"] ?? c.procedureType ?? ""))} · {awardValueLabel(f.evidence)}: {formatRonFull(Number(f.evidence?.["value"]))}{noticeContractsNote(f.evidence!) ? ` · ${noticeContractsNote(f.evidence!).trim()}` : ""}</> : null} />
 
-      <RecordSection id="atribuire" title="Atribuirea">
-        {sums.length > 1 && <RecordSums title={sumsTitle} rows={sums} note={sumsNote} />}
+      <RecordSection id="atribuire" title="Atribuirea" only={offersPublished || calloffWarn ? undefined : "complet"}>
+        {sums.length > 1 && <RecordSums title={sumsTitle} rows={sums} note={sumsNote} only="complet" />}
         <Facts facts={[
           // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
           { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? <> · <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>un singur ofertant</Term></> : ""}</>
-            : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>Un singur ofertant</Term> : <span className="record-quiet">Număr nepublicat</span> },
-          x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED" },
-          procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure },
-          (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
+            : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>Un singur ofertant</Term> : <span className="record-quiet">Număr nepublicat</span>,
+            only: offersPublished ? undefined : "complet" },
+          x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED", only: "complet" },
+          procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure, only: "complet" },
+          (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span>, only: "complet" },
           // A republished notice's version date matters (its versions are listed above); otherwise it is folded (Z7-29).
-          republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
+          republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)), only: "complet" },
           calloffOf && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${calloffOf.frameworkNatId}`}>{cleanName(calloffOf.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
-            {calloffWarn && <small className="record-warn">{calloffWarn}</small>}</>, wide: calloffWarn !== null },
+            {calloffWarn && <small className="record-warn">{calloffWarn}</small>}</>, wide: calloffWarn !== null, only: calloffWarn ? undefined : "complet" },
           // How the documents were recognised is said once, beside the documents list (owner, 17 November 2026).
-          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a></>, wide: true },
+          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a></>, wide: true, only: "complet" },
         ]} />
-        <SeapDetails facts={[
+        <SeapDetails only="complet" facts={[
           !republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
           c.cpvCode && { label: "Cod CPV", value: c.cpvCode },
           { label: "ID SEAP al contractului", value: c.natId },
@@ -283,14 +295,15 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         ]} />
       </RecordSection>
 
-      <RecordSection id="parti" title="Instituție și câștigători">
+      <RecordSection id="parti" title="Instituție și câștigători" only="complet">
         <PartyList institution={{ name: authority, place: countyLabel(c.authority?.county) }} parties={parties} />
       </RecordSection>
 
       {/* Each SEAP document keeps one name on the page, the one in Sources (UX audit Z7-13). */}
-      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId), sourceLabel: awardSourceLabel } : {})} />
+      <ContractFiles nid={nid} initial={files} authenticated={!!userId} only={documentAsked ? undefined : "complet"} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId), sourceLabel: awardSourceLabel } : {})} />
 
-      <Sources sources={sources} />
+      {/* The original is the head's „Verifică în SEAP”: without it, the sources stay in Esențial too. */}
+      <Sources sources={sources} only={c.caNoticeId ? "complet" : undefined} />
     </RecordPage>
   );
 }

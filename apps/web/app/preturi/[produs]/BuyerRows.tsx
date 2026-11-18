@@ -22,8 +22,10 @@ export interface BuyerRowData {
 /** The cell of each sort's column (M-16). */
 const SORTED_CELL: Record<string, string> = { lei: "c-lei", multiplu: "c-x", pret: "c-price", cantitate: "c-qty", institutie: "c-who", an: "c-year" };
 
-export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort }: {
+export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort, qtyComplet = false }: {
   rows: BuyerRowData[]; per: string; showYear?: boolean;
+  /** The quantity column exists only in Complet (lib/view-mode.ts), with its head (the page decides). */
+  qtyComplet?: boolean;
   /** The order shown („lei:desc”): a new one is seen in its column (M-16). */
   sort?: string;
   /** This page's address without `deschis`: a row's link adds its own. */
@@ -53,7 +55,7 @@ export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort 
           {showYear && <td role="cell" className="pr-num c-year" data-label="Anul">{b.year}</td>}
           <td role="cell" className="pr-num c-price" data-label="Preț"><b>{formatUnitPrice(b.price)}</b> {per}</td>
           <td role="cell" className="pr-num c-x" data-label="Multiplu" title={`${ratioWords(b.ratio)} (${formatUnitPrice(b.median)} în ${b.year})`}>{formatRatio(b.ratio)}</td>
-          <td role="cell" className="pr-num c-qty" data-label="Cantitate">{formatQuantity(b.quantity, per)}<small>{b.awards === 1 ? "o achiziție" : `${b.awards} achiziții`}</small></td>
+          <td role="cell" className="pr-num c-qty" data-label="Cantitate" data-only={qtyComplet ? "complet" : undefined}>{formatQuantity(b.quantity, per)}<small>{b.awards === 1 ? "o achiziție" : `${b.awards} achiziții`}</small></td>
           <td role="cell" className="pr-num c-lei" data-label="Peste mediană">{b.excess > 0 ? formatLei(b.excess) : <small>sub mediană</small>}</td>
           <td role="cell" className="c-sup" data-label="Furnizori">{b.suppliers.length ? <>{b.suppliers.map((s, i) => <Fragment key={s.id}>{i > 0 && ", "}<EntityName id={s.id} role="supplier">{s.name}</EntityName></Fragment>)}{b.moreSuppliers > 0 && ` și încă ${b.moreSuppliers}`}</> : "—"}</td>
           <td role="cell" className="c-open"><a href={hrefOf(k)} role="button" className="pr-lines-btn" data-lines={k} data-no-pending="" aria-expanded={isOpen} aria-controls={isOpen ? `linii-${k}` : undefined}

@@ -14,17 +14,23 @@ import { TOUR_QUERY_EVENT, TOUR_QUERY_KEY } from "@/lib/tour";
 import { askHref } from "@/lib/discovery-links";
 import { AUTHORITY_CLOUD_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC } from "@/lib/ask/site-links";
 import type { Suggestion } from "@/lib/search-suggestions";
+import { isDrawn, stepShown } from "./discovery-keys";
 
 /*
  * The search dialog opened empty (UX audit Z1-17, 16 November 2026): words to try, three of the home page's starting
  * questions (as suggestion rows, reached with the arrows too) and the keys, in the same frame as the suggestions.
+ * `complet`: the two scatter answers exist only in Complet (lib/view-mode.ts; owner, 18 November 2026); the arrows walk
+ * the rows that are drawn (discovery-keys.ts).
  */
 const TRY = ["iluminat", "Cluj", "STRABAG", "asfaltare în Iași"];
-const STARTERS: Suggestion[] = [
+const STARTERS: (Suggestion & { complet?: boolean })[] = [
   { id: "start:hospitals", label: "Ce cumpără spitalele?", detail: "în Întreabă", href: askHref(HOSPITALS_BREAKDOWN_SPEC), icon: "question" },
-  { id: "start:outliers", label: "Cine iese din tipar?", detail: "Instituțiile după risc · un semnal e o pistă, nu o dovadă", href: askHref(AUTHORITY_CLOUD_SPEC), icon: "question" },
-  { id: "start:dependence", label: "Ce firme depind de un singur client?", detail: "în Întreabă", href: askHref(FIRM_DEPENDENCE_CLOUD_SPEC), icon: "question" },
+  { id: "start:outliers", label: "Cine iese din tipar?", detail: "Instituțiile după risc · un semnal e o pistă, nu o dovadă", href: askHref(AUTHORITY_CLOUD_SPEC), icon: "question", complet: true },
+  { id: "start:dependence", label: "Ce firme depind de un singur client?", detail: "în Întreabă", href: askHref(FIRM_DEPENDENCE_CLOUD_SPEC), icon: "question", complet: true },
 ];
+/** How many sugestii the screen reader hears for the starting questions, in each mode. */
+const suggestionWords = (n: number) => (n === 1 ? "O sugestie" : `${n} sugestii`);
+const STARTERS_ESENTIAL = STARTERS.filter((item) => !item.complet).length;
 
 type Source<T> = { query: string; data: T | null; failed: boolean };
 const SOURCES = ["intent", "vocab", "last", "entities"] as const;
@@ -135,10 +141,12 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
   return <div className={`d-search${hero ? " d-search-hero" : ""}${modal ? " d-search-modal" : ""}${arrived ? " d-search-arrive" : ""}`} ref={box}>
     <form action="/cauta" method="get" role="search" autoComplete="off" onSubmit={(event) => {
       event.preventDefault();
-      if (!term) { box.current?.querySelector("input")?.focus(); return; }
-      // Enter opens the results page (with the interpretation on top), unless a row was chosen with the arrows.
+      // Enter opens the results page (with the interpretation on top), unless a row was chosen with the arrows: also a
+      // starting question in the empty dialog, which Enter used to ignore (found 18 November 2026).
       const chosen = expanded && active >= 0 ? options[active] : undefined;
-      navigate(chosen ? chosen.href : resultsHref);
+      if (chosen) { navigate(chosen.href); return; }
+      if (!term) { box.current?.querySelector("input")?.focus(); return; }
+      navigate(resultsHref);
     }}>
       <DiscoveryIcon name="search" />
       <input type="search" name="q" value={query} {...(hero ? { "data-discovery-search": true } : {})}
@@ -157,13 +165,17 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
           if (event.key === "Escape" && modal) { event.preventDefault(); onClose?.(); return; }
           if (!["ArrowDown", "ArrowUp"].includes(event.key) || (term.length < 2 && !starting) || !options.length) return;
           event.preventDefault(); setOpen(true);
-          setActive((current) => event.key === "ArrowDown" ? Math.min(current + 1, options.length - 1) : Math.max(current - 1, -1));
+          // Over the rows that are drawn: in Esențial two starting questions are in the list but not shown. The one place
+          // the mode reaches script, and it reads the page, not the mode (owner, 18 November 2026). A closed list (the
+          // home page's, opening on this key) has no row drawn yet: every row counts, as before.
+          const drawn = isDrawn(document.getElementById(`${id}-results`));
+          setActive(stepShown(active, event.key === "ArrowDown", options.length, (at) => !drawn || isDrawn(document.getElementById(`${id}-option-${at}`))));
         }} />
       <button type="submit" aria-label="Vezi rezultatele căutării"><DiscoveryIcon name="arrow" /></button>
       {/* The work sign under the field while suggestions come (M-15; it replaced the spinner). */}
       <WorkLine busy={loading && term.length >= 2} failed={failedAll} />
     </form>
-    <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length === 1 ? "O sugestie" : `${options.length} sugestii`}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
+    <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : <>{starting ? <><span data-only="complet">{suggestionWords(options.length)}</span><span data-only="esential">{suggestionWords(STARTERS_ESENTIAL)}</span></> : suggestionWords(options.length)}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.</>}</span>
     <div className="d-search-results" hidden={!modal && !open}>
       {starting ? <div className="d-search-start"><div className="d-townhall-try"><span>Încearcă:</span>{TRY.map((t) => <button type="button" key={t} onClick={() => { setQuery(t); latestTerm.current = t; setOpen(true); box.current?.querySelector("input")?.focus(); }}>{t}</button>)}</div></div>
         : term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><p>De ex.: iluminat, Buzău, o firmă sau un CUI</p></div>
@@ -173,7 +185,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
       <div id={`${id}-results`} role="listbox" aria-label="Sugestii" aria-busy={loading}>
         {starting && <ul role="group" aria-labelledby={`${id}-group-start`} className="d-search-group d-search-group-start">
           <li role="presentation" id={`${id}-group-start`} className="d-search-group-title">Întrebări de început</li>
-          {STARTERS.map((item, at) => <li key={item.id} id={`${id}-option-${at}`} role="option" aria-selected={active === at}>
+          {STARTERS.map((item, at) => <li key={item.id} id={`${id}-option-${at}`} role="option" aria-selected={active === at} data-only={item.complet ? "complet" : undefined}>
             <a href={item.href} tabIndex={-1} className={active === at ? "active" : ""} onClick={(event) => { event.preventDefault(); navigate(item.href); }}>
               <span className="d-search-symbol"><DiscoveryIcon name={item.icon} /></span>
               <span><b>{item.label}</b>{item.detail && <small>{item.detail}</small>}</span><DiscoveryIcon name="arrow" />

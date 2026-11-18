@@ -31,7 +31,8 @@ export default function ContractPublications({publications,currentId,countedOnce
      {countedOnce?'În statistici folosim o singură dată ultima versiune verificată.':'Ultima versiune verificată nu contribuie la totalurile statistice curente.'}
      {current?.valueRon!=null&&<> <strong>{formatExactDecimal(current.valueRon)} lei</strong>.</>}</p>
    {older&&current&&<p className="contract-publication-previous">Privești o versiune anterioară. <Link prefetch={false} href={`/contracte/${current.natId}`}>{countedOnce?'Deschide versiunea folosită în statistici':'Deschide ultima versiune verificată'}</Link>.</p>}
-   <details open={older||undefined}>
+   {/* The history itself exists only in Complet (owner, 18 November 2026); the lines above qualify the amount and stay. */}
+   <details open={older||undefined} data-only="complet">
     <summary>Vezi istoricul și sursele ({publications.length})</summary>
     <ol>{publications.map((p,index)=>{
      const previous=publications[index-1];

@@ -2,6 +2,7 @@
 
 import { OUTLINE_MS, arrive } from "../../components/motion/outline";
 import { markChanged } from "../../components/motion/changed";
+import { VIEW_MODE_EVENT } from "../../lib/view-mode";
 import { useEffect } from "react";
 /** The check drawn on a button that copied (outline.css .mo-done-check, M-08). */
 const CHECK = '<svg class="mo-done-check" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 8.5l3.2 3L13 4.5" pathLength="1"/></svg>';
@@ -281,9 +282,16 @@ function mount(root: HTMLElement): () => void {
   const tabs = laneNav ? qa<HTMLButtonElement>("[role=tab]", laneNav) : [];
   const laneEls: Record<string, HTMLElement | null> = {};
   ["scurt", "poveste", "reguli"].forEach((k) => (laneEls[k] = q("#lane-" + k)));
-  const laneTop = () => (laneNav ? laneNav.getBoundingClientRect().top + window.scrollY - hdr() - 8 : 0);
+  // Where the tab row is not drawn (Esențial while „Pe scurt” is shown, esential-ghid.css) the lanes start at the top.
+  const laneTop = () => (laneNav && laneNav.getClientRects().length ? laneNav.getBoundingClientRect().top + window.scrollY - hdr() - 8 : 0);
+  // Three sections of the other lanes also open alone (owner, 18 November 2026): „Despre cinecâștigă?”, „Ce date avem
+  // și unde sunt limitele” (the footer's „Surse, acoperire și actualizare”) and the request template. A link that opens
+  // one of them from another lane, or the page loaded with its anchor, marks the root (data-alone=<id>); any other way of
+  // showing a lane clears it. The mark is the same in both modes: esential-ghid.css draws it, Complet ignores it.
+  const ALONE = new Set(["despre", "acoperire", "req"]);
   function setLane(k: string, scroll: boolean) {
     if (!laneEls[k]) return;
+    delete root.dataset.alone;
     Object.keys(laneEls).forEach((n) => {
       const el = laneEls[n];
       if (el) el.hidden = n !== k;
@@ -310,7 +318,13 @@ function mount(root: HTMLElement): () => void {
     });
   });
   qa("[data-go]").forEach((g) =>
-    on(g, "click", () => {
+    on(g, "click", (e) => {
+      // „Înapoi la ghid” is a link (to the page itself, for a new tab); a plain click shows the lane in place.
+      if (g instanceof HTMLAnchorElement) {
+        const m = e as MouseEvent;
+        if (m.metaKey || m.ctrlKey || m.shiftKey || m.button !== 0) return;
+        e.preventDefault();
+      }
       const k = g.dataset.go ?? "";
       setLane(k, false);
       if (laneNav) window.scrollTo({ top: laneTop() });
@@ -352,10 +366,16 @@ function mount(root: HTMLElement): () => void {
     if (!el || !root.contains(el)) return;
     const l = el.closest<HTMLElement>(".mt-lane");
     let switched = false;
+    const alone = root.dataset.alone;
     if (l && l.hidden) {
       setLane(l.id.slice(5), false);
       switched = true;
     }
+    // Alone when reached from elsewhere; a lane the reader already sees whole stays whole; another target ends it.
+    if (switched || initial) {
+      if (ALONE.has(id)) root.dataset.alone = id;
+      else delete root.dataset.alone;
+    } else if (alone && alone !== id) delete root.dataset.alone;
     // Every enclosing section opens, so a link to a nested one (#cod-formula inside #cod) shows it.
     for (let d = el.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
     if (switched && l?.id === "lane-poveste") {
@@ -410,6 +430,16 @@ function mount(root: HTMLElement): () => void {
   on(root, "click", (e) => {
     const a = (e.target as Element | null)?.closest?.("a[href^='#']");
     if (a && root.contains(a)) openTarget((a.getAttribute("href") ?? "").slice(1));
+  });
+  // A link outside the page body to one of its anchors, such as the footer's „Surse, acoperire și actualizare”
+  // (next/link to /metodologie#acoperire): the router changes the address without a hashchange, so its lane is opened
+  // here (both modes; before 18 November 2026 it only scrolled, the lane stayed hidden).
+  on(document, "click", (e) => {
+    const m = e as MouseEvent;
+    const a = (e.target as Element | null)?.closest?.<HTMLAnchorElement>("a[href*='#']");
+    if (!a || root.contains(a) || m.metaKey || m.ctrlKey || m.shiftKey || m.button !== 0) return;
+    const u = new URL(a.href, location.href);
+    if (u.origin === location.origin && u.pathname === location.pathname && u.hash) openTarget(decodeURIComponent(u.hash.slice(1)));
   });
   if (location.hash) openTarget(location.hash.slice(1), true);
 
@@ -473,6 +503,8 @@ function mount(root: HTMLElement): () => void {
     const hnum = q("#hnum");
     let cur = 1;
     let raf = 0;
+    // The steps the page draws: four, or three where step 4 (the score) is not drawn (Esențial, lib/view-mode.ts).
+    const drawn = () => frs.filter((f) => f.getClientRects().length > 0).length || frs.length;
     const countUp = () => {
       if (!hnum) return;
       if (reduce) {
@@ -504,7 +536,7 @@ function mount(root: HTMLElement): () => void {
       }
       if (announce && live) {
         const fc = q("figcaption", frs[n - 1]!);
-        if (fc) live.textContent = "Pasul " + n + " din 4. " + (q("b", fc)?.textContent ?? "") + " " + (q("span", fc)?.textContent ?? "");
+        if (fc) live.textContent = "Pasul " + n + " din " + drawn() + ". " + (q("b", fc)?.textContent ?? "") + " " + (q("span", fc)?.textContent ?? "");
       }
     };
     dots.forEach((d, i) =>
@@ -520,10 +552,15 @@ function mount(root: HTMLElement): () => void {
         const dx = ((e as TouchEvent).changedTouches[0]?.clientX ?? tx) - tx;
         tx = null;
         if (Math.abs(dx) < 40) return;
-        show(dx < 0 ? (cur < 4 ? cur + 1 : 1) : cur > 1 ? cur - 1 : 4, true);
+        const last = drawn();
+        show(dx < 0 ? (cur < last ? cur + 1 : 1) : cur > 1 ? cur - 1 : last, true);
       },
       { passive: true },
     );
+    // Switched to Esențial while step 4 was shown: the stage starts again at step 1 rather than stay empty.
+    on(window, VIEW_MODE_EVENT, () => {
+      if (!frs[cur - 1]?.getClientRects().length && frs[0]?.getClientRects().length) show(1, false);
+    });
     const sh = q<HTMLButtonElement>(".mt-st-share", stage);
     const toast = q(".mt-st-toast", stage);
     let tt = 0;

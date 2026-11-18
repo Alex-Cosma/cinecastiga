@@ -6,6 +6,7 @@ import { entityHref, type EntityRole } from "../../lib/entity-href";
 import type { PillLabels } from "../../lib/ask/pill-filters";
 import { liveNotes } from "./answer/live-notes";
 import SubclassesPill from "./answer/SubclassesPill";
+import { completIf, presentationAtDefault } from "./esential";
 import { excludedSubclasses, subclassesWords, wholeDomainCode } from "./answer/subclasses";
 import type { AskSpec } from "@/lib/ask/spec";
 import { keyVersionNotes } from "@/lib/ask/answer-core";
@@ -482,7 +483,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }
 
   const catalogResults = QUESTION_TYPES.filter((item) => foldQuestion(`${item.label} ${item.description} ${item.keywords}`).includes(foldQuestion(search.trim())));
-  const navigation = <div className="qb-navigation"><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "scatter", label: "Cine iese din tipar?" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
+  const navigation = (only?: "complet") => <div className="qb-navigation" data-only={only}><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "scatter", label: "Cine iese din tipar?" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
   const removal = open ? view.removals[open.key] : undefined;
 
   const builderWindow = <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
@@ -517,10 +518,14 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     </div>}
   </>;
   const notes = changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}{noteLinks[note] && <KitLink className="qb-relax-link" link={{ label: noteLinks[note]!.label, glyph: "›", href: askLink(noteLinks[note]!.spec as QuestionSpec) }} />}</p>)}</div></div>;
+  // Esențial (lib/view-mode.ts, owner 18 November 2026): beside an answer the line goes at its defaults and „Selecție
+  // avansată” goes; a length or an order a link set stays, with its windows. The builder's own page is the same in both.
+  const marked = Boolean(auto && live);
+  const presentDefault = presentationAtDefault(draft);
   const presentation = <>
-    {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
+    {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} only={completIf(marked && presentDefault)} />}
     {/* A menu of one item was two clicks and a mystery (UX audit Z2-18): the item itself, as a link at the row's end. */}
-    {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef}>
+    {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef} data-only={completIf(marked)}>
       <button type="button" className="qb-advanced-link" aria-haspopup="dialog" aria-expanded={open?.key === "advanced"}
         onClick={(event) => openWindow("advanced", event.currentTarget)}>Selecție avansată</button>
     </span>}
@@ -554,7 +559,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <Sentence as={live.title ? "p" : "h2"} {...(live.title ? {} : { id: "raspuns-titlu", tabIndex: -1 })} tokens={sentence} openId={open?.key ?? null} onOpen={openWindow} after={goTo}
         className={`qb-live-sentence${live.title ? " qb-live-sentence--line" : ""} qb-kit-sentence--${draft.block}`} />
       {live.afterTitle}
-      {(view.presentation.length > 0 || view.advanced.length > 0 || view.scopeLine || extra.notes.length > 0 || (excluded && subclasses.length > 0)) && <div className="qb-live-present">
+      {(view.presentation.length > 0 || view.advanced.length > 0 || view.scopeLine || extra.notes.length > 0 || (excluded && subclasses.length > 0)) && <div className="qb-live-present"
+        data-only={completIf(!(view.presentation.length > 0 && !presentDefault) && !view.scopeLine && !(!dirty && extra.notes.some((note) => !(view.scopeLine && note === "achiziții directe"))))}>
         {presentation}
         {excluded && subclasses.length > 0 && <SubclassesPill words={excluded} subclasses={subclasses}
           onInclude={domain && code ? () => choose(domain, [{ filter: "cpvTerm", value: code }]) : null} />}
@@ -575,7 +581,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       </>}
     </section>;
     return <div className="question-builder qb question-builder--live">
-      {expanded && navigation}
+      {/* Esențial: opened beside an answer (a link with &drill=1), the builder's types are Complet's; the head reads as folded
+          (esential-intreaba.css). */}
+      {expanded && navigation("complet")}
       {live.host && createPortal(editor, live.host)}
       {builderWindow}
       {catalogueDialog}
@@ -583,7 +591,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }
 
   return <div className="question-builder qb">
-    {navigation}
+    {navigation()}
     <section className={`qb-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}

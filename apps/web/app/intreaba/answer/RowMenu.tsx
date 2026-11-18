@@ -34,7 +34,9 @@ const itemsOf = (menu: HTMLElement | null) => Array.from(menu?.querySelectorAll<
 /** A button of its own instead of "⋯": its text, class and, when the text is not enough, its name ("Altfel (3) ›"). */
 export interface MenuTrigger { text: ReactNode; className: string; label?: string }
 
-export default function RowMenu({ name, actions, className, defaultOpen = false, trigger }: { name: string; actions: readonly RowAction[]; className?: string; defaultOpen?: boolean; trigger?: MenuTrigger }) {
+export default function RowMenu({ name, actions, className, defaultOpen = false, trigger, only }: { name: string; actions: readonly RowAction[]; className?: string; defaultOpen?: boolean; trigger?: MenuTrigger;
+  /** Esențial's mark on the trigger (lib/view-mode.ts): an answer row's „⋯” is Complet's (owner, 18 November 2026). */
+  only?: "complet" | undefined }) {
   const [open, setOpen] = useState<"first" | "last" | null>(defaultOpen ? "first" : null);
   const menuId = useId();
   const button = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
@@ -89,6 +91,7 @@ export default function RowMenu({ name, actions, className, defaultOpen = false,
       aria-expanded={!!open}
       aria-controls={open ? menuId : undefined}
       aria-label={trigger ? trigger.label : `Mai multe pentru ${name}`}
+      data-only={only}
       onClick={() => open ? close(false) : show("first")}
       onKeyDown={event => { const where = menuButtonKey(event.key); if (where) { event.preventDefault(); show(where); } }}
     >{trigger ? trigger.text : <span aria-hidden="true">⋯</span>}</button>

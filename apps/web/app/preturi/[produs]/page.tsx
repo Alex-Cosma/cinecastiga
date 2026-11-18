@@ -83,12 +83,16 @@ export default async function ProdusPage({ params, searchParams }: {
   const first = data.page * BUYERS_PAGE + 1, last = Math.min(data.total, (data.page + 1) * BUYERS_PAGE);
   // What the pager counts (UX audit Z6-14): the leads, or every institution's row.
   const rowsUnit = data.onlyLeads ? ["preț peste dublu", "prețuri peste dublu"] as const : ["rând", "rânduri"] as const;
+  // The quantity is a second-level column, Complet's (owner, 18 November 2026); ordered or filtered by it from a link, it
+  // shows in Esențial too (IMPLEMENT rule 4). Its funnel and its sort stay with it.
+  const qtyComplet = data.sort !== "cantitate" && !sp.cantitate;
   return <div className="pr-page pr-product">
     <p className="pr-crumb"><Link href={priceHref({ year: data.year, group: null, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>Prețuri</Link>
       <span aria-hidden="true"> / </span><Link href={priceHref({ year: data.year, group: family.group, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>{PRICE_GROUP_LABEL[family.group]}</Link></p>
     <h1 className="page-title">{family.label}</h1>
     <p className="page-sub pr-sub">{family.holds}</p>
-    {(data.packs.length > 0 || data.years.length > 1) && <nav className="pr-switch" aria-label="Ambalajul și anul">
+    {/* Without packs the row holds only the year, hidden in Esențial at its default (YearSelect): the row goes with it. */}
+    {(data.packs.length > 0 || data.years.length > 1) && <nav className="pr-switch" aria-label="Ambalajul și anul" data-only={data.packs.length === 0 && data.year == null ? "complet" : undefined}>
       {data.packs.length > 0 && <ul className="pr-tabs">{data.packs.map((p) =>
         <li key={p.slug}><Link href={productHref(family.slug, p.slug, data.year)} aria-current={p.slug === data.pack ? "page" : undefined} prefetch={false}>{p.label}</Link></li>)}</ul>}
       {/* The year: the same labelled select as on /preturi (UX audit Z6-34). */}
@@ -121,7 +125,8 @@ export default async function ProdusPage({ params, searchParams }: {
             {/* What a row is, behind an "i"; the lead-not-proof words stay in sight (owner, 17 November 2026). */}
             {!data.year && <> <InfoMark title="Un rând" text="O instituție într-un an, față de mediana acelui an." /></>}
             {data.onlyLeads && <small>piste, nu dovezi</small>}</h2>
-          {!allBecauseNone && <RegionLink href={here({ toate: data.onlyLeads ? "1" : null, pagina: null, deschis: null, ordine: null, sens: null })} scroll={false}>
+          {/* A view switch, Complet's while at its default (owner, 18 November 2026); after a link with toate=1 it stays, to undo it. */}
+          {!allBecauseNone && <RegionLink href={here({ toate: data.onlyLeads ? "1" : null, pagina: null, deschis: null, ordine: null, sens: null })} scroll={false} data-only={data.onlyLeads ? "complet" : undefined}>
             {data.onlyLeads ? (data.year ? `Arată toate cele ${buyersWord(g.buyers)}` : "Arată toate comparațiile") : "Doar prețurile peste dublu"}</RegionLink>}
         </div>
         <UrlFilterBand table="preturi" scope={scope} />
@@ -140,14 +145,14 @@ export default async function ProdusPage({ params, searchParams }: {
                 <SortHead label="Preț" sortKey="pret" data={data} href={sortHref}><UrlFunnel table="preturi" column="pret" scope={scope} align="end" /></SortHead></th>
               <th role="columnheader" scope="col" className="pr-num sortable" aria-sort={sortOf("multiplu")}>
                 <SortHead label="Multiplu" sortKey="multiplu" data={data} href={sortHref}><UrlFunnel table="preturi" column="multiplu" scope={scope} align="end" /></SortHead></th>
-              <th role="columnheader" scope="col" className="pr-num sortable" aria-sort={sortOf("cantitate")}>
+              <th role="columnheader" scope="col" className="pr-num sortable" aria-sort={sortOf("cantitate")} data-only={qtyComplet ? "complet" : undefined}>
                 <SortHead label="Cantitate" sortKey="cantitate" data={data} href={sortHref}><UrlFunnel table="preturi" column="cantitate" scope={scope} align="end" /></SortHead></th>
               <th role="columnheader" scope="col" className="pr-num sortable" aria-sort={sortOf("lei")}>
                 <SortHead label="Peste mediană" sortKey="lei" data={data} href={sortHref}><UrlFunnel table="preturi" column="peste" scope={scope} align="end" /></SortHead></th>
               <th role="columnheader" scope="col" className="c-sup"><span className="th-filter">Furnizori<UrlFunnel table="preturi" column="furnizor" scope={scope} align="end" /></span></th>
               <th role="columnheader" scope="col" className="c-open"><span className="sr-only">Liniile</span></th>
             </tr></thead>
-            {rows.length ? <BuyerRows rows={rows} per={g.per} showYear={!data.year} hrefBase={here({ deschis: null })} sort={`${data.sort}:${data.dir}`} /> : <tbody role="rowgroup"><tr role="row"><td role="cell" colSpan={data.year ? 7 : 8} className="pr-none">
+            {rows.length ? <BuyerRows rows={rows} per={g.per} showYear={!data.year} hrefBase={here({ deschis: null })} sort={`${data.sort}:${data.dir}`} qtyComplet={qtyComplet} /> : <tbody role="rowgroup"><tr role="row"><td role="cell" colSpan={data.year ? 7 : 8} className="pr-none">
               {data.filtered ? <>Niciun rând cu filtrele alese. <RegionLink href={here(Object.fromEntries([...["institutia", "anii", "judet", "pret", "multiplu", "cantitate", "peste", "furnizor", "pagina", "deschis"].map((k) => [k, null])]))} scroll={false}>Scoate filtrele</RegionLink></>
                 : "Nicio instituție de arătat."}</td></tr></tbody>}
           </table>

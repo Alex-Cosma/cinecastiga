@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { DiscoverNavGhost } from "@/components/discover/DiscoverNav";
+import CompletOnly from "@/components/mode/CompletOnly";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import FunnelGhost from "@/components/table-filters/FunnelGhost";
@@ -17,6 +18,8 @@ const CHIPS = [19, 15, 16.5, 16, 18.5, 17, 17.5, 17.5, 16, 17.5, 15.5, 15.5];
 export default function SupraPragLoading() {
   return (
     <Ghost name="supra-prag" label="Se încarcă atribuirile TED…" wait="suspense">
+      {/* the loaded page's shape in Esențial too: whole, under its one Complet line */}
+      <CompletOnly>
       <DiscoverNavGhost current="supra-prag" />
       <h1 className="page-title ted-title">Atribuiri publicate în <span className="tp-nowrap" inert>TED<Term tip title="TED, peste prag" text="" /></span></h1>
       <p className="hint ted-tip-line" inert>
@@ -77,6 +80,7 @@ export default function SupraPragLoading() {
           <span className="off">← anterioarele</span><span className="pager-pos"><G.Line inline w="20ch" /></span><a>următoarele →</a>
         </div>
       </section>
+      </CompletOnly>
     </Ghost>
   );
 }

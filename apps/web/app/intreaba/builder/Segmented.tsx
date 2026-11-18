@@ -49,9 +49,11 @@ export interface SegmentedProps {
   full?: boolean;
   mode?: "radio" | "tabs";
   className?: string;
+  /** Esențial's mark (lib/view-mode.ts): "complet" when the control is Complet's only. */
+  only?: "complet" | undefined;
 }
 
-export default function Segmented({ label, options, value, onChange, size, full = false, mode = "radio", className }: SegmentedProps) {
+export default function Segmented({ label, options, value, onChange, size, full = false, mode = "radio", className, only }: SegmentedProps) {
   const base = useId();
   const tabs = mode === "tabs";
   const checked = options.findIndex(option => option.value === value);
@@ -62,6 +64,7 @@ export default function Segmented({ label, options, value, onChange, size, full 
     role={tabs ? "tablist" : "radiogroup"}
     aria-label={label}
     data-roving=""
+    data-only={only}
     onKeyDown={event => rovingKeyDown(event, `[role="${role}"]`, tabs ? "horizontal" : "both", index => { const next = options[index]; if (next) onChange?.(next.value, "move"); })}
   >
     {options.map((option, index) => {

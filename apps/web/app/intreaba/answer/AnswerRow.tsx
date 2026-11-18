@@ -31,9 +31,11 @@ export interface AnswerRowProps {
   /** Static state classes for the dev demo frames (on the "⋯" button), and a menu drawn open. */
   menuClassName?: string;
   menuOpen?: boolean;
+  /** Esențial's mark on the row's „⋯” (lib/view-mode.ts): "complet" in an answer (owner, 18 November 2026). */
+  menuOnly?: "complet" | undefined;
 }
 
-export default function AnswerRow({ name: label, rank, href, place, facts = [], value, share, records, actions = [], menuClassName, menuOpen }: AnswerRowProps) {
+export default function AnswerRow({ name: label, rank, href, place, facts = [], value, share, records, actions = [], menuClassName, menuOpen, menuOnly }: AnswerRowProps) {
   const name = rank === undefined ? label : `${rank}. ${label}`;
   return <div className="qb-arow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
@@ -44,7 +46,7 @@ export default function AnswerRow({ name: label, rank, href, place, facts = [], 
       <span className="qb-num">{value}</span>
       {(share || records) && <small>{share}{share && records && " · "}{records && <KitLink link={{ glyph: "→", ...records }} className="qb-rec" />}</small>}
     </div>
-    {actions.length > 0 && <RowMenu name={name} actions={actions} {...(menuClassName ? { className: menuClassName } : {})} defaultOpen={!!menuOpen} />}
+    {actions.length > 0 && <RowMenu name={name} actions={actions} {...(menuClassName ? { className: menuClassName } : {})} defaultOpen={!!menuOpen} only={menuOnly} />}
   </div>;
 }
 

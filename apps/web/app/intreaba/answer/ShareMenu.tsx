@@ -20,7 +20,8 @@ export default function ShareMenu({ onCopy, onShare, onPrepare, copied = false }
     { id: "copy", label: "Copiază linkul", note: "Un link scurt, de lipit oriunde", onSelect: onCopy },
     ...(canShare ? [{ id: "share", label: "Trimite…", note: "Prin aplicațiile telefonului", onSelect: onShare }] : []),
   ];
-  return <span className="qb cq-share-menu" onPointerDown={onPrepare}>
+  // Esențial (lib/view-mode.ts): sharing is Complet's tool (owner, 18 November 2026); the reader has the address bar.
+  return <span className="qb cq-share-menu" onPointerDown={onPrepare} data-only="complet">
     <RowMenu name="Trimite răspunsul" actions={actions} trigger={{
       className: "cq-share",
       label: "Trimite",

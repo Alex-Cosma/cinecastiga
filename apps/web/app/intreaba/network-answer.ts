@@ -164,8 +164,9 @@ export function rowFacts(row: NetworkRow, partner: NetworkPartner): RowFact[] {
     tip: { title: "Semnal pe relație", text: `${partner.signals.map((code) => RELATION_SIGNAL_LABELS[code] ?? code).join(", ")}. Semnal oficial pe această relație; e o pistă, nu o dovadă.` },
   });
   if (row.value > 0 && row.joint / row.value >= JOINT_SHARE) facts.push({ text: "în asociere", tip: JOINT_TIP });
+  // A share: Esențial leaves it out by its class (esential-intreaba.css; owner, 18 November 2026).
   if (partner.firmShare !== null && partner.firmShare >= FIRM_SHARE_MIN) facts.push({
-    text: `${formatShare(partner.firmShare)} din ce a câștigat firma`,
+    text: `${formatShare(partner.firmShare)} din ce a câștigat firma`, className: "qb-tag--share",
     tip: { title: "Pondere în ce a câștigat firma", text: "Din tot ce a câștigat firma pe SEAP (toată arhiva, toate achizițiile). Firma poate avea și clienți privați." },
   });
   return facts.slice(0, 2);

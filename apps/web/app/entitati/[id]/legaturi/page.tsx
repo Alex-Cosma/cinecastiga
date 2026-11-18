@@ -5,6 +5,7 @@ import { cache } from "react";
 import { getEntityProfile, getEntityTxCounts } from "@/lib/marts";
 import { cleanName } from "@/lib/format";
 import ConnectionsExplorer from "./ConnectionsExplorer";
+import CompletOnly from "@/components/mode/CompletOnly";
 import "./connections.css";
 import { parseRoleParam } from "@/lib/role-param";
 
@@ -32,6 +33,7 @@ export default async function ConnectionsPage({ params, searchParams }: {
   const role = parseRoleParam(initial.rol) ?? profile.roles[0]?.role ?? "authority";
   // The entity's records per channel in this role (the profile's ledger): an empty channel is not offered (UX audit Z5-38).
   const channels = await getEntityTxCounts(id, role).catch(() => null);
-  return <ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role}
-    bothRoles={profile.roles.length > 1} channels={channels ? { da: channels.nDa, contracts: channels.nCt } : undefined} initial={initial} />;
+  // Complet's (owner, 18 November 2026): opened from a link in Esențial it shows whole, under one line that says so.
+  return <CompletOnly><ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role}
+    bothRoles={profile.roles.length > 1} channels={channels ? { da: channels.nDa, contracts: channels.nCt } : undefined} initial={initial} /></CompletOnly>;
 }

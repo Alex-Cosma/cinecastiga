@@ -32,7 +32,8 @@ function Bars({ bars }: { bars: SummaryBar[] }) {
               {b.href ? <Link href={b.href} title={b.label}>{b.label}</Link> : <span title={b.label}>{b.label}</span>}
               {b.consortium && <Term tip hold="box" title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term>}
             </div>
-            <div className="ent-brief-track" aria-hidden="true"><i className="cm-x" style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%`, "--i": i } as CSSProperties} /></div>
+            {/* Complet's (owner, 18 November 2026): in Esențial the domains are a list; the bars would be a second chart. */}
+            <div className="ent-brief-track" aria-hidden="true" data-only="complet"><i className="cm-x" style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%`, "--i": i } as CSSProperties} /></div>
             <div className="ent-brief-val"><span>{b.valueLabel}</span> · {b.shareLabel}</div>
           </li>
         ))}

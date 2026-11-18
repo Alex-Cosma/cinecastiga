@@ -5,6 +5,7 @@ import {coverageDate} from '@/lib/coverage';
 import {formatExactDecimal,formatInt} from '@/lib/format';
 import {countWords} from '@/lib/ask/answer-text';
 import EntityName from '@/components/EntityName';
+import CompletOnly from '@/components/mode/CompletOnly';
 import '@/components/record/pager.css';
 import './excluderi.css';
 export const dynamic='force-dynamic';
@@ -15,7 +16,8 @@ type Params={pagina?:string;grup?:string;institutie?:string;nume?:string;din?:st
 /**
  * The publications kept out of the totals until their identity is settled. Gathered by institution (UX audit Z7-36,
  * owner 16 November 2026): the institutions first, with a name filter; one institution's groups, ten a page; one group
- * (?grup=) opened, with the way back to the contract it was reached from (?din=, Z7-37).
+ * (?grup=) opened, with the way back to the contract it was reached from (?din=, Z7-37). Every state belongs to Complet
+ * (owner, 18 November 2026): opened in Esențial from a link, it shows whole, with Complet's line.
  */
 export default async function ExcluderiPage({searchParams}:{searchParams:Promise<Params>}) {
  const params=await searchParams;
@@ -34,7 +36,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
  if(!params.grup&&!institution){
   const words=(params.nume??'').trim().slice(0,100);
   const data=await getExclusionInstitutions(words);
-  return <>
+  return <CompletOnly>
    {head}
    <p id="grupuri" className="list-anchor excl-count">{countWords(data.total,'grup de verificat','grupuri de verificat')}, la {countWords(data.institutions,'instituție','instituții')}. <span>Lista nu este un semnal de neregulă.</span></p>
    <form className="excl-filter" action="/metodologie/excluderi" method="get" role="search">
@@ -49,13 +51,13 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
     <p className="excl-meta">{countWords(i.groups,'grup','grupuri')} · {countWords(i.reasons,'motiv','motive')}</p>
     <Link prefetch={false} className="excl-open" href={`/metodologie/excluderi?institutie=${i.authorityId??'none'}`}>Vezi grupurile <span aria-hidden="true">→</span></Link>
    </li>)}</ul>
-  </>;
+  </CompletOnly>;
  }
 
  const data=await getContractExclusions(Number(params.pagina??1),params.grup,params.grup?undefined:institution??undefined);
  const first=data.groups[0];
  const pageHref=(p:number)=>`/metodologie/excluderi?institutie=${institution}&pagina=${p}#grupuri`;
- return <>
+ return <CompletOnly>
   {head}
   {institution&&!params.grup&&<h2 className="excl-title">{first?.authorityId?<Link prefetch={false} href={`/entitati/${first.authorityId}`}>{first.authority??'Instituție'}</Link>:first?'Instituție neidentificată':'Instituția'}</h2>}
   <p id="grupuri" className="list-anchor excl-count">{countWords(data.total,'grup de verificat','grupuri de verificat')}{data.pages>1&&` · pagina ${formatInt(data.page)} din ${formatInt(data.pages)}`}. <span>Lista nu este un semnal de neregulă.</span></p>
@@ -67,7 +69,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
     <span>Pagina {formatInt(data.page)} din {formatInt(data.pages)}</span>
     {data.page<data.pages&&<Link href={pageHref(data.page+1)}>Următor →</Link>}
   </nav>}
- </>;
+ </CompletOnly>;
 }
 
 /** One group: its notice, its reasons and, folded (open when it is the one asked for), its publications. */

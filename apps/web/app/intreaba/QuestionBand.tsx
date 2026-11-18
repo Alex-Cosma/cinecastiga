@@ -49,7 +49,8 @@ export default function QuestionBand({ spec, cpvName, title, onChange }: { spec:
   return (
     <div className="ia-qband" hidden={!shown} role="region" aria-label="Întrebarea">
       <p className="ia-qband-q"><strong>{gist.lead}</strong>{gist.rest.length > 0 && <span> · {gist.rest.join(" · ")}</span>}</p>
-      <button type="button" className="ia-qband-go" onClick={change}>Schimbă<span aria-hidden="true">›</span></button>
+      {/* Esențial (lib/view-mode.ts): it opens the builder, Complet's; the question stays in the band. */}
+      <button type="button" className="ia-qband-go" onClick={change} data-only="complet">Schimbă<span aria-hidden="true">›</span></button>
     </div>
   );
 }

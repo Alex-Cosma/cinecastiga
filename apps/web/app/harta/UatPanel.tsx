@@ -247,14 +247,16 @@ function Neighbours({ data, onPick, tip }: { data: MapUatResponse; onPick: (key:
 /** "Pe ce?" and "Cui?": a row per CPV division or supplier, its bar measured against the first row's; the whole row answers on hover. */
 function Rows({ rows, tip }: { rows: { key: string; name: ReactNode; bar: number; value: ReactNode; tip: [string, string, string?] }[]; tip: Tip }) {
   const motion = useEntrance("", rows.map((r) => r.key));
+  // The bar exists only in Complet (owner, 18 November 2026): it repeats the share beside it; the row closes up.
   return <ul className="mx-p-rows" data-chart="" onAnimationEnd={motion.onAnimationEnd}>{rows.map((r, i) => <li key={r.key} {...tip(...r.tip)}><span>{r.name}</span>
-    <i className={`cm-tw ${motion.mark(r.key, "cm-x")}`} style={{ width: `${Math.max(2, r.bar)}%`, "--i": i } as CSSProperties} /><b>{r.value}</b></li>)}</ul>;
+    <i className={`cm-tw ${motion.mark(r.key, "cm-x")}`} style={{ width: `${Math.max(2, r.bar)}%`, "--i": i } as CSSProperties} data-only="complet" /><b>{r.value}</b></li>)}</ul>;
 }
 
 /*
  * While a UAT loads (owner, 6 November 2026: "ghost data loading"), the panel keeps the shape of its content: the UAT's
  * name (known from the map), the three questions, and quiet blocks where the sentence, bars, rows and neighbours will be,
  * so switching UATs does not collapse the panel and grow it back. A UAT the map shows hatched gets the short shape.
+ * In Esențial it has that mode's shape: the same blocks are marked as in the panel below.
  */
 const YEAR_GHOST = [20, 34, 40, 48, 36, 26, 66, 44, 24];
 function Ghost({ name, county, gap }: { name: string | undefined; county: string | undefined; gap: boolean }) {
@@ -263,16 +265,16 @@ function Ghost({ name, county, gap }: { name: string | undefined; county: string
   return <>
     <p className="mx-p-kick" aria-hidden="true">{line("44%")}{line("30%", "phone")}</p>
     <h2 id="mx-p-h">{name ?? <G.Line w="36%" />}</h2>
-    <p className="mx-p-lead" aria-hidden="true">{line("94%")}{gap ? line("58%") : <>{line("97%")}{line("42%")}{line("30%", "phone")}</>}</p>
-    {!gap && <p className="mx-p-acts" aria-hidden="true"><G.Block w="15em" h="36px" /><G.Block w="17em" h="36px" /></p>}
+    <p className="mx-p-lead" aria-hidden="true">{line("94%")}{gap ? line("58%") : <>{line("97%")}<span data-only="complet">{line("42%")}</span>{line("30%", "phone")}</>}</p>
+    {!gap && <p className="mx-p-acts" aria-hidden="true"><G.Block w="15em" h="36px" /><span data-only="complet"><G.Block w="17em" h="36px" /></span></p>}
     {!gap && <div className="mx-p-cols" aria-hidden="true">
-      {(["Cât?", "Pe ce?", "Cui?"] as const).map((title, i) => <div className="mx-p-sec" key={title}><h3>{title}</h3>
+      {(["Cât?", "Pe ce?", "Cui?"] as const).map((title, i) => <div className="mx-p-sec" key={title} data-only={i === 0 ? "complet" : undefined}><h3>{title}</h3>
         {i === 0
           ? <svg className="mx-p-years" viewBox="0 0 260 112" preserveAspectRatio="none">{YEAR_GHOST.map((h, j) => <rect key={j} className="g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
-          : <ul className="mx-p-rows">{[100, 74, 52, 38, 26].map((w, j) => <li key={j}><span>{line(`${78 - j * 7}%`)}</span><i style={{ width: `${w}%` }} /><b>{line("100%")}</b></li>)}</ul>}
+          : <ul className="mx-p-rows">{[100, 74, 52, 38, 26].map((w, j) => <li key={j}><span>{line(`${78 - j * 7}%`)}</span><i style={{ width: `${w}%` }} data-only="complet" /><b>{line("100%")}</b></li>)}</ul>}
       </div>)}
     </div>}
-    <div className="mx-p-sec mx-p-wide" aria-hidden="true"><h3>Printre vecini</h3>
+    <div className="mx-p-sec mx-p-wide" aria-hidden="true" data-only="complet"><h3>Printre vecini</h3>
       <svg className="mx-p-near" viewBox="0 0 560 96"><rect className="g-svg" x="10" y="42" width="540" height="14" rx="7" /></svg></div>
     <p className="mx-p-wait g-sr" role="status">Se încarcă UAT-ul…</p>
   </>;
@@ -364,7 +366,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
       : d.uat.gap === "no_admin" ? <>
         {head}
         <p className="mx-p-lead">Primăria lui {d.uat.name} nu e identificată sigur în date, deci nu avem cifra lui: valoarea e necunoscută, nu zero.</p>
-        <div className="mx-p-sec mx-p-wide"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
+        <div className="mx-p-sec mx-p-wide" data-only="complet"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
       </> : <>
         {head}
         {(() => {
@@ -383,16 +385,20 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
           const years = d.selection.years;
           const recordsHref = hall ? `${entityHref(hall.id, "authority")}${years === "all" ? "" : `&an=${years.join(",")}`}${channel}#achizitii` : null;
           const compareHref = hall ? `/entitati/${encodeURIComponent(hall.id)}/comparatii?rol=autoritate&year=${years !== "all" && years.length === 1 ? years[0] : "all"}&cpv=all&dataset=${d.selection.dataset}` : null;
+          // Esențial (owner, 18 November 2026): the sentence ends at the figure per inhabitant; the comparison with the
+          // county's average and the place in the county exist only in Complet. Both forms are in the page: the tail is
+          // marked, the full stop is common. Complet-only too: the comparison link (Comparații), „Cât?”, the
+          // institutions' part, „Printre vecini” and the rows' bars.
           return <>
-            <p className="mx-p-lead">{d.uat.name} a contractat{d.selection.withInstitutions ? ", cu instituțiile primăriei," : ""} {short(value)} lei: <em>{int(pc)} lei pe locuitor</em>{vs ? `, ${vs}` : ""}
-              {d.place ? `, ${ordinal(d.place)} din cele ${withDe(d.ranked, "UAT", NB("UAT-uri"))} ale ${d.county.key === "bucuresti" ? "Bucureștiului" : `județului ${d.county.name}`}` : ""}.</p>
+            <p className="mx-p-lead">{d.uat.name} a contractat{d.selection.withInstitutions ? ", cu instituțiile primăriei," : ""} {short(value)} lei: <em>{int(pc)} lei pe locuitor</em><span data-only="complet">{vs ? `, ${vs}` : ""}
+              {d.place ? `, ${ordinal(d.place)} din cele ${withDe(d.ranked, "UAT", NB("UAT-uri"))} ale ${d.county.key === "bucuresti" ? "Bucureștiului" : `județului ${d.county.name}`}` : ""}</span>.</p>
             {hall && <p className="mx-p-acts">
               {recordsHref && <Link className="mx-p-act is-main" href={recordsHref} prefetch={false}>{count.key === tableQuery && count.total !== null ? `${withDe(count.total, "înregistrare", "înregistrări")} ale primăriei` : "Înregistrările primăriei"}{d.selection.cpv !== "all" ? ", toate domeniile" : ""} →</Link>}
-              {compareHref && <Link className="mx-p-act" href={compareHref} prefetch={false}>Compară cu primării de mărimea ei →</Link>}
+              {compareHref && <Link className="mx-p-act" href={compareHref} prefetch={false} data-only="complet">Compară cu primării de mărimea ei →</Link>}
             </p>}
             <div className="mx-p-cols">
               {/* The chart's two marks named beside the question (owner, 17 November 2026): the orange column and the dashed line. */}
-              <div className="mx-p-sec"><h3>Cât?{peak && (peak.perCapita ?? 0) > 0 && <small className="mx-p-key">
+              <div className="mx-p-sec" data-only="complet"><h3>Cât?{peak && (peak.perCapita ?? 0) > 0 && <small className="mx-p-key">
                 <span><i className="is-peak" />anul de vârf</span>
                 {d.years.some((y) => y.hallsPerCapita != null) && <span><i className="is-avg" />{words}</span>}</small>}</h3>
                 {/* No sentence under a question (owner, 17 November 2026: the figures are in the chart and the rows); only an empty selection says so. */}
@@ -413,13 +419,13 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
             {/* With the institutions (owner, 8 November 2026): which of the town hall's, and how much of the total. */}
             {d.institutions.length > 0 && (() => {
               const subTotal = d.institutions.reduce((a, x) => a + x.value, 0), first = d.institutions[0]!.value;
-              return <div className="mx-p-sec mx-p-wide"><h3>Instituțiile primăriei <small>{short(subTotal)} lei</small></h3>
+              return <div className="mx-p-sec mx-p-wide" data-only="complet"><h3>Instituțiile primăriei <small>{short(subTotal)} lei</small></h3>
                 <Rows tip={t.bind} rows={d.institutions.slice(0, 8).map((x) => ({ key: x.id, name: <EntityName id={x.id} role="authority">{x.name}</EntityName>, bar: pct(x.value, first),
                   value: share(x.value, value), tip: [x.name, `${int(x.value)} lei · ${share(x.value, value)} din total`] }))} />
                 {d.institutions.length > 8 && <p className="mx-p-more">Și încă {withDe(d.institutions.length - 8, "instituție", "instituții")}, cu {short(d.institutions.slice(8).reduce((a, x) => a + x.value, 0))} lei.</p>}
               </div>;
             })()}
-            <div className="mx-p-sec mx-p-wide"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
+            <div className="mx-p-sec mx-p-wide" data-only="complet"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
           </>;
         })()}
       </>}

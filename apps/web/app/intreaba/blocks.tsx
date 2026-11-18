@@ -134,16 +134,21 @@ export function BreakdownBlock({
         ]
       : []),
   ];
+  /*
+   * Esențial (lib/view-mode.ts, owner 18 November 2026): the list with its bars answers. The kinds with their shares, the
+   * stacked bar that repeats the list, the order (unless a link set „Înreg.”), each row's share and the dig-down (the name
+   * is words; „N înregistrări →” stays the way on) are Complet's.
+   */
   return (
     <div>
       {t.el}
-      {kinds && kinds.length > 1 && <div className="qb qb-kinds qb-tipwrap" role="group" aria-label="Tipul achiziției">
+      {kinds && kinds.length > 1 && <div className="qb qb-kinds qb-tipwrap" role="group" aria-label="Tipul achiziției" data-only="complet">
         {kinds.map((kind) => <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
           {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
         </button>)}
         <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
-      {!single && <div ref={barRef} className={`ask-comp ${drilled ? "is-drilled" : motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
+      {!single && <div ref={barRef} className={`ask-comp ${drilled ? "is-drilled" : motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root} data-only="complet">
         {items.map((s, i) => {
           const bind = t.bind(
             s.name,
@@ -177,7 +182,7 @@ export function BreakdownBlock({
         })}
       </div>}
       {/* The legend orders by value or by records (final §3.8): both are on every row. */}
-      {base && onMeasure && !single && <div className="qb qb-legend-head qb-tipwrap" role="group" aria-label="Ordonează domeniile">
+      {base && onMeasure && !single && <div className="qb qb-legend-head qb-tipwrap" role="group" aria-label="Ordonează domeniile" data-only={byCount ? undefined : "complet"}>
         <span>{countWords(base.length, "domeniu", "domenii")}</span>
         <button type="button" className="qb-sort" aria-pressed={!byCount} onClick={() => onMeasure("value")}>Valoare{!byCount && <span aria-hidden="true"> ▾</span>}</button>
         <button type="button" className="qb-sort" aria-pressed={byCount} onClick={() => onMeasure("count")}>Înreg.{byCount && <span aria-hidden="true"> ▾</span>}</button>
@@ -191,9 +196,12 @@ export function BreakdownBlock({
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
-                <a href={sliceUrl(s.code, s.name)} data-code={s.code} data-drill={canDeepen(s.code) ? "down" : undefined}>
-                  {s.name}
-                </a>
+                <>
+                  <a href={sliceUrl(s.code, s.name)} data-code={s.code} data-drill={canDeepen(s.code) ? "down" : undefined} data-only="complet">
+                    {s.name}
+                  </a>
+                  <span data-only="esential">{s.name}</span>
+                </>
               ) : (
                 s.name
               )}
@@ -201,7 +209,7 @@ export function BreakdownBlock({
             </span>
             <span className={`ask-compbar${single ? " is-single" : ""}`} aria-hidden="true"><i style={{ width: `${Math.min(100, (amount(s) / measureTotal) * 100)}%`, background: s.color }} /></span>
             <span className="vv num">
-              <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)} · {formatShare(amount(s) / measureTotal)}</span>
+              <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)}<span data-only="complet"> · {formatShare(amount(s) / measureTotal)}</span></span>
               {evidence && (
                 <button
                   type="button"
@@ -239,12 +247,12 @@ const BREAKDOWN_GHOST_SEGS = ["58%", "12%", "8%", "6%", "4%", "3%", "2%", "7%"];
 const BREAKDOWN_GHOST_NAMES = [46, 22, 38, 30, 18, 52, 26, 34, 16];
 export function BreakdownGhost({ spec }: { spec: AskSpec }) {
   return <div aria-hidden="true">
-    {!spec.filters.purchaseKind && <div className="qb qb-kinds g-quiet" inert>
+    {!spec.filters.purchaseKind && <div className="qb qb-kinds g-quiet" inert data-only="complet">
       {(["produse", "servicii", "lucrari"] as const).map((kind) => <button type="button" key={kind} className="qb-kind">{PURCHASE_KIND_WORDS[kind].label} <G.Line inline w="4ch" /></button>)}
       <HelpTip tip={{ id: "tip-achizitie" }} />
     </div>}
-    <div className="ask-comp">{BREAKDOWN_GHOST_SEGS.map((w, i) => <span key={i} className="seg g-block" style={{ width: w, borderRadius: 0, marginRight: 2 }} />)}</div>
-    <div className="qb qb-legend-head g-quiet" inert>
+    <div className="ask-comp" data-only="complet">{BREAKDOWN_GHOST_SEGS.map((w, i) => <span key={i} className="seg g-block" style={{ width: w, borderRadius: 0, marginRight: 2 }} />)}</div>
+    <div className="qb qb-legend-head g-quiet" inert data-only={spec.measure === "count" ? undefined : "complet"}>
       <span><G.Line inline w="10ch" /></span>
       <button type="button" className="qb-sort" aria-pressed={spec.measure !== "count"}>Valoare</button>
       <button type="button" className="qb-sort" aria-pressed={spec.measure === "count"}>Înreg.</button>

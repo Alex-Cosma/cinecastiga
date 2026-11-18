@@ -14,13 +14,15 @@ import type { KitTip } from "../builder/kit-types";
 
 export type FactTone = "neutral" | "accent" | "caveat" | "signal";
 
-export interface RowFact { text: string; tone?: FactTone; tip?: KitTip; /** A partner the words name, linked to its page. */ entity?: { id: string; name: string } }
+export interface RowFact { text: string; tone?: FactTone; tip?: KitTip; /** A partner the words name, linked to its page. */ entity?: { id: string; name: string };
+  /** A class of its own for the tag (qb-tag--share: a share, which Esențial leaves out, esential-intreaba.css). */
+  className?: string }
 
 export const MAX_FACTS = 3;
 
 
 export function FactTag({ fact }: { fact: RowFact }) {
-  const tone = fact.tone && fact.tone !== "neutral" ? ` qb-tag--${fact.tone}` : "";
+  const tone = `${fact.tone && fact.tone !== "neutral" ? ` qb-tag--${fact.tone}` : ""}${fact.className ? ` ${fact.className}` : ""}`;
   // A tag with a (?) and no link inside is itself the (?)'s button: the explanation shows after a mouse rests on the tag
   // for --hold (1 s), while a trace closes round it, or at once on keyboard focus or a tap (owner, 15 November 2026: the
   // signal tags of the risk cloud; M-01). A tag that links a name keeps its separate "?", since a button cannot hold a link.

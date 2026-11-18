@@ -1,0 +1,33 @@
+/* Esențial (lib/view-mode.ts): layout rules of the intreaba pages that a data-only mark cannot express (columns by position, grids that close up).
+   Every selector starts with html[data-mode="esential"]. */
+
+/* The builder's place above an answer: its doors are marked Complet's (AskPanel), so nothing of it stands there; the
+   answer keeps the distance it has under the folded bar. Opened beside an answer (a link with &drill=1 lands so) the
+   builder's head and its types are Complet's too, and its box draws nothing. */
+html[data-mode="esential"] #intrebarea.ia-builder-live:not([data-whole] *) { margin: 0; }
+html[data-mode="esential"] #intrebarea.ia-builder-live:not(.ia-builder-collapsed) > .question-builder--live:not([data-whole] *) { display: contents; }
+html[data-mode="esential"] #intrebarea.ia-builder-live ~ .cq-answer:not([data-whole] *) { margin-top: 24px; }
+
+/* The sentence opened that way reads as folded: its set conditions stay with their ×; the conditions not set and the
+   invitations („+ …”) are Complet's „Schimbă întrebarea”. The chips are the kit's (Chip, Toggle, Invite take no mark). */
+html[data-mode="esential"] .qb-live.is-expanded > .qb-invites:not([data-whole] *),
+html[data-mode="esential"] .qb-live.is-expanded > .qb-row > :is(.qb-invite, .qb-chip:not(.is-active), .qb-toggle:not([aria-pressed="true"]), .qb-pair:not(:has(.qb-chip.is-active, .qb-toggle[aria-pressed="true"]))):not([data-whole] *),
+html[data-mode="esential"] .qb-live.is-expanded > .qb-row:not(:has(.qb-chip.is-active, .qb-toggle[aria-pressed="true"])):not([data-whole] *) { display: none !important; }
+
+/* „Surse și date” under every answer: the archive's periods, the SQL and the method (CoverageDisclosure takes no mark);
+   the footer keeps „Surse, acoperire și actualizare”. */
+html[data-mode="esential"] details.coverage-disclosure-answer:not([data-whole] *) { display: none !important; }
+
+/* „Din care” on its way (a Ghost, which takes no mark; StatMix marks the box itself). */
+html[data-mode="esential"] .qb-mix[data-ghost]:not([data-whole] *) { display: none !important; }
+
+/* The network's share tag („65,4% din ce a câștigat firma”, a Term, which takes no mark), and a row's tags left empty. */
+html[data-mode="esential"] .qb-net .qb-tag--share:not([data-whole] *),
+html[data-mode="esential"] .qb-net .qb-tags:not(:has(> :not(.qb-tag--share))):not([data-whole] *) { display: none !important; }
+
+/* A signed-in reader's tools beside an answer: „Trimite” and „Exportă” are Complet's, so „Păstrează” takes their row
+   (under the records' button) and „Urmărește” with „Salvează în anchetă” stay the pair under it, as in Complet. */
+html[data-mode="esential"] .cq-answer-more > .cq-save-wrap:not([data-whole] *) { grid-column: 1 / -1; }
+
+/* The compare's cards: card B without signals loses its box, so the two are not stretched to one height. */
+html[data-mode="esential"] .cmp-cards:not([data-whole] *) { align-items: start; }

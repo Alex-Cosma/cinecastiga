@@ -22,8 +22,10 @@ import { FloatStatus } from "@/components/ghost/client";
 import DiscoverNav from "@/components/discover/DiscoverNav";
 import DiscoverPager from "@/components/discover/DiscoverPager";
 import { signalLei } from "@/lib/signal-money";
+import CompletOnly from "@/components/mode/CompletOnly";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
+import { underIncludedEssential, underLeftOutEssential } from "./essential-words";
 
 const groups: [string, string[]][] = [
   ["Praguri și calendar", ["da_split", "da_round", "da_above_ceiling", "da_year_end"]],
@@ -48,13 +50,14 @@ function TypeChooser({ code, role, counts, choose, close }: { code: string; role
   const [search, setSearch] = useState("");
   let found = 0;
   return <SignalDialog title="Ce vrei să verifici?" subtitle="Numerele sunt apariții, nu entități unice." onClose={close}>
-    <div className="sg-type-search"><label className="sr-only" htmlFor="sg-type-search">Caută un tip de semnal</label><input autoFocus id="sg-type-search" type="search" placeholder="Caută: prag, oferte, salariați…" value={search} onChange={e => setSearch(e.target.value)}/></div>
+    {/* Esențial (owner, 18 November 2026): the names in their groups; the search, the counts and the method line go. */}
+    <div className="sg-type-search" data-only="complet"><label className="sr-only" htmlFor="sg-type-search">Caută un tip de semnal</label><input autoFocus id="sg-type-search" type="search" placeholder="Caută: prag, oferte, salariați…" value={search} onChange={e => setSearch(e.target.value)}/></div>
     <div className="sg-type-options">{groups.map(([label, codes]) => {
       const visible = codes.filter(c => fold(`${flagLabel(c)} ${FLAG_META[c]!.title} ${FLAG_META[c]!.short}`).includes(fold(search)));
       found += visible.length;
       return visible.length ? <section key={label}><h3>{label}</h3>{visible.map(c => {
         const m = FLAG_META[c]!, exclusive = m.subject === "authority" || m.subject === "supplier", compatible = !exclusive || m.subject === role;
-        return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{flagLabel(c)}</strong><small>{exclusive ? (m.subject === "supplier" ? "Firme" : "Instituții") : "Instituții și firme"} · {c === "da_capacity" || c.startsWith("fin_") ? "achiziții și bilanțuri" : c.startsWith("da_first_month") ? "achiziții directe și ONRC" : c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count">{formatInt(counts[c])}</span>}</button>;
+        return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{flagLabel(c)}</strong><small data-only="complet">{exclusive ? (m.subject === "supplier" ? "Firme" : "Instituții") : "Instituții și firme"} · {c === "da_capacity" || c.startsWith("fin_") ? "achiziții și bilanțuri" : c.startsWith("da_first_month") ? "achiziții directe și ONRC" : c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count" data-only="complet">{formatInt(counts[c])}</span>}</button>;
       })}</section> : null;
     })}{found === 0 && <p className="sg-no-types">Niciun tip găsit. Încearcă „prag” sau „oferte”.</p>}</div>
   </SignalDialog>;
@@ -116,8 +119,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     if (!patch) return null;
     const included = "inactive" in patch ? active.inactive : active.under;
     const words = "inactive" in patch ? (included ? inactiveIncludedWords : inactiveLeftOutWords)(risk!.inactive) : (included ? underIncludedWords : underLeftOutWords)(signals!.under!);
-    return <p className="sg-left-out">{words}{" "}
-      <a href={signalUrl(active, patch)} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate(patch); }}>{included ? "Scoate-le" : "Include-le"}</a></p>;
+    // Esențial (owner, 18 November 2026): the line without the score; „Include-le” goes, „Scoate-le” (a link with sub=1)
+    // stays so the reader can undo it. The ranking's line is in a page whole in Esențial (data-whole).
+    const essential = "under" in patch ? (included ? underIncludedEssential : underLeftOutEssential)(signals!.under!) : null;
+    return <p className="sg-left-out">{essential === null ? words : <><span data-only="complet">{words}</span><span data-only="esential">{essential}</span></>}{" "}
+      <a href={signalUrl(active, patch)} data-only={essential !== null && !included ? "complet" : undefined} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate(patch); }}>{included ? "Scoate-le" : "Include-le"}</a></p>;
   }
   // What every row of the page would repeat is said once (UX audit Z6-17): the whole period, under the description; the
   // value's kind and the partner's role in a head over the columns (a line on a phone); a note that is the same on every row.
@@ -190,7 +196,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {!sameNote && note && <p className="sg-meta">{note}{line.mark && (line.mark.words || line.mark.beside === "note") && <> <span className="sg-mark-words">{line.mark.words} {warning}</span></>}</p>}
       </div>
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
-      <div className="sg-meter-col">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
+      {/* The picture goes in Esențial, its number (sg-x) stays (owner, 18 November 2026); the zone CSS closes the grid. */}
+      <div className="sg-meter-col" data-only="complet">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
       <div className="sg-amount"><strong>{signalLei(fi.totalExact ?? (fi.flagCode === "da_capacity" ? fi.evidence?.da_value as string | number | null | undefined : null)) ?? "Necunoscută"}</strong>{line.mark && !line.mark.words && line.mark.beside !== "note" && warning}
         {/* The usual kind, the notice's value, is said by the count's "?"; only the other kinds stay under the sum. */}
         {fi.subjectType === "award" && awardValueLabel(fi.evidence) !== "valoarea anunțului" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
@@ -206,19 +213,26 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const binTo = (bin: number) => bin === 90 ? 100 : bin === 1 ? 10 : bin + 10;
   const binLabel = (bin: number) => `${bin}–${bin === 90 ? 100 : binTo(bin) - 1}`;
   const binOn = (bin: number) => active.band !== null && Math.round(active.band.from * 100) === bin && Math.round(active.band.to * 100) === binTo(bin);
-  return <div className="sg-explorer">
+  // The ranking by risk belongs to Complet (owner, 18 November 2026): opened from a link it is shown whole, with
+  // CompletOnly's line. data-whole sits on the explorer itself rather than on a wrapper, so a change of tab does not
+  // remount the explorer (the focus and the remembered tab stay, as in Complet).
+  const cri = active.view === "cri";
+  // „Cine” and the county are hidden in Esențial only at their default; set from a link they show (IMPLEMENT rule 4).
+  const roleDefault = active.role === (meta.subject === "authority" || meta.subject === "supplier" ? meta.subject : "authority");
+  return <div className="sg-explorer" data-whole={cri ? "" : undefined}>
+    <CompletOnly when={cri}>{null}</CompletOnly>
     <DiscoverNav current="semnale" />
     <header className="sg-heading"><div className="sg-title"><h1>Semnale</h1><Term id="semnal" tip /></div></header>
-    <nav className="sg-tabs" aria-label="Vizualizarea semnalelor"><button onClick={() => switchView("signals")} aria-current={active.view === "signals" ? "page" : undefined}>Cazuri, pe tipar</button><button onClick={() => switchView("cri")} aria-current={active.view === "cri" ? "page" : undefined}>Clasament după risc</button></nav>
+    <nav className="sg-tabs" aria-label="Vizualizarea semnalelor" data-only="complet"><button onClick={() => switchView("signals")} aria-current={active.view === "signals" ? "page" : undefined}>Cazuri, pe tipar</button><button onClick={() => switchView("cri")} aria-current={active.view === "cri" ? "page" : undefined}>Clasament după risc</button></nav>
     <section className={`sg-filters${active.view === "cri" ? " sg-cri-filters" : ""}`} aria-label="Filtre">
       {active.view === "signals" && <div className="sg-type-field"><span className="sg-label">Tip de semnal</span><button className="sg-type-button" onClick={() => setDialog("type")} aria-haspopup="dialog"><span>{flagLabel(code)}</span><span className="sg-chevron"/></button></div>}
-      <div className="sg-desktop-filter"><span className="sg-label">Cine</span><div className="sg-segmented">{(["authority", "supplier"] as const).map(role => <button key={role} aria-pressed={active.role === role} onClick={() => navigate({ role })}>{role === "authority" ? "Instituții" : "Firme"}</button>)}</div></div>
-      <div className="sg-desktop-filter"><County id="sg-county" role={active.role} value={active.county} onChange={county => navigate({ county })}/></div>
+      <div className="sg-desktop-filter" data-only={roleDefault ? "complet" : undefined}><span className="sg-label">Cine</span><div className="sg-segmented">{(["authority", "supplier"] as const).map(role => <button key={role} aria-pressed={active.role === role} onClick={() => navigate({ role })}>{role === "authority" ? "Instituții" : "Firme"}</button>)}</div></div>
+      <div className="sg-desktop-filter" data-only={active.county === null ? "complet" : undefined}><County id="sg-county" role={active.role} value={active.county} onChange={county => navigate({ county })}/></div>
     </section>
     {notice && <p className="sg-notice" role="status">{notice}</p>}
     {/* The pattern's name is said once, by the field above, written as the section's title; its h2 stays for the outline (UX audit Z6-15). */}
     <div className="sg-context"><div><h2 className={active.view === "signals" ? "sr-only" : undefined}>{active.view === "signals" ? flagLabel(code) : <>{active.role === "authority" ? "Instituțiile după" : "Firmele după"} <span className="sg-keep">risc <InfoMark title="Scorul de risc" text={`Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.`} /></span></>}</h2>
-      {active.view === "signals" && <p>{intro.slice(0, intro.lastIndexOf(" ") + 1)}<span className="sg-keep">{intro.slice(intro.lastIndexOf(" ") + 1)} <InfoMark title="De știut" label="De știut despre valori" text={valuesNote} /></span></p>}</div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
+      {active.view === "signals" && <p>{intro.slice(0, intro.lastIndexOf(" ") + 1)}<span className="sg-keep">{intro.slice(intro.lastIndexOf(" ") + 1)} <InfoMark title="De știut" label="De știut despre valori" text={valuesNote} /></span></p>}</div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`} data-only="complet">Criterii și limite →</Link></div>
     {/* While a change is on its way the status is the floating one (same view) or the ghost's (another view). */}
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>
@@ -232,7 +246,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {active.view === "cri" && total > 0 && rankHead()}
         {total > 0 ? <>
           {signals && <>
-            <div className="sg-case-head" aria-hidden="true"><span>{heads.entity}</span><span>{heads.partner}</span><span>{heads.meter}</span><span className="r">{heads.amount}</span><span /><span /></div>
+            {/* Without the picture its title stands over the number (owner, 18 November 2026). */}
+            <div className="sg-case-head" aria-hidden="true"><span>{heads.entity}</span><span>{heads.partner}</span><span data-only="complet">{heads.meter}</span><span className="r">{heads.amount}</span><span className="r"><span data-only="esential">{heads.meter}</span></span><span /></div>
           </>}
           {signals?.rows.map(signalRow)}
           {risk?.rows.map((r, row) => {
@@ -283,7 +298,7 @@ function ResultsGhost({ state }: { state: SignalState }) {
       : <G.Rows n={10} as="article" className="sg-result sg-case-row" cells={i => <>
         <div className="sg-entity"><div className="sg-entity-name"><G.Line w={rankWidth(i, 78, 5, 40)}/></div><p className="sg-meta"><G.Line w="64%"/></p></div>
         <div className="sg-partner-col"><div className="sg-partner"><G.Line w="70%"/></div><p className="sg-meta"><G.Line w="88%"/></p></div>
-        <div className="sg-meter-col"><span className="sg-meter"/></div>
+        <div className="sg-meter-col" data-only="complet"><span className="sg-meter"/></div>
         <div className="sg-amount"><strong><G.Line inline w="10ch"/></strong><small><G.Line inline w="12ch"/></small></div>
         <div className="sg-x"><G.Line inline w="2.4ch"/></div>
         <span className="sg-open"/></>}/>}

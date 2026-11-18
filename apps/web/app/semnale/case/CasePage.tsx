@@ -73,14 +73,25 @@ function caseTabs(data: SignalCase): Tabs {
   };
 }
 
+/**
+ * Words that mention the score, said without it in Esențial (owner, 18 November 2026: risk in words, no score there;
+ * lib/view-mode.ts). Both forms are in the page; the mode's mark shows one.
+ */
+const withoutScore = (text: string) => text.replaceAll("intră în scor", "intră în semnal").replace(", așa că tiparul nu adaugă puncte", "");
+function ScoreWords({ text }: { text: string }) {
+  const plain = withoutScore(text);
+  return plain === text ? <>{text}</> : <><span data-only="complet">{text}</span><span data-only="esential">{plain}</span></>;
+}
+
 function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState; tabs: Tabs }) {
   const { entity: e, code, counts } = data;
   const seg = (c: string) => SEGMENT_CLASS[Math.min(Math.max(0, (tabs.inScore as string[]).indexOf(c)), SEGMENT_CLASS.length - 1)];
   const href = (c: string) => roleless(data, signalUrl(state, { code: c }));
   // A tab: its segment's colour (in the score), a dashed one (found, 0 points), none (outside the score).
-  const tab = (c: string, points: ReactNode, sub: string, cls = "") => (
-    <li key={c}><Link href={href(c)} className={`sgc-tab ${cls}`} aria-current={c === code ? "page" : undefined}>
-      {cls !== "outside" && <i className="sw" aria-hidden="true" />}<span><b>{flagLabel(c)}{points}</b><small>{sub}</small></span>
+  // The points beside a name are the score's: Complet only (owner, 18 November 2026: Esențial names the patterns, no score).
+  const tab = (c: string, points: ReactNode, sub: string, cls = "", only?: "esential") => (
+    <li key={`${c}${only ?? ""}`} data-only={only}><Link href={href(c)} className={`sgc-tab ${cls}`} aria-current={c === code ? "page" : undefined}>
+      {cls !== "outside" && <i className="sw" aria-hidden="true" />}<span><b>{flagLabel(c)}{points ? <span data-only="complet">{points}</span> : null}</b><small>{sub}</small></span>
     </Link></li>
   );
   const scored = tabs.inScore.length > 0;
@@ -103,7 +114,9 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
         {tabs.inScore.map((c) => tab(c, <> · +{formatInt(e.points[c] ?? 0)}</>, caseUnitWords(c, counts[c] ?? 0), seg(c)))}
         {tabs.quiet.map((c) => tab(c, e.hasRiskScore ? " · 0" : "", e.hasRiskScore ? "găsit, prea puțin" : caseUnitWords(c, counts[c] ?? 0), "quiet"))}
         {tabs.outside.length > 0 && (scored || tabs.quiet.length > 0
-          ? <OutsideMenu current={code} items={tabs.outside.map((c) => ({ code: c, label: flagLabel(c), sub: caseUnitWords(c, counts[c] ?? 0), href: href(c) }))} />
+          // „În afara scorului” is a grouping by the score: in Esențial the same patterns are plain tabs (OutsideMenu marks itself Complet).
+          ? <><OutsideMenu current={code} items={tabs.outside.map((c) => ({ code: c, label: flagLabel(c), sub: caseUnitWords(c, counts[c] ?? 0), href: href(c) }))} />
+            {tabs.outside.map((c) => tab(c, "", caseUnitWords(c, counts[c] ?? 0), "outside", "esential"))}</>
           : tabs.outside.map((c) => tab(c, "", caseUnitWords(c, counts[c] ?? 0), "outside")))}
       </ul>
     </nav>
@@ -222,7 +235,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
               <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
-                <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : " · nu intră în scor"}</span></span>
+                <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
               </i></div>;
           })}</RovingGroup>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
@@ -241,7 +254,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
                 {g.cpvClass && (DOMAIN_ALIASES[g.cpvClass] ?? data.cpvClassNames?.[g.cpvClass])
                   ? <span title={`CPV ${g.cpvClass}${g.works ? " · lucrări" : " · produse și servicii"}`}>{classWords(g.cpvClass, data.cpvClassNames?.[g.cpvClass])}</span>
                   : <>{g.works ? "lucrări" : "produse și servicii"}{g.cpvClass ? ` (CPV ${g.cpvClass})` : ""}</>}
-                <small>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}{g.recurring ? " · aprovizionare recurentă, nu intră în scor" : g.counted ? "" : " · sub 1,2×, nu intră în scor"}</small></span>
+                <small>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}{g.recurring ? <ScoreWords text=" · aprovizionare recurentă, nu intră în scor" /> : g.counted ? "" : <ScoreWords text=" · sub 1,2×, nu intră în scor" />}</small></span>
               <span className="sgc-mini" aria-hidden="true">
                 <span className="p"><span className="pc cm-y">{g.items.slice(0, 24).map((it, k) => <i key={k} style={{ height: `${Math.min(100, it.ofCeiling * 100)}%` }} />)}</span></span>
                 <span className="t"><i className="cm-x" style={{ width: `${(g.ratio / max) * 100}%` }} /><b style={{ left: `${(1 / max) * 100}%` }} /></span>
@@ -693,8 +706,8 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
       <h1 className="sgc-title">{definition ? <Marked text={words.title} mark={<InfoMark title={flagLabel(code)} text={definition} />} /> : words.title}</h1>
       {(lede || under) && <p className="sgc-lede">
         {under && <Term tip hold="box" className="sgc-under" title="Sub prag"
-          text={<>Apare, dar sub pragul regulii: nu adună puncte în scor.{rule && <> Regula: {rule.charAt(0).toLowerCase() + rule.slice(1)}</>}</>}>Sub prag</Term>}
-        {lede}</p>}
+          text={<>Apare, dar sub pragul regulii<span data-only="complet">: nu adună puncte în scor</span>.{rule && <> Regula: {rule.charAt(0).toLowerCase() + rule.slice(1)}</>}</>}>Sub prag</Term>}
+        {lede && <ScoreWords text={lede} />}</p>}
 
       {data.total === 0 ? (
         <div className="sgc-empty"><h2>{cleanName(e.name)} nu are acum acest tipar</h2><p>Poate a avut la un calcul anterior. Celelalte tipare sunt mai jos.</p></div>
@@ -716,7 +729,7 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
       {!guide && FLAG_META[code] && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{FLAG_META[code]!.rationale}</p></div><div><h2>Explicații posibile</h2><p>{firstSentence(FLAG_META[code]!.caveat)} <Link href={`/metodologie#${code}`}>Toate limitele →</Link></p></div></div>}
 
       {/* The lead-not-proof caveat stays in sight, its sentence behind the "i"; „nu plăți” is the site footer's (owner, 17 November 2026). */}
-      <p className="sgc-foot"><Marked text="Pistă, nu dovadă" mark={<InfoMark title="De știut" text="Un tipar e o pistă de verificat, nu o dovadă." />} /> · <Link href={`/metodologie#${code}`}>Cum se calculează →</Link></p>
+      <p className="sgc-foot"><Marked text="Pistă, nu dovadă" mark={<InfoMark title="De știut" text="Un tipar e o pistă de verificat, nu o dovadă." />} /><span data-only="complet"> · <Link href={`/metodologie#${code}`}>Cum se calculează →</Link></span></p>
     </div>
   );
 }

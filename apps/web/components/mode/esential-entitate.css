@@ -1,0 +1,73 @@
+/* Esențial (lib/view-mode.ts): layout rules of the entitate pages that a data-only mark cannot express (columns by position, grids that close up).
+   Every selector starts with html[data-mode="esential"]. */
+
+/* ---- The profile (/entitati/[id]), owner, 18 November 2026 ----
+   The top strip: the score cell (Complet) gives its place to the signals by name (.ent-sigwords, data-only="esential"),
+   half and half with the ledger; the years chart is Complet's. Without a signal the ledger takes the strip alone. The
+   hidden cell still counts for the strip's `>*+*` hairline, so the first box shown loses it. */
+@media (min-width: 641px) {
+  html[data-mode="esential"] .ent-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+html[data-mode="esential"] .ent-top:not(:has(> .ent-sigwords)) { grid-template-columns: minmax(0, 1fr); }
+html[data-mode="esential"] .ent-top > .ent-sigwords,
+html[data-mode="esential"] .ent-top > .ent-risk + .ent-activity { border-left: 0; border-top: 0; }
+
+/* The signals by name: tags (.flag-badge) that link to their pages, those found but too few to count dashed and last
+   (as the signals page's quiet tabs), then „Pistă, nu dovadă” with its i. */
+html[data-mode="esential"] .ent-sigwords { gap: 10px; }
+html[data-mode="esential"] .ent-sigwords-h { margin: 0; font: 600 14px/1.4 var(--body); color: var(--ink); }
+html[data-mode="esential"] .ent-sigwords ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-mode="esential"] .ent-sigwords a.flag-badge { display: inline-block; border: 1px solid transparent; font-size: 12.5px; line-height: 1.5; text-decoration: none; transition: background var(--fast) var(--ease), color var(--fast) var(--ease); }
+html[data-mode="esential"] .ent-sigwords a.flag-badge:hover { background: var(--accent); color: var(--on-accent); }
+html[data-mode="esential"] .ent-sigwords a.flag-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html[data-mode="esential"] .ent-sigwords a.flag-badge.is-quiet { background: transparent; border: 1px dashed var(--line2); color: var(--ink2); font-weight: 500; }
+html[data-mode="esential"] .ent-sigwords a.flag-badge.is-quiet:hover { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+html[data-mode="esential"] .ent-sigwords-foot { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+html[data-mode="esential"] .ent-sigwords-keep { white-space: nowrap; }
+@media (max-width: 700px) {
+  /* A tag is a link on a phone too: a finger-sized row. */
+  html[data-mode="esential"] .ent-sigwords a.flag-badge { padding: 5px 11px; font-size: 13px; }
+}
+
+/* Conducere: a cell that keeps only Complet's „N firme fără achiziții publice” says „—”, which a phone drops, as it drops
+   Complet's empty cells. */
+@media (max-width: 700px) {
+  html[data-mode="esential"] #conducere .reps-table td.rep-other[data-esential-empty="1"] { display: none; }
+}
+
+/* ---- The signals page (/entitati/[id]/semnale) ----
+   Its content is app/semnale/case/CasePage.tsx, drawn only on this page and not in this zone's files, so its marks are
+   rules here, under its root .sgc (also the root of the page's ghost, semnale/loading.tsx). Gone: the context line with
+   the score's pill, the score bar, each tab's score colour, the CSV export, the method link of the possible explanations.
+   The column filters and the sorting of its lists stay (owner's rule). */
+html[data-mode="esential"] .sgc .sgc-crumb,
+html[data-mode="esential"] .sgc .sgc-bar,
+html[data-mode="esential"] .sgc .sgc-tab .sw,
+html[data-mode="esential"] .sgc .sgc-acts > a.sgc-btn,
+html[data-mode="esential"] .sgc .sgc-guide a[href^="/metodologie"] { display: none; }
+/* The patterns found but too few to count come last among the tabs (a flex row; the ghost's placeholders keep theirs). */
+html[data-mode="esential"] .sgc .sgc-tabs > li:has(> a.sgc-tab.quiet) { order: 1; }
+/* A group's CSV gone, its actions keep only „Salvează” for a signed-in reader; with nothing left the row goes. */
+html[data-mode="esential"] .sgc .sgc-acts:not(:has(> :not(a.sgc-btn))) { display: none; }
+
+/* The records lists: the code column goes (an identifier; the title leads to the record, „SEAP” to the source). */
+html[data-mode="esential"] .sgc .sgc-rec .sgc-code { display: none; }
+html[data-mode="esential"] .sgc .sgc-rec { grid-template-columns: 96px minmax(0, 1fr) 150px 64px; }
+@media (max-width: 760px) {
+  html[data-mode="esential"] .sgc .sgc-rec { grid-template-columns: minmax(0, 1fr) auto; }
+  html[data-mode="esential"] .sgc .sgc-rec:not(.sgc-rec-h) .sgc-date { grid-column: 1 / -1; text-align: left; }
+}
+
+/* Achiziții adunate (da_split, the only page with „Luate pe rând”): „Adunate” is the one chart, at full width; the rows'
+   mini charts go (the sum and „1,7×” stay). */
+html[data-mode="esential"] .sgc .sgc-mirror > .sgc-side:has(> .sgc-ychart) { display: none; }
+html[data-mode="esential"] .sgc .sgc-mirror:has(> .sgc-side > .sgc-ychart) { grid-template-columns: minmax(0, 1fr); }
+html[data-mode="esential"] .sgc .sgc-mirror > .sgc-side:has(> .sgc-ychart) + .sgc-side { border-left: 0; border-top: 0; }
+html[data-mode="esential"] .sgc:has(.sgc-ychart) .sgc-case .sgc-mini { display: none; }
+@media (min-width: 761px) {
+  html[data-mode="esential"] .sgc:has(.sgc-ychart) .sgc-case > summary { grid-template-columns: minmax(0, 1fr) 150px 64px; }
+}
+
+/* Sume imediat sub plafon (da_round): with the expectation's mirror shown, its swarm is a second chart (the table lists
+   the same sums with their gap); without it the swarm is the page's only picture and stays. */
+html[data-mode="esential"] .sgc:has(.sgc-mirror) .sgc-near { display: none; }

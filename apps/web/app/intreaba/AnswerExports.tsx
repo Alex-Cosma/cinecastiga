@@ -24,7 +24,8 @@ export default function AnswerExports({spec,disabled,onResult,months,onStale}:{s
   catch(e){if(request.signal.aborted)return;const refusal=sourceRefusal(e,onStale,'Exportul nu a putut fi generat.');if(refusal!==null)setMessage(refusal);}
   finally{if(!request.signal.aborted)setBusy(false);}
  }
- return <details ref={box} className="cq-export">
+ // Esențial (lib/view-mode.ts): export is Complet's (owner, 18 November 2026).
+ return <details ref={box} className="cq-export" data-only="complet">
   <summary><DiscoveryIcon name="download"/>Exportă<DiscoveryIcon name="chevronDown"/></summary>
   <div className="cq-export-options">
    <div><button type="button" disabled={disabled||busy} onClick={onResult}>Rezultatul afișat · CSV</button><p>Doar ce vezi acum.</p></div>

@@ -71,7 +71,8 @@ export default async function EntitySignalsPage({ params, searchParams }: { para
       <EntityCrumb id={id} name={name} role={r.role} bothRoles={r.bothRoles} current="Semnale" />
       <h1 className="sgc-title">Niciun semnal</h1>
       <div className="sgc-empty"><p>Nu am găsit niciun tipar în înregistrările {r.role === "authority" ? "acestei instituții" : "acestei firme"}. Lipsa unui tipar nu certifică absența neregulilor.</p>
-        <p><Link href="/metodologie#indice">Ce tipare căutăm →</Link></p></div>
+        {/* The method: Complet's (owner, 18 November 2026). */}
+        <p data-only="complet"><Link href="/metodologie#indice">Ce tipare căutăm →</Link></p></div>
     </div>;
   }
   const data = await readSignalCase({ ...r.state, entity: id });

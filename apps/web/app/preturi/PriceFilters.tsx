@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePendingRegion } from "@/components/ghost/client";
-import { PRICE_ORDERS, priceHref, priceYearLabel, type PriceOption, type PriceState } from "@/lib/unit-prices-shared";
+import { DEFAULT_PRICE_ORDER, PRICE_ORDERS, priceHref, priceYearLabel, type PriceOption, type PriceState } from "@/lib/unit-prices-shared";
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{Mn}/gu, "").toLowerCase();
 
@@ -45,10 +45,13 @@ export default function PriceFilters({ state, years, yearLeads, counties, option
     else if (e.key === "Enter") { e.preventDefault(); const o = active >= 0 ? hits[active] : text.trim() ? hits[0] : null; if (o || !text.trim()) pick(o ?? null); }
     else if (e.key === "Escape") { setOpen(false); setText(chosen?.label ?? ""); }
   };
+  // Esențial (owner, 18 November 2026): the product is the page's one control; the year, the county and the order are
+  // hidden while at their default and show when a link set them (IMPLEMENT rule 4).
+  const atDefault = (yes: boolean) => yes ? { "data-only": "complet" } : {};
   // A real GET form: without JavaScript the selects and the button below still filter the list (the typeahead becomes
   // two plain selects); with it every change replaces the list in place and the button is never rendered.
   return <form className="pr-filters" method="get" action="/preturi" onSubmit={(e) => e.preventDefault()}>
-    <label className="pr-field pr-year">An
+    <label className="pr-field pr-year" {...atDefault(state.year == null)}>An
       <select name="an" value={state.year ?? ""} onChange={(e) => go({ year: e.target.value ? Number(e.target.value) : null })}>
         <option value="">Toți anii</option>
         {years.map((y) => <option key={y} value={y}>{priceYearLabel(y, yearLeads[y])}</option>)}
@@ -89,13 +92,13 @@ export default function PriceFilters({ state, years, yearLeads, counties, option
         </select>
       </label>
     </noscript>
-    <label className="pr-field pr-county">Județ
+    <label className="pr-field pr-county" {...atDefault(state.county == null)}>Județ
       <select name="judet" value={state.county ?? ""} onChange={(e) => go({ county: e.target.value || null })}>
         <option value="">Toate</option>
         {counties.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
     </label>
-    <label className="pr-field pr-order">Ordine
+    <label className="pr-field pr-order" {...atDefault(state.order === DEFAULT_PRICE_ORDER)}>Ordine
       <select name="ordine" value={state.order} onChange={(e) => go({ order: e.target.value as PriceState["order"] })}>
         {PRICE_ORDERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

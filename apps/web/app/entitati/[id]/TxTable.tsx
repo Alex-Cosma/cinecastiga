@@ -205,7 +205,8 @@ export default function TxTable({
         </div>
         {/* The selection shown, as a file; Întreabă's drawer for captures and follows (UX audit Z5-12). */}
         <div className="tx-tools">
-          <a href={`/api/entity-tx/csv?${filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, sort, dir })).toString()}`} download>Descarcă CSV</a>
+          {/* The export is Complet's; Întreabă stays in both modes (owner, 18 November 2026). */}
+          <a href={`/api/entity-tx/csv?${filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, sort, dir })).toString()}`} download data-only="complet">Descarcă CSV</a>
           {askHref && <a href={askHref}>Deschide în Întreabă <span aria-hidden="true">↗</span></a>}
         </div>
       </div>
@@ -349,7 +350,8 @@ export default function TxTable({
                 </td>
                 <td className="c-links">
                   {t.src === "contract" && t.daCode?.trim() ? (
-                    <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`}>nr. {t.daCode.trim()}</span>
+                    // The contract's number is an identifier for whoever checks: Complet's (owner, 18 November 2026).
+                    <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`} data-only="complet">nr. {t.daCode.trim()}</span>
                   ) : null}
                   {group.some((m) => republished.has(txRowKey(m, rows.indexOf(m)))) ? (
                     <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">

@@ -86,7 +86,7 @@ export default function Sentence({ as: Tag = "h2", className, id, tabIndex, ...t
   return <Tag className={`qb-sentence${tip ? " qb-tipwrap" : ""}${className ? ` ${className}` : ""}`} {...(id ? { id } : {})} {...(tabIndex !== undefined ? { tabIndex } : {})}>{sentenceNodes(tokens)}</Tag>;
 }
 
-/** P5: how many rows and in what order, when that changes the query. */
-export function Presentation(props: TokenProps) {
-  return <p className="qb-present">{sentenceNodes(props)}</p>;
+/** P5: how many rows and in what order, when that changes the query. `only`: Esențial's mark (lib/view-mode.ts). */
+export function Presentation({ only, ...props }: TokenProps & { only?: "complet" | undefined }) {
+  return <p className="qb-present" data-only={only}>{sentenceNodes(props)}</p>;
 }

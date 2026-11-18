@@ -13,6 +13,14 @@ import "@/components/motion/windows.css";
 import "@/components/motion/disclosures.css";
 import "@/components/motion/outline.css";
 import "@/components/themed-select/themed-select.css";
+import "@/components/mode/mode.css";
+import "@/components/mode/esential-acasa-harta.css";
+import "@/components/mode/esential-cauta-domenii.css";
+import "@/components/mode/esential-intreaba.css";
+import "@/components/mode/esential-entitate.css";
+import "@/components/mode/esential-inregistrari.css";
+import "@/components/mode/esential-semnale-preturi-ghid.css";
+import "@/components/mode/esential-ghid.css";
 import ThemedSelect from "@/components/themed-select/ThemedSelect";
 import InlineScript from "@/components/InlineScript";
 import TourGate from "@/components/tour/TourGate";
@@ -25,6 +33,8 @@ import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
 import SiteNav from "./SiteNav";
 import ThemeToggle from "./ThemeToggle";
+import ModeSwitch from "./ModeSwitch";
+import { viewModeScript } from "@/lib/view-mode";
 import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
 import MotionKit from "@/components/motion/MotionKit";
@@ -54,6 +64,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="ro" suppressHydrationWarning>
       <body>
         <InlineScript html={themeScript} />
+        {/* Esențial or Complet (lib/view-mode.ts): stamped before paint, like the theme. */}
+        <InlineScript html={viewModeScript} />
         <a className="d-skip-link" href="#main-content">Mergi la conținut</a>
         <header className="site-header" style={{ viewTransitionName: "site-header" }}>
           <div className="wrap">
@@ -65,6 +77,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <SiteNav sessionHint={sessionHint} />
             <div className="hdr-right">
               <GlobalSearch />
+              <ModeSwitch sessionHint={sessionHint} />
               <ThemeToggle />
               <HeaderUserNav sessionHint={sessionHint} />
             </div>
@@ -97,7 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <li><Link href="/?tur=1" prefetch={false}>Turul de bun venit</Link></li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
                 <FooterAdminLinks />
-                <li>
+                <li data-only="complet">
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>
                 <li>

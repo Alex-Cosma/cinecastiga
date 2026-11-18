@@ -24,6 +24,7 @@ import { baniDecimal } from "@/lib/signal-money";
 import { joinWords, partyShares, ratioNumber, shareWords } from "@/lib/signal-page-words";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { groupSourceRecords } from "@/lib/source-groups";
+import { SIGNAL_RECORDS_PAGE, titlesPage } from "./records-page";
 
 /*
  * One signal on the record template (owner, 7 November 2026): the head is the finding (who, how much, against what),
@@ -35,7 +36,8 @@ import { groupSourceRecords } from "@/lib/source-groups";
 export const dynamic = "force-dynamic";
 
 const caseTarget = cache((id: string) => readCaseTarget(id).catch(() => null));
-const pageData = cache((id: string, page: number) => readSignalPageData(id, page));
+// The titles are read for the 50 rows that hold the page of 10 on screen (records-page.ts).
+const pageData = cache((id: string, page: number) => readSignalPageData(id, titlesPage(page)));
 const pageOf = (p: string | undefined) => { const n = Number(p ?? 0); return Number.isSafeInteger(n) && n >= 0 ? n : 0; };
 
 export async function generateMetadata({ params, searchParams }: {
@@ -258,6 +260,13 @@ export default async function SignalPage({ params, searchParams }: {
     { href: "/metodologie#semnale", label: `Cum se calculează: ${flagLabel(d.code)}` },
     { href: "/metodologie#citare", label: "Cum citez" },
   ];
+  // Esențial (owner, 18 November 2026): the links into the method (Complet's lanes of /metodologie) and the calculation's
+  // version go (zone CSS, components/mode/esential-semnale-preturi-ghid.css); without a source in SEAP or TED (a firm
+  // signal) the section goes with them.
+  const sourcesLeft = sources.some((s) => !s.href.startsWith("/metodologie"));
+  const sourcesBlock = <Sources sources={sources}>
+    <p data-only="complet">Calcul {d.methodology} <Term tip title={GLOSSARY["recalculare-semnale"].title} text={`${GLOSSARY["recalculare-semnale"].text} Lista se poate schimba la recalculare.`} /></p>
+  </Sources>;
   return <RecordPage className="signal-record">
     {/* The way back says where it goes: the entity's page of this pattern (UX audit Z6-24). */}
     <Link href={caseHref} className="back">← {d.entity ? `${cleanName(d.entity.name) || (role === "supplier" ? "Firma" : "Instituția")} · ${flagLabel(d.code)}` : `Toate cazurile: ${flagLabel(d.code)}`}</Link>
@@ -285,19 +294,18 @@ export default async function SignalPage({ params, searchParams }: {
     <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : d.code === "award_calloffs_over_ceiling" ? "Comenzile anunțului" : "Înregistrările din semnal"}>
       {/* The records' count and sum are the head's when its value is theirs; the institution, when the head names it (owner,
           17 November 2026). The call-offs keep theirs: their head is the declared sum, not the records'. */}
-      <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} kind="signal" refId={id} heading={null} save={false} titles={d.titles}
+      <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} pageSize={SIGNAL_RECORDS_PAGE} essential kind="signal" refId={id} heading={null} save={false} titles={d.titles}
         notes={lots.notes} notesOpen={false} common={{ extra: lots.common, authorityId: d.entity?.role === "authority" ? d.entity.id : d.code === "net_shared_admin" ? d.partner?.id ?? null : null }}
         total={d.code === "award_calloffs_over_ceiling" || head.value?.amount !== lei(d.source.totalExact)} />
     </RecordSection>
 
-    {others.length > 0 && d.entity && <RecordSection id="alte-semnale" title={`Alte semnale ale ${role === "supplier" ? "firmei" : "instituției"}`}>
+    {/* The entity's other signals: a second way onward, Complet's (owner, 18 November 2026); its page lists them. */}
+    {others.length > 0 && d.entity && <div data-only="complet"><RecordSection id="alte-semnale" title={`Alte semnale ale ${role === "supplier" ? "firmei" : "instituției"}`}>
       <LinkList items={others.map(([code, n]) => ({ key: code, href: signalUrl(parseSignalState({ tip: code, rol: role, ent: d.entity!.id })), label: flagLabel(code), count: caseUnitWords(code, n) }))} />
-    </RecordSection>}
+    </RecordSection></div>}
 
     {meta?.caveat && <details className="record-caveat"><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
 
-    <Sources sources={sources}>
-      <p>Calcul {d.methodology} <Term tip title={GLOSSARY["recalculare-semnale"].title} text={`${GLOSSARY["recalculare-semnale"].text} Lista se poate schimba la recalculare.`} /></p>
-    </Sources>
+    {sourcesLeft ? sourcesBlock : <div data-only="complet">{sourcesBlock}</div>}
   </RecordPage>;
 }

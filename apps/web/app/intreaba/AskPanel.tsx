@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cancelNavPending } from "../../components/ghost/client";
 import Link from "next/link";
+import { CompletLine } from "@/components/mode/CompletOnly";
 import ClipButton from "@/components/ClipButton";
 import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
 import FollowButton from "@/components/FollowButton";
@@ -47,7 +48,7 @@ import SankeyAnswer from "./SankeyAnswer";
 import { NETWORK_LIST_CSV, networkWatch, shownList as shownNetworkList } from "./network-answer";
 import { domainName, sankeySuggestion, shownOptions as sankeyShownOptions } from "./sankey-answer";
 import { networkList, NETWORK_LIST_LABELS, type NetworkList, type NetworkOrder } from "@/lib/ask/network-shared";
-import { sankeyShown } from "@/lib/ask/sankey-shared";
+import { DEFAULT_SANKEY_SHOWN, sankeyShown } from "@/lib/ask/sankey-shared";
 import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
 import { specTrendList, specTrendPartLabel, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
@@ -126,6 +127,7 @@ import { isCpvCode } from "./cpv-name";
 import type { AskLinkHint } from "./link-hint";
 import { MixGhost } from "./answer/StatMix";
 import { answerSubject, useChartMotion } from "./answer/chart-motion";
+import { completIf, completeOnlyAnswer } from "./esential";
 import { scrollMotion } from "../../components/motion/scroll";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
@@ -271,6 +273,8 @@ export default function AskPanel({
   /** The saved questions asked for: the builder opens „Toate întrebările” on „Salvate” (Z2-27). */
   const [wantSaved, setWantSaved] = useState(false);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
+  // Esențial keeps „Păstrează” for a signed-in reader only (owner, 18 November 2026): the answer's head reads who reads.
+  const viewer = useViewer();
   /**
    * The question the answer on screen answers (plan §2.3): the server's resolved
    * spec, then what the strip changed on it. Sources, Salvează, Trimite,
@@ -1115,6 +1119,27 @@ export default function AskPanel({
   // Beside an answer the builder's sentence is the answer's title and its choices apply at once (UX audit Z2-03 B,
   // owner 16 November 2026): the builder stays mounted, folded or not, and draws its editor in the answer's head.
   const live = mode === "build" && builderOpen && Boolean(resp?.ok && data && applied);
+  /*
+   * Esențial (lib/view-mode.ts, owner 18 November 2026): beside an answer the page is the question (its words still open
+   * their windows), the answer and its records. The builder's bar, the question box, the share and export tools, the
+   * strip at its defaults and the rows' „⋯” are marked `data-only="complet"`; a strip control a link set away from its
+   * default stays, so the reader sees the answer is shaped and can undo it. An answer that is the risk score is a
+   * Complet page, shown whole with its line (esential.ts).
+   */
+  const answerOnScreen = Boolean(resp?.ok && data && applied);
+  const whole = completeOnlyAnswer(resp?.ok && applied ? applied : asked);
+  const sameMonths = data?.block === "timeseries" && applied ? sameMonthsSwitch(data, applied) : null;
+  const stripSet = {
+    split: Boolean(data?.block === "timeseries" && stripKeys.includes("timeseriesSplit") && applied?.timeseries?.split),
+    months: Boolean(data?.block === "timeseries" && stripKeys.includes("timeseriesMonths") && sameMonths?.on),
+    shared: Boolean(data?.block === "compare" && stripKeys.includes("sharedPartners") && data.entities[0]?.role === "supplier" && applied?.filters.sharedPartners === true),
+    lens: Boolean(stripKeys.includes("measure") && data?.block === "map" && lensChoices && mapLens && mapLens !== "value"),
+    table: Boolean(data && ["timeseries", "map", "sankey"].includes(data.block) && layout === "table"),
+    kind: Boolean(data?.block === "breakdown" && !crumbs && applied?.filters.purchaseKind && PURCHASE_KIND_WORDS[applied.filters.purchaseKind]),
+    crumbs: Boolean(crumbs),
+    sankey: Boolean(data?.block === "sankey" && stripKeys.includes("sankeyShown") && applied && sankeyShown(applied) !== DEFAULT_SANKEY_SHOWN),
+  };
+  const stripKept = Object.values(stripSet).some(Boolean);
   // The builder's door is the link under the box: it opens under the examples and takes the focus, in view.
   const openBuilder = () => {
     setBuilderOpen(true);
@@ -1142,7 +1167,10 @@ export default function AskPanel({
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
       data-mode={mode}
+      {...(whole ? { "data-whole": "" } : {})}
     >
+      {/* CompletOnly's line, on the same element (no wrapper: the panel keeps its state from one answer to the next). */}
+      {whole && <CompletLine />}
       {toast && (
         <div className="ask-toast" role="status">
           {toast}
@@ -1150,10 +1178,11 @@ export default function AskPanel({
         </div>
       )}
       {/* The page title is the question box's label: one line says what this page does. */}
-      <header className="cq-workspace-header ia-head" hidden={askFolded}>
+      {/* Beside an answer the box is „Întreabă altceva…”, which Esențial leaves out; so is the box a link with &drill=1 opens. */}
+      <header className="cq-workspace-header ia-head" hidden={askFolded} data-only={completIf(answerOnScreen)}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} placeholder={resp?.ok ? "Întreabă altceva…" : undefined} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
+      <AskBox value={askText} onChange={setAskText} placeholder={resp?.ok ? "Întreabă altceva…" : undefined} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} only={completIf(answerOnScreen)} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       {/* A link that could not be opened (nothing was asked): said right under the box (UX audit Z2-31). */}
       {error && !lastBody.current && <div className="cq-error ia-link-error" role="alert" id="raspuns-eroare"><strong>{error}</strong></div>}
@@ -1249,17 +1278,18 @@ export default function AskPanel({
       {builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className={`ia-builder${builderCollapsed ? " ia-builder-collapsed" : ""}${live ? " ia-builder-live" : ""}`}>
           {builderCollapsed ? <>
-            <button type="button" className="ia-change-question" aria-expanded="false" onClick={() => setBuilderCollapsed(false)}>
+            {/* Esențial: the question's words open their windows in the title; the builder's own doors stay in Complet. */}
+            <button type="button" className="ia-change-question" aria-expanded="false" onClick={() => setBuilderCollapsed(false)} data-only="complet">
               <PencilIcon />
               Schimbă întrebarea
             </button>
-            {askFolded && <button type="button" className="ia-change-question ia-ask-again" aria-label="Întreabă altceva" onClick={askAgain}>
+            {askFolded && <button type="button" className="ia-change-question ia-ask-again" aria-label="Întreabă altceva" onClick={askAgain} data-only="complet">
               <DiscoveryIcon name="search" />
               <span className="ia-ask-again-wide">Întreabă altceva…</span>
               <span className="ia-ask-again-narrow">Altă întrebare…</span>
             </button>}
             {/* Back to the empty page, without reloading it (UX audit Z2-14); a new tab keeps the browser's way. */}
-            <a className="ia-new-question" href="/intreaba" onClick={(event) => {
+            <a className="ia-new-question" href="/intreaba" data-only="complet" onClick={(event) => {
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
               startOver();
@@ -1267,7 +1297,8 @@ export default function AskPanel({
               requestAnimationFrame(() => { window.scrollTo({ top: 0 }); askRef.current?.focus({ preventScroll: true }); });
             }}>Întrebare nouă</a>
           </> : (
-            <div className="ia-builder-head">
+            // Open beside an answer (a link with &drill=1 lands so) it is „Schimbă întrebarea” opened: Complet's.
+            <div className="ia-builder-head" data-only={completIf(live)}>
               <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>{live ? "Alt fel de întrebare" : "Construiește întrebarea pas cu pas"}</h2>
               {/* Folds the builder again (UX audit Z2-14): under „Schimbă întrebarea” beside an answer, shut on the empty page.
                   Not with edits not applied: they would be lost unsaid („Renunță la modificări” first). */}
@@ -1370,8 +1401,9 @@ export default function AskPanel({
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
-                {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
-                <div className="cq-answer-more">
+                {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”.
+                    Esențial keeps „Păstrează” for a signed-in reader (IMPLEMENT rule 7); Trimite and Exportă are Complet's. */}
+                <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
                   <ShareMenu copied={linkCopied} onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
                     onShare={() => void share(answerPath(applied, thread), title)} />
                   <SaveQuestionButton spec={applied} active={answerSaved} onSaved={(question) => {
@@ -1413,15 +1445,18 @@ export default function AskPanel({
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. A ranking's
                 strip would hold only „Vizual | Tabel” (owner, 1 November 2026): it ends the row of „Unde e o firmă?” instead. */}
             {/* Z3-29: an empty answer has nothing for its strip to act on. */}
+            {/* Esențial: the strip goes while every control in it is at its default; one a link set stays (esential.ts). */}
             {!empty && (stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
-              <div className="qb cq-strip"><AnswerStrip>
+              <div className="qb cq-strip" data-only={completIf(!stripKept)}><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
                   // F4: the network's and the flow's from their own `streams` (the selection on every channel); on one channel,
                   // those of the same question on every channel this page answered (streamsMemo).
                   const streams = data.block === "breakdown" || data.block === "network" || data.block === "sankey" ? data.streams ?? keptStreams(data.block, applied) : undefined;
                   const shares = streams ? channelShares({ streams }, data.block === "breakdown" && applied.measure === "count") : null;
+                  // The channel is a word of the title too, which Esențial keeps: here it goes, with its shares.
                   const control = <Segmented
+                    only={shares ? undefined : "complet"}
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
                     options={shares ? shares.options(streamOptions(applied)) : streamOptions(applied)}
@@ -1431,12 +1466,12 @@ export default function AskPanel({
                       applyStripChange("dataset", value);
                     }}
                   />;
-                  return shares ? <StripLabelled after={shares.unit} title={shares.title} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
+                  return shares ? <StripLabelled after={shares.unit} title={shares.title} wide only="complet">{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
                 })()}
                 {/* Two firms (F4, final compare §3.4): „Doar clienții comuni N”, N the shared clients of the answer on screen. */}
                 {data.block === "compare" && stripKeys.includes("sharedPartners") && data.entities[0]?.role === "supplier" && (() => {
                   const on = applied.filters.sharedPartners === true, n = data.shared?.total ?? 0;
-                  return <span className="qb-pair qb-tipwrap-sm">
+                  return <span className="qb-pair qb-tipwrap-sm" data-only={completIf(!on)}>
                     <Toggle id="cmp-shared" label="Doar clienții comuni" pressed={on} count={formatInt(n)}
                       {...(!on && n === 0 ? { availability: { state: "disabled" as const, reason: "Nicio instituție nu a cumpărat de la amândouă în selecția aleasă." } } : {})}
                       onToggle={(_id, pressed) => applySharedPartners(pressed)} />
@@ -1445,7 +1480,7 @@ export default function AskPanel({
                 })()}
                 {/* The evolution's split and same months (F3, final timeseries §3.8–§3.9): each a new grouping. */}
                 {data.block === "timeseries" && stripKeys.includes("timeseriesSplit") && (
-                  <StripLabelled before="Împarte" smHide>
+                  <StripLabelled before="Împarte" smHide only={completIf(!stripSet.split)}>
                     <Segmented
                       label="Împarte"
                       value={`split:${applied.timeseries?.split ?? ""}`}
@@ -1456,7 +1491,7 @@ export default function AskPanel({
                 )}
                 {data.block === "timeseries" && stripKeys.includes("timeseriesMonths") && (() => {
                   const window = sameMonthsSwitch(data, applied);
-                  return window && <span className="qb-pair qb-tipwrap-sm">
+                  return window && <span className="qb-pair qb-tipwrap-sm" data-only={completIf(!window.on)}>
                     <Toggle id="ts-months" label={`Aceleași luni: ${window.label}`} pressed={window.on}
                       onToggle={(_id, pressed) => applyStripChange("timeseries", pressed ? "months:auto" : "months:")} />
                     <HelpTip tip={{ title: "Aceleași luni", text: `Fiecare an e tăiat la ${window.label}, ultimele luni complete din ${window.year}. 2018 nu intră în comparație.` }} />
@@ -1469,11 +1504,11 @@ export default function AskPanel({
                 {data.block === "breakdown" && !(data.slices.length === 1 && data.slices[0]!.count === 1 && data.other.count === 0) && (() => {
                   // Z3-33: a single record has nothing deeper to show.
                   const deeper = breakdownSuggestion(data, applied, thread);
-                  return deeper && <Suggest text={deeper.text} href={deeper.href} />;
+                  return deeper && <Suggest text={deeper.text} href={deeper.href} only="complet" />;
                 })()}
                 {/* The flow's length, its domains' thread and the suggestion to go down (F4, final sankey §3.2–§3.4). */}
                 {data.block === "sankey" && stripKeys.includes("sankeyShown") && (
-                  <StripLabelled before="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"}>
+                  <StripLabelled before="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"} only={completIf(!stripSet.sankey)}>
                     <Segmented label="Câți parteneri arăți" size="sm" value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
                       onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
                     {/* Z3-28: a phone's native menu, „Arată [6 ▾] firme”. */}
@@ -1482,14 +1517,14 @@ export default function AskPanel({
                   </StripLabelled>
                 )}
                 {data.block === "sankey" && !crumbs && (applied.filters.cpvTerm
-                  ? <Crumbs label="Domenii" items={[{ label: "toate", href: threadHref(applied, null, null) }]} current={cpvName ?? `„${String(applied.filters.cpvTerm)}”`} />
-                  : <span className="qb-row qb-tipwrap-sm"><Crumbs label="Domenii" items={[]} current="toate" /><HelpTip tip={{ title: "Domenii", text: "Domeniul = codul CPV declarat de instituție pentru fiecare înregistrare. Detaliază coboară un nivel." }} /></span>)}
+                  ? <Crumbs label="Domenii" items={[{ label: "toate", href: threadHref(applied, null, null) }]} current={cpvName ?? `„${String(applied.filters.cpvTerm)}”`} only="complet" />
+                  : <span className="qb-row qb-tipwrap-sm" data-only="complet"><Crumbs label="Domenii" items={[]} current="toate" /><HelpTip tip={{ title: "Domenii", text: "Domeniul = codul CPV declarat de instituție pentru fiecare înregistrare. Detaliază coboară un nivel." }} /></span>)}
                 {data.block === "sankey" && (() => {
                   const deeper = sankeySuggestion(data);
-                  return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.name))} />;
+                  return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.name))} only="complet" />;
                 })()}
                 {stripKeys.includes("measure") && data.block === "map" && lensChoices && mapLens && (
-                  <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens">
+                  <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens" data-only={completIf(!stripSet.lens)}>
                     <StripLabelled before="Harta arată">
                       <Segmented
                         label="Harta arată"
@@ -1502,7 +1537,7 @@ export default function AskPanel({
                     </StripLabelled>
                     {/* Per inhabitant only for the local administrations (map final §3.7): the link changes the buyers, in view. */}
                     {!mapFirm(applied) && !mapLocalAdmin(applied) && (
-                      <span className="qb-row ask-percap-link">
+                      <span className="qb-row ask-percap-link" data-only="complet">
                         <button type="button" className="qb-link" onClick={() => perInhabitant()}>Pe locuitor<span className="qb-glyph" aria-hidden="true">→</span></button>
                         <HelpTip tip={PER_INHABITANT_TIP} />
                       </span>
@@ -1510,7 +1545,7 @@ export default function AskPanel({
                   </span>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} drill={data.block === "breakdown"} />}
-                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd wideOnly={data.block === "sankey"}>{layoutToggle}</StripEnd>}
+                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd wideOnly={data.block === "sankey"} only={completIf(!stripSet.table)}>{layoutToggle}</StripEnd>}
               </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
@@ -1540,9 +1575,10 @@ export default function AskPanel({
               {/* Z3-33: a ranking of one has nothing to find and one view: no search, no „Vizual | Tabel”. */}
               {data.block === "table" && data.rows.length === 1 && (data.page ?? 0) === 0 && (data.totals?.entities ?? data.total ?? 1) <= 1 ? null
                 : data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
-                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle} onFound={setLocateFound}
+                // Esențial: „Unde e o firmă?” and „Vizual | Tabel” are Complet's, unless the table is on screen (its way back).
+                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle} onFound={setLocateFound} only={completIf(layout === "visual")}
                   shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
-                : data.block === "table" && <div className="qb cq-layout-row">{layoutToggle}</div>}
+                : data.block === "table" && <div className="qb cq-layout-row" data-only={completIf(layout === "visual")}>{layoutToggle}</div>}
               {data.block === "table" &&
                 (layout === "visual" ? (
                   <RankingBars
@@ -1775,8 +1811,9 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
       </div>
       <div className="cq-answer-actions g-quiet" inert>
         <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
-        <div className="cq-answer-more">
-          <span className="qb cq-share-menu"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
+        {/* Esențial: marked as the answer's own (rule 8), so the ghost has its shape in each mode. */}
+        <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
+          <span className="qb cq-share-menu" data-only="complet"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
           <span className="cq-save-wrap"><button type="button" className="cq-save-question">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
             <span>Salvează</span>
@@ -1816,7 +1853,9 @@ function StripGhost({ spec }: { spec: AskSpec }) {
     // A breakdown's channels say their share (channelShares): the place of the number beside each.
     ? streamOptions(spec).map((option) => option.value === "da" || option.value === "contracts" ? { ...option, label: <>{option.label} {share}</> } : option)
     : streamOptions(spec);
-  return <div className="qb cq-strip g-quiet" inert><AnswerStrip>
+  // Esențial: as the answer's strip, gone at its defaults (an evolution split by a link keeps it).
+  const kept = (spec.block === "timeseries" && Boolean(spec.timeseries?.split)) || (spec.block === "map" && spec.measure !== "value");
+  return <div className="qb cq-strip g-quiet" inert data-only={completIf(!kept)}><AnswerStrip>
     {keys.includes("dataset") && (spec.block === "breakdown"
       ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} title={spec.measure === "count" ? "Cota din înregistrări" : "Cota din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
       : <Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} />)}
@@ -1837,11 +1876,11 @@ function RankingGhost({ spec }: { spec: AskSpec }) {
   const conditions = totalConditionWords(spec);
   return <>
     {locate
-      ? <div className="qb cq-locate g-quiet" inert>
+      ? <div className="qb cq-locate g-quiet" inert data-only="complet">
         <Locate label={spec.dim === "supplier" ? "Unde e o firmă?" : "Unde e o instituție?"} results={[]} loading={false} onSearch={() => undefined} onPick={() => undefined} />
         <span className="cq-locate-end">{toggle}</span>
       </div>
-      : <div className="qb cq-layout-row g-quiet" inert>{toggle}</div>}
+      : <div className="qb cq-layout-row g-quiet" inert data-only="complet">{toggle}</div>}
     <div className="cq-ranking" inert>
       <G.Rows n={rows} as="div" className="cq-rank-row" cells={(i) => <>
         <div className="cq-rank-main">
@@ -1856,7 +1895,7 @@ function RankingGhost({ spec }: { spec: AskSpec }) {
             <button type="button" className="cq-rank-records"><G.Line inline w="24ch" /><G.Line w="12ch" only="phone" /></button>
           </span>
         </div>
-        {spec.dim !== "county" && <span className="qb cq-rank-menu g-quiet"><button type="button" className="qb-more">⋯</button></span>}
+        {spec.dim !== "county" && <span className="qb cq-rank-menu g-quiet" data-only="complet"><button type="button" className="qb-more">⋯</button></span>}
       </>} />
       {/* The rest of the selection after the rows shown (rankingRest). */}
       <div className="cq-rank-rest">
@@ -2024,11 +2063,11 @@ function RankingBars({
                   ? countWords(r.count, "înregistrare", "înregistrări")
                   : formatRonFull(metric(r))}
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
-                {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
+                {spec.measure !== "count" && share !== null && <span className="cq-rank-share" data-only="complet"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
               </strong>
               <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${shown}`}>
                 {spec.measure === "count"
-                  ? <>{formatRonFull(r.value)}{share !== null && <> · {formatShare(share)} din total</>}</>
+                  ? <>{formatRonFull(r.value)}{share !== null && <span data-only="complet"> · {formatShare(share)} din total</span>}</>
                   : countWords(r.count, "înregistrare", "înregistrări")}
                 {" →"}
               </button>
@@ -2041,7 +2080,8 @@ function RankingBars({
           return actions.length ? <div className={`cq-rank-row${marked ? " is-found" : ""}`} key={r.entityId ?? r.name} data-qb-arow="" data-rank-id={r.entityId ?? undefined} ref={motion.join}>
             {row}
             {marked && <SelectTrace key={`found:${foundId}`} />}
-            <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
+            {/* Esențial: the row's „⋯” (Scoate din calcul, Radiografia ↗) is Complet's; its records are the link beside the sum. */}
+            <span className="qb cq-rank-menu" data-only="complet"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
         })}
         {rest && (
@@ -2052,7 +2092,7 @@ function RankingBars({
             </span>
             <span className="cq-rank-value">
               <strong>{spec.measure === "count" ? countWords(rest.count, "înregistrare", "înregistrări") : formatRonFull(rest.value)}</strong>
-              <small>{spec.measure === "count" ? formatRonFull(rest.value) : countWords(rest.count, "înregistrare", "înregistrări")} · {formatShare(rest.share)} din total</small>
+              <small>{spec.measure === "count" ? formatRonFull(rest.value) : countWords(rest.count, "înregistrare", "înregistrări")}<span data-only="complet"> · {formatShare(rest.share)} din total</span></small>
             </span>
           </div>
         )}
@@ -2071,7 +2111,7 @@ function RankingBars({
               <span className="cq-rank-value">
                 <strong>
                   {spec.measure === "count" ? countWords(count, "înregistrare", "înregistrări") : formatRonFull(value)}
-                  {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
+                  {spec.measure !== "count" && share !== null && <span className="cq-rank-share" data-only="complet"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
                 </strong>
                 <button type="button" className="cq-rank-records" aria-label={`Înregistrările din clasament: ${cleanName(pinned.name)}`}
                   onClick={() => onSources(spec, entitySourceScope(spec, row), `${cleanName(pinned.name)} · înregistrările din clasament`)}>

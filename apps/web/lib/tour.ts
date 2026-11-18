@@ -27,8 +27,13 @@ export const TOUR_TOPICS: readonly TourTopic[] = [
   { key: "salubritate", label: "Salubritate și mediu", inText: "salubritate și mediu", query: "deșeuri", cpv2: ["90"] },
 ];
 
-/** The steps: the choice, then five ideas; the last one (the search) hands over to the home page. */
-export const TOUR_LAST_STEP = 5;
+/** The step that types the question the tour hands over to the home page. */
+export const TOUR_SEARCH_STEP = 5;
+/**
+ * The steps: the county and subject, five ideas, then how much of the site to see (Esențial or Complet, lib/view-mode.ts;
+ * owner, 18 November 2026). Leaving that last step dissolves the tour.
+ */
+export const TOUR_LAST_STEP = 6;
 
 /** One county and subject in the tour's year: direct awards (count, lei), contracts (count, lei), institutions. */
 export type TourFigures = readonly [daCount: number, daValue: number, contractCount: number, contractValue: number, authorities: number];

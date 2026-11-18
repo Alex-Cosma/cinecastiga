@@ -1,0 +1,31 @@
+/* Esențial (lib/view-mode.ts): layout rules of the semnale-preturi-ghid pages that a data-only mark cannot express (columns by position, grids that close up).
+   Every selector starts with html[data-mode="esential"]. */
+
+/* /semnale (owner, 18 November 2026): the case rows and their head without the picture's column (its multiple stays,
+   the picture's title over it). The multiple keeps Complet's width (a long one: „+1.609.429 lei”); the freed width
+   goes to the names. The phone's cards need nothing. */
+@media (min-width: 1001px) {
+  html[data-mode="esential"] :is(.sg-case-row, .sg-case-head):not([data-whole] *) { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 150px 122px 20px; }
+}
+@media (min-width: 701px) and (max-width: 1000px) {
+  html[data-mode="esential"] :is(.sg-case-row, .sg-case-head):not([data-whole] *) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 120px 104px 18px; }
+}
+
+/* /semnale/[id] (owner, 18 November 2026), on the record template (components/record, whose items a mark cannot
+   reach from this page): the firm's name, CUI and ONRC managers go, its balance sheets stay; in „Surse” the links into
+   the method (Complet's lanes of /metodologie) go, the SEAP and TED sources stay. */
+html[data-mode="esential"] .signal-record #firma .record-facts:not([data-whole] *) { display: none; }
+html[data-mode="esential"] .signal-record .record-sources li:has(> a[href^="/metodologie"]):not([data-whole] *) { display: none; }
+
+/* /preturi (owner, 18 November 2026): the count of leads stands alone, without the room kept for the two totals under
+   it; an opened product's rows close up without the quantity. */
+html[data-mode="esential"] .pr-total { min-height: 0; }
+/* On a phone the filters are a grid of three rows (product; year and county; order): the rows of the selects hidden at
+   their default must not keep their gaps under the product, so a select that shows (set from a link) brings its own. */
+@media (max-width: 700px) {
+  html[data-mode="esential"] .pr-filters { row-gap: 0; }
+  html[data-mode="esential"] .pr-filters > .pr-field:not(.pr-pick) { margin-top: 12px; }
+}
+@media (min-width: 901px) {
+  html[data-mode="esential"] .pr-lead { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) 64px minmax(0, 1fr) minmax(0, 1.4fr) 76px; }
+}

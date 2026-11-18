@@ -19,6 +19,7 @@ import { FOREIGN } from "@/lib/ted-columns";
 import OpenFunnel from "./OpenFunnel";
 import DiscoverNav from "@/components/discover/DiscoverNav";
 import DiscoverPager from "@/components/discover/DiscoverPager";
+import CompletOnly from "@/components/mode/CompletOnly";
 import "./supra-prag.css";
 
 export const dynamic = "force-dynamic";
@@ -156,8 +157,9 @@ export default async function SupraPragPage({
     { key: "oferte", n: stats.singleBidder, label: "cu o singură ofertă primită", on: has("oferte", "unu"), href: toggle("oferte", "unu") },
   ];
 
+  // The page belongs to Complet (owner, 18 November 2026): Esențial hides the links to it, and shows it whole when opened.
   return (
-    <>
+    <CompletOnly>
       <DiscoverNav current="supra-prag" />
       <h1 className="page-title ted-title">Atribuiri publicate în <span className="tp-nowrap">TED<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span></h1>
       <p className="hint ted-tip-line">
@@ -294,6 +296,6 @@ export default async function SupraPragPage({
 
       </section>
       </PendingRegion>
-    </>
+    </CompletOnly>
   );
 }

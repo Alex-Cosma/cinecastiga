@@ -28,7 +28,8 @@ function LeadRow({ lead, query, suppliers }: { lead: PriceLead; query: StripQuer
     </span>
     <span className="pr-lead-price"><b>{formatUnitPrice(lead.price)}</b> {query.per}<small>mediana {formatUnitPrice(lead.median)}</small></span>
     <span className="pr-lead-x">{formatRatio(lead.ratio)}</span>
-    <span className="pr-lead-qty">{formatQuantity(lead.quantity, query.per)}<small>{lead.awards === 1 ? "o achiziție" : `${lead.awards} achiziții`}</small></span>
+    {/* The quantity is a second-level fact: Complet's (owner, 18 November 2026); the zone CSS closes the grid. */}
+    <span className="pr-lead-qty" data-only="complet">{formatQuantity(lead.quantity, query.per)}<small>{lead.awards === 1 ? "o achiziție" : `${lead.awards} achiziții`}</small></span>
     <span className="pr-lead-lei">{formatLei(lead.excess)}<small>peste mediană</small></span>
     <span className="pr-lead-sup">{named.length ? <>{named.map((id, i) => <Fragment key={id}>{i > 0 && ", "}<EntityName id={id} role="supplier">{suppliers[id]}</EntityName></Fragment>)}{lead.supplierIds.length > 2 && ` și încă ${lead.supplierIds.length - 2}`}</> : "—"}</span>
     <Link className="pr-lead-open" href={leadHref(query.family, query.pack, query.year, lead)} prefetch={false} aria-label={`Liniile: ${lead.name}, ${lead.year}`}>Liniile</Link>
@@ -41,7 +42,7 @@ function GhostRows({ n }: { n: number }) {
     <span className="pr-lead-who"><G.Line w={`${78 - (i % 3) * 14}%`} /><small><G.Line w="34%" /></small></span>
     <span className="pr-lead-price"><G.Line w="72%" /><small><G.Line w="58%" /></small></span>
     <span className="pr-lead-x"><G.Line w="100%" /></span>
-    <span className="pr-lead-qty"><G.Line w="60%" /><small><G.Line w="52%" /></small></span>
+    <span className="pr-lead-qty" data-only="complet"><G.Line w="60%" /><small><G.Line w="52%" /></small></span>
     <span className="pr-lead-lei"><G.Line w="64%" /><small><G.Line w="70%" /></small></span>
     <span className="pr-lead-sup"><G.Line w={`${70 - (i % 2) * 20}%`} /></span>
     <span className="pr-lead-open pr-lead-open-ghost"><G.Line w="100%" /></span>
@@ -83,8 +84,10 @@ function StripLeadRows({ query, expected }: { query: StripQuery; expected: numbe
  * pressed stays where it was pressed: closing the one open above it would otherwise move it off the screen (measured,
  * 11 November 2026), so the page is scrolled back by exactly what the layout moved. Its lead rows load on first open.
  */
-export default function StripRow({ className, query, leads, head, summary, label, children }: {
+export default function StripRow({ className, query, leads, head, summary, label, children, completOnly = false }: {
   className: string; query: StripQuery;
+  /** The strip exists only in Complet (lib/view-mode.ts): a product without a price above double in the whole list. */
+  completOnly?: boolean;
   /** Leads of this strip under the list's filters: the rows to load (none → nothing is asked). */
   leads: number;
   /** One line above the rows: how many of the leads are shown, and that they are leads, not proof. */
@@ -107,7 +110,7 @@ export default function StripRow({ className, query, leads, head, summary, label
     if (Math.abs(moved) > 1) window.scrollBy({ top: moved, behavior: "instant" });
     if (opening) setOpened(true);
   }, []);
-  return <details className={className} name="pr-strip" ref={box} onToggle={(e) => { if (e.currentTarget.open) setOpened(true); }}>
+  return <details className={className} name="pr-strip" ref={box} data-only={completOnly ? "complet" : undefined} onToggle={(e) => { if (e.currentTarget.open) setOpened(true); }}>
     <summary className="pr-sum" aria-label={label} onClick={press}>{summary}</summary>
     <div className="pr-open">
       {leads > 0 && head && <p className="pr-open-head">{head}</p>}

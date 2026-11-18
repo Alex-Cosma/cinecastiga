@@ -41,8 +41,9 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
         <PriceFilters state={{ ...state, year: data.year }} years={data.years} yearLeads={data.yearLeads} counties={data.counties} options={priceOptions()} />
         <p className="pr-total" aria-live="polite">
           <strong>{sentenceCase(leadsCount(data.totals.leads))}{scope}</strong>
-          <span>{countWord(data.totals.products, "un produs", "produse")} · {buyersWord(data.totals.buyers)}</span>
-          <span>{formatLei(data.totals.excess)} peste mediană</span>
+          {/* The second-level totals are Complet's (owner, 18 November 2026); the count of leads stays. */}
+          <span data-only="complet">{countWord(data.totals.products, "un produs", "produse")} · {buyersWord(data.totals.buyers)}</span>
+          <span data-only="complet">{formatLei(data.totals.excess)} peste mediană</span>
         </p>
       </div>
       {data.yearMissing && <p className="pr-note" role="status">Pentru {data.yearMissing} nu avem prețuri de comparat: sunt toți anii.</p>}
@@ -50,7 +51,7 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
       {data.year != null && data.yearLeads[data.year] === 0 ? <p className="pr-note">În {data.year} avem prea puține instituții pe produs ca să comparăm: doar o mică parte din achizițiile anului.
         {" "}Încearcă {other ? <><Link href={priceHref({ ...state, year: other })} prefetch={false}>{other}</Link> sau </> : null}<Link href={priceHref({ ...state, year: null })} prefetch={false}>toți anii</Link>.</p>
         : data.year != null && data.strips.length > 0 && data.strips.every((s) => s.thin) && <p className="pr-note">În {data.year} avem doar o mică parte din achiziții: prea puține instituții pentru piste.</p>}
-      {data.strips.length ? <PriceStrips strips={data.strips} county={state.county} order={state.order} narrowed={state.county != null || data.year != null} />
+      {data.strips.length ? <PriceStrips strips={data.strips} county={state.county} order={state.order} narrowed={state.county != null || data.year != null} whole={state.group == null && state.product == null} />
         : <p className="pr-empty">Niciun produs cu cel puțin cinci instituții {data.year ? `în ${data.year}` : "într-un an"} pentru această alegere.</p>}
     </PendingRegion>
     <PriceMethod />

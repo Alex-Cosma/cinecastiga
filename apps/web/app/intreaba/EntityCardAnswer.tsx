@@ -109,7 +109,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
         <div className="ec-winner-body">
           <div className="ec-head" data-qb-arow="">
             <h3 className="ec-name"><Link prefetch={false} href={`/entitati/${first.entityId}`}>{cleanName(first.name)}</Link></h3>
-            {actions.length > 0 && <span className="qb cq-rank-menu"><RowMenu name={cleanName(first.name)} actions={actions} /></span>}
+            {actions.length > 0 && <span className="qb cq-rank-menu" data-only="complet"><RowMenu name={cleanName(first.name)} actions={actions} /></span>}
           </div>
           <p className="ec-meta">{placeWords(first, spec)}</p>
           <div className="ec-kpis">
@@ -150,6 +150,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
               {...(shareWords(place, podium) ? { share: shareWords(place, podium)! } : {})}
               {...(records ? { records: { label: recordsWords(place.count), onClick: records } } : {})}
               actions={menu(place, i + 1)}
+              menuOnly="complet"
             />;
           })}
         </AnswerList>
@@ -275,7 +276,7 @@ function RiskRow({ place, row, facts, actions, first = false }: { place: number;
       {records?.onSelect && <button type="button" className="qb-rec ec-rrec" aria-label={`Înregistrările: ${cleanName(row.name)}`} onClick={records.onSelect}>
         {countWords(row.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}
     </div>
-    {more.length > 0 && <RowMenu name={name} actions={more} />}
+    {more.length > 0 && <RowMenu name={name} actions={more} only="complet" />}
   </div>;
 }
 
@@ -371,7 +372,8 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
     <div className="ask-ecard">
       {actions.length ? <div className="ask-ecard-head" data-qb-arow="">
         <h3><Link prefetch={false} href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
-        <span className="qb cq-rank-menu"><RowMenu name={entity.name} actions={actions} /></span>
+        {/* Esențial (lib/view-mode.ts): the card's „⋯” is Complet's (owner, 18 November 2026). */}
+        <span className="qb cq-rank-menu" data-only="complet"><RowMenu name={entity.name} actions={actions} /></span>
       </div> : <h3>
         <Link prefetch={false} href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
       </h3>}
@@ -389,7 +391,8 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
           <div className="v num">{formatInt(card.count)}</div>
           <div className="l">înregistrări</div>
         </div>
-        {historical && <div className="kpi">
+        {/* Esențial (lib/view-mode.ts): the risk index is a score, Complet's (owner's risk decision); the signals' count stays. */}
+        {historical && <div className="kpi" data-only="complet">
           <div className="v num risk">{card.cri !== null ? formatDecimal(card.cri, 2) : "—"}</div>
           <div className="l">indice risc{band ? ` · ${band}` : ""}</div>
         </div>}

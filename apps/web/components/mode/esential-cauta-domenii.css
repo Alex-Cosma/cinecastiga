@@ -1,0 +1,27 @@
+/* Esențial (lib/view-mode.ts): layout rules of the cauta-domenii pages that a data-only mark cannot express (columns by position, grids that close up).
+   Every selector starts with html[data-mode="esential"]. */
+
+/* /cauta. Without the filters' row (no filter in the address, app/cauta/esential.ts) the search box closes on itself:
+   its lower rule and padding separated it from that row. */
+html[data-mode="esential"] .topic-filter-surface:has(> .topic-filter-toggle[data-only="complet"]) > .topic-query { border-bottom: 0; padding-bottom: 0; }
+
+/* /cauta, a whole question („cele mai mari contracte de iluminat din Cluj”): „Pe scurt” is the answer and its records,
+   so the word lists below it go; while it loads (its ghost has no data-answer) they wait, and they come back when it
+   failed or found nothing (owner, 18 November 2026; app/cauta/Understood.tsx SubjectAnswer). */
+html[data-mode="esential"] .topic-answer-area:has(> .topic-answer:not([data-answer="failed"]):not([data-answer="empty"])) > .topic-results.is-question { display: none; }
+
+/* /cauta, a tab's head bar with nothing in it (the names' tab: no order line, no tip; the role select under it is
+   Complet's): not drawn. Its title stays for screen readers and for the focus after a page turn. */
+html[data-mode="esential"] .topic-panel-head.topic-panel-bar.is-empty { min-height: 0; padding: 0; border: 0; }
+
+/* /domenii, a domain's details: the share stat is Complet's; value and records share the row. */
+html[data-mode="esential"] .dm-stats-row { grid-template-columns: 1fr 1fr; }
+html[data-mode="esential"] .dm-stats-row > .dm-stat:has(+ .dm-stat-share) { border-right: 0; }
+
+/* /domenii, „Următoarea întrebare”: one way on („Cine câștigă?”) instead of three, on one row (on phones, stacked). */
+html[data-mode="esential"] .dm-question-strip { display: flex; align-items: center; gap: 24px; }
+html[data-mode="esential"] .dm-question-strip a { flex: 0 1 300px; }
+@media (max-width: 760px) {
+  html[data-mode="esential"] .dm-question-strip { flex-direction: column; align-items: stretch; gap: 7px; }
+  html[data-mode="esential"] .dm-question-strip a { flex: auto; }
+}

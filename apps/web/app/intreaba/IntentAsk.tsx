@@ -17,7 +17,7 @@ export const MAX_QUESTION_CHARS = 300;
 /** From here the box counts its characters (UX audit Z2-32). */
 const COUNT_FROM = 250;
 
-export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild, placeholder }: {
+export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild, placeholder, only }: {
   value: string;
   /** Beside an answer, „Întreabă altceva…” (Z2-13); otherwise the example question. */
   placeholder?: string | undefined;
@@ -30,12 +30,14 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
   hidden?: boolean;
   /** Opens the step-by-step builder; absent while it is open. Its door is here, under the box (owner, 16 November 2026). */
   onBuild?: (() => void) | undefined;
+  /** Esențial's mark (lib/view-mode.ts): "complet" beside an answer, where the box is „Întreabă altceva…”. */
+  only?: "complet" | undefined;
 }) {
   const suggest = useAskSuggest(value, onChange, inputRef);
   // A paste longer than the box keeps its first 300 characters, and says so until the next keystroke (Z2-32).
   const [cut, setCut] = useState(false);
   return (
-    <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); suggest.close(); onSubmit(value, suggest.pin.current); }}>
+    <form className="ia-ask" role="search" hidden={hidden} data-only={only} onSubmit={(event) => { event.preventDefault(); suggest.close(); onSubmit(value, suggest.pin.current); }}>
       <div className="ia-row">
         <div className="ia-field">
           <input
@@ -243,5 +245,10 @@ export function IntentLine({ line, onAdopt }: { line: UnderstoodLine; onAdopt: (
     /></span>] : []),
   ];
   // A div, not a p: the open menu is a div, which a paragraph cannot hold.
-  return <div className="cq-understood">{parts.map((part, i) => <Fragment key={i}>{i > 0 && " · "}{part}</Fragment>)}</div>;
+  // Esențial (lib/view-mode.ts): „Altfel (N) ›” asks another question (owner, 18 November 2026); it goes with the „ · ”
+  // before it, always the last part; a line that held only it goes whole.
+  const other = line.options.length > 0;
+  return <div className="cq-understood" data-only={other && parts.length === 1 ? "complet" : undefined}>{parts.map((part, i) => other && i === parts.length - 1
+    ? <span key={i} data-only="complet">{i > 0 && " · "}{part}</span>
+    : <Fragment key={i}>{i > 0 && " · "}{part}</Fragment>)}</div>;
 }

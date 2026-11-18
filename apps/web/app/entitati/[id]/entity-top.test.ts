@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { entityYearsFrom, type EntityYear } from "../../../lib/marts";
-import { axisLabel, bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, turnoverApartWords, yearsModel, yearWords } from "./entity-top";
+import { axisLabel, bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, niceTop, signalNames, tipLeft, turnoverApartWords, yearsModel, yearWords } from "./entity-top";
 
 // The entity page's top (owner, 2 November 2026): the risk on its bands, a ledger per channel, the value per year.
 const AGNITA: EntityYear[] = [
@@ -176,5 +176,30 @@ describe("the entity page's top", () => {
     expect(css).toMatch(/\.ent-top>\*\{[^}]*display:grid;align-content:center\}/);
     expect(page).toContain('<b data-band={hasRiskScore ? band : "none"}>');
     expect(css).not.toMatch(/\.ent-risk-read>b\.risk-/);
+  });
+});
+
+describe("the profile's signals by name (Esențial, owner, 18 November 2026)", () => {
+  const RISK = new Set(["da_split", "da_round", "da_capacity", "da_above_ceiling"]);
+  const ORDER = ["da_split", "da_capacity", "da_round", "da_above_ceiling", "award_no_competition", "award_single_bid", "net_shared_admin"];
+
+  it("names the patterns that count by points, then the signals outside the score, then those found but too few, quieter", () => {
+    const names = signalNames(["da_split", "da_round", "da_above_ceiling", "award_single_bid", "award_no_competition"],
+      { da_split: 12, da_above_ceiling: 28 }, RISK, ORDER, true);
+    expect(names).toEqual([
+      { code: "da_above_ceiling", quiet: false }, { code: "da_split", quiet: false },
+      { code: "award_no_competition", quiet: false }, { code: "award_single_bid", quiet: false },
+      { code: "da_round", quiet: true },
+    ]);
+  });
+
+  it("calls every pattern too few when a computed score has none that counts", () => {
+    expect(signalNames(["da_round", "da_capacity"], {}, RISK, ORDER, true)).toEqual([{ code: "da_capacity", quiet: true }, { code: "da_round", quiet: true }]);
+  });
+
+  it("calls nothing too few without a computed score, and names nothing for an entity without signals", () => {
+    expect(signalNames(["da_round", "award_single_bid"], { da_round: 30 }, RISK, ORDER, false))
+      .toEqual([{ code: "award_single_bid", quiet: false }, { code: "da_round", quiet: false }]);
+    expect(signalNames([], {}, RISK, ORDER, true)).toEqual([]);
   });
 });

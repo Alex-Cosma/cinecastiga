@@ -25,11 +25,13 @@ export interface RankingLocateProps {
   onWhole: (rank: number) => void;
   /** At the row's end: the ranking's „Vizual | Tabel”, which has no strip of its own. */
   end?: ReactNode;
+  /** Esențial's mark (lib/view-mode.ts): "complet" when the row is Complet's only. */
+  only?: "complet" | undefined;
   /** The place picked (or none): the ranking marks its row, or pins it under the list (UX audit Z3-07). */
   onFound?: (match: LocateMatch | null) => void;
 }
 
-export default function RankingLocate({ spec, shown, onWhole, end, onFound }: RankingLocateProps) {
+export default function RankingLocate({ spec, shown, onWhole, end, onFound, only }: RankingLocateProps) {
   const firms = spec.dim === "supplier";
   const [results, setResults] = useState<(SearchResult & { match: LocateMatch })[]>([]);
   const [total, setTotal] = useState(0);
@@ -63,7 +65,7 @@ export default function RankingLocate({ spec, shown, onWhole, end, onFound }: Ra
   };
 
   const place = found ? found.rank === null ? "nu intră în clasament" : placeWords(found.rank, total) : null;
-  return <div className="qb cq-locate">
+  return <div className="qb cq-locate" data-only={only}>
     <Locate label={firms ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={loading} delay={LOCATE_DEBOUNCE_MS}
       minChars={LOCATE_MIN_CHARS} onSearch={search} emptyText="Niciun nume găsit în clasament."
       onPick={(result) => { const match = (result as SearchResult & { match: LocateMatch }).match; setFound(match); onFound?.(match); }}

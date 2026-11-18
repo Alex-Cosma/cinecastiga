@@ -31,8 +31,7 @@ export const SITE_LINK_PATTERN = /encodeSpec\(|askHref\(|questionHref\(|countyBr
 export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/page.tsx", occurrences: 7, kind: "producer", what: "Home: six starting questions, three national figures; `/?spec=` and `?q=` are forwarded to /intreaba",
     corpus: ["site:home-roads", "site:home-hospitals", "site:home-contract-winners", "site:home-communes", "site:home-authority-cloud", "site:home-firm-dependence", "site:home-da-count", "site:home-contract-count", "site:home-value"] },
-  { file: "app/DiscoveryMap.tsx", occurrences: 3, kind: "producer", what: "Home map: the national map and a county's domains",
-    corpus: ["site:home-map", "site:county-breakdown"] },
+  // app/DiscoveryMap.tsx left this list on 18 November 2026: a county on the home map now opens /harta (lib/map-arrival.ts).
   { file: "app/DiscoverySearch.tsx", occurrences: 5, kind: "producer", what: "Search dialog opened empty: three of the home page's starting questions (UX audit Z1-17)",
     corpus: ["site:home-hospitals", "site:home-authority-cloud", "site:home-firm-dependence"] },
   { file: "app/metodologie/MethodologyStory.tsx", occurrences: 4, kind: "producer", what: "Methodology, Pe scurt: a county's domains and the roads ranking (the guide's, until 5 Nov 2026)",

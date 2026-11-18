@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { CompletLine } from "@/components/mode/CompletOnly";
 import { BUYER_REGIME_OVERRIDES, FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 import { DA_CEILING_ERAS } from "@seap/domain";
 import DataCoverage from "@/components/DataCoverage";
@@ -143,10 +144,16 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
       </div>
       <div>
         <header className="mt-col">
+          {/* Esențial (lib/view-mode.ts): „Despre”, „Ce date avem” and the request template open alone from a link, under
+              the title; this is their way back to the guide, shown only then (esential-ghid.css, owner, 18 November 2026). */}
+          <a className="back mt-alone-back" href="/metodologie" data-go="scurt" data-only="esential">← Înapoi la ghid</a>
           <h1>Cum citim banii publici</h1>
-          <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Exemplara, mai ales în 2024.</p>
+          {/* Esențial keeps only step 1 of the year-long example: the year goes from the introduction. */}
+          <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Exemplara<span data-only="complet">, mai ales în 2024</span>.</p>
           {/* The three lanes right under the introduction (UX audit Z7-30, variant A): a reader looking for a rule sees
-              „Regulile” on the first screen; the four-step story opens the „Pe scurt” lane, nothing removed. */}
+              „Regulile” on the first screen; the four-step story opens the „Pe scurt” lane, nothing removed. In Esențial
+              „Povestea” and „Regulile” belong to Complet: the row shows only while one of them is open whole, from a link
+              (esential-ghid.css). */}
           <nav className="mt-lanes" role="tablist" aria-label="Cum vrei să citești">
             <button type="button" role="tab" id="tab-scurt" aria-selected="true" aria-controls="lane-scurt" data-lane="scurt">Pe scurt<small>2 minute</small></button>
             <button type="button" role="tab" id="tab-poveste" aria-selected="false" aria-controls="lane-poveste" data-lane="poveste" tabIndex={-1}>Povestea<small>cam 20 de minute</small></button>
@@ -155,7 +162,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
         </header>
         <div className="mt-lane mt-col" id="lane-scurt" role="tabpanel" aria-labelledby="tab-scurt">
           <section className="mt-stage" aria-labelledby="stage-t" data-fr="1">
-            <h2 id="stage-t" className="mt-sr">Scorul, în patru pași</h2>
+            {/* Esențial shows no score (owner, 18 November 2026): step 4 is Complet's, the stage has three steps. */}
+            <h2 id="stage-t" className="mt-sr"><span data-only="complet">Scorul, în patru pași</span><span data-only="esential">Pe scurt, în trei pași</span></h2>
             <div className="mt-frames">
               <figure className="mt-fr mt-fr1" data-n="1">
                 <div className="mt-art">
@@ -214,7 +222,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 </div>
                 <figcaption><b>3. Un tipar</b> <span>Trei comenzi la aceeași firmă, fiecare sub plafon. Adunate, trec cu mult de plafon. Un tipar e un obicei care se repetă: ceva de verificat, nu o dovadă de vină.</span></figcaption>
               </figure>
-              <figure className="mt-fr mt-fr4" data-n="4">
+              <figure className="mt-fr mt-fr4" data-n="4" data-only="complet">
                 <div className="mt-art">
                   <div className="mt-grid100 mt-hero mt-anim" id="hg" aria-hidden="true">
                     <i className="mt-g" />
@@ -328,40 +336,42 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               </figure>
             </div>
             <div className="mt-stage-nav">
-              <span className="mt-st-hint" aria-hidden="true">Pasul <b id="st-k">1</b> din 4</span>
+              <span className="mt-st-hint" aria-hidden="true">Pasul <b id="st-k">1</b> din <span data-only="complet">4</span><span data-only="esential">3</span></span>
               <ol className="mt-steps-n">
                 <li><button type="button" aria-label="Pasul 1: o achiziție" aria-current="step">1</button></li>
                 <li><button type="button" aria-label="Pasul 2: o limită">2</button></li>
                 <li><button type="button" aria-label="Pasul 3: un tipar">3</button></li>
-                <li><button type="button" aria-label="Pasul 4: un scor">4</button></li>
+                <li data-only="complet"><button type="button" aria-label="Pasul 4: un scor">4</button></li>
               </ol>
-              <div className="mt-st-ctl">
+              <div className="mt-st-ctl" data-only="complet">
                 <button type="button" className="mt-st-share mt-ico" aria-label="Trimite linkul" title="Trimite linkul"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg></button>
                 <span className="mt-st-toast" aria-hidden="true" hidden>Link copiat</span>
               </div>
             </div>
             <p className="mt-sr mt-st-live" aria-live="polite" />
           </section>
-          <p className="mt-meta">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
+          {/* Esențial: the introduction already says the commune is invented; the firms appear only in Complet's parts. */}
+          <p className="mt-meta" data-only="complet">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
           <div className="mt-go-row mt-top">
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
             {/* The most asked question, „de ce are primăria mea scorul X?”, in one step (UX audit Z7-32): the site's search
-                opens here (MethodologyBehavior); without JavaScript the link goes to /cauta. */}
-            <a className="mt-go2" href="/cauta" data-open-search="">Scorul unei instituții: caut-o</a>
+                opens here (MethodologyBehavior); without JavaScript the link goes to /cauta. Esențial shows no score. */}
+            <a className="mt-go2" href="/cauta" data-open-search="" data-only="complet">Scorul unei instituții: caut-o</a>
           </div>
-          <p className="mt-also">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
+          <p className="mt-also" data-only="complet">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
           <section className="mt-brief" aria-labelledby="pe-scurt">
             <h2 id="pe-scurt">Pe scurt</h2>
-            <p className="mt-sub">Opt lucruri de știut.</p>
+            {/* Esențial keeps points 1–4: 5–8 explain the score, its points, the firms' score and the peer comparison. */}
+            <p className="mt-sub" data-only="complet">Opt lucruri de știut.</p>
             <ul className="mt-points">
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span><b>Ce arată site-ul:</b> achizițiile instituțiilor publice, așa cum apar în SEAP (lista publică în care instituțiile își trec achizițiile), și <b>tiparele</b> care merită verificate, adică obiceiurile care se repetă.</span></li>
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Sumele sunt <b>contractate</b>, nu plătite: cât s-a semnat sau comandat, fără TVA, nu cât s-a dat sau ce s-a livrat. Plățile le afli de la instituție.</span></li>
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span><b>Plafonul</b> e limita sub care se cumpără direct, fără licitație sau altă <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: procedură">procedură</button><span className="mt-def" hidden>licitație, procedură simplificată sau alt mod de achiziție cu oferte în concurență, cerut de lege peste plafon</span>: 270.120 lei la produse și servicii, 900.400 lei la lucrări, fără TVA. Peste el, legea cere o procedură. Legea raportează plafonul la nevoia estimată pe un an, nu la fiecare comandă.</span></li>
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Un <b>semnal</b> e un tipar marcat pe site ca lucru de verificat, nu o acuzație. Lângă el găsești și explicațiile obișnuite: nevoi apărute pe rând, bani veniți târziu, o piață mică.</span></li>
-              <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span><b>Scorul</b>, de la 0 la 100, spune cât de mari sunt tiparele găsite și cât de des se repetă: 10–39 slab, 40–67 moderat, 68–100 pronunțat. Sub 10 e „fără semnal în scor”. Îl calculăm doar când există cel puțin 10 achiziții directe. Un scor de 60 nu înseamnă 60% șanse de corupție. <b>Sub 10 nu înseamnă că totul e bine</b>, ci doar că tiparele pe care le căutăm lipsesc sau sunt mici.</span></li>
-              <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Trei tipare care privesc același lucru (plafonul) <b>nu se numără de trei ori</b>: cel mai mare intră cu toate punctele, celelalte doar cu 40% din punctele lor. Un tipar de alt fel (cel din decembrie) adaugă doar o parte din cât mai lipsește până la 100. De aceea scorul nu trece de 100.</span></li>
-              <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>La o <b>firmă</b>, suma se compară cu tot ce a câștigat ea direct: 1,5 milioane înseamnă un sfert pentru o firmă cu 6 milioane atribuite direct, dar doar 0,6% pentru una cu 240 de milioane. Un contract luat de trei firme împreună se împarte egal între ele. Respectarea plafonului e obligația cumpărătorului, nu a firmei.</span></li>
-              <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Comparația înseamnă un loc în clasament, de pildă „{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”. O primărie e pusă doar lângă <b>primăriile de mărime apropiată</b> (între jumătate și dublul populației ei), iar o firmă, lângă firmele din domeniul ei principal, dacă sunt cel puțin 100. <b>Spitalele nu au comparație.</b> Locul apare doar la scor moderat sau pronunțat.</span></li>
+              <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span><b>Scorul</b>, de la 0 la 100, spune cât de mari sunt tiparele găsite și cât de des se repetă: 10–39 slab, 40–67 moderat, 68–100 pronunțat. Sub 10 e „fără semnal în scor”. Îl calculăm doar când există cel puțin 10 achiziții directe. Un scor de 60 nu înseamnă 60% șanse de corupție. <b>Sub 10 nu înseamnă că totul e bine</b>, ci doar că tiparele pe care le căutăm lipsesc sau sunt mici.</span></li>
+              <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Trei tipare care privesc același lucru (plafonul) <b>nu se numără de trei ori</b>: cel mai mare intră cu toate punctele, celelalte doar cu 40% din punctele lor. Un tipar de alt fel (cel din decembrie) adaugă doar o parte din cât mai lipsește până la 100. De aceea scorul nu trece de 100.</span></li>
+              <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>La o <b>firmă</b>, suma se compară cu tot ce a câștigat ea direct: 1,5 milioane înseamnă un sfert pentru o firmă cu 6 milioane atribuite direct, dar doar 0,6% pentru una cu 240 de milioane. Un contract luat de trei firme împreună se împarte egal între ele. Respectarea plafonului e obligația cumpărătorului, nu a firmei.</span></li>
+              <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Comparația înseamnă un loc în clasament, de pildă „{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”. O primărie e pusă doar lângă <b>primăriile de mărime apropiată</b> (între jumătate și dublul populației ei), iar o firmă, lângă firmele din domeniul ei principal, dacă sunt cel puțin 100. <b>Spitalele nu au comparație.</b> Locul apare doar la scor moderat sau pronunțat.</span></li>
             </ul>
             <dl className="mt-terms">
               {BRIEF_TERMS.map((id) => (
@@ -372,7 +382,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               ))}
             </dl>
           </section>
-          <section className="mt-mini" aria-labelledby="mini-t">
+          <section className="mt-mini" aria-labelledby="mini-t" data-only="complet">
             <h2 id="mini-t">Comuna Exemplara, în patru rânduri</h2>
             <p className="mt-mini-cap">Punctele fiecărui tipar, ca pe pagina comunei</p>
             <ol className="mt-mini-l">
@@ -386,14 +396,16 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p className="mt-how">Al doilea și al treilea tipar privesc tot plafonul, ca primul, deci cântăresc mai puțin. În citări, folosește scorul și tiparele, nu punctele.</p>
           </section>
           <section className="mt-steps3" aria-labelledby="steps-t">
-            <h2 id="steps-t">Ai găsit un semnal? Trei pași</h2>
+            {/* Esențial: the third step explains the score and the ranking; the request template („Model de cerere”)
+                opens alone from its link (esential-ghid.css), the elected officials' part is Complet's. */}
+            <h2 id="steps-t">Ai găsit un semnal? <span data-only="complet">Trei pași</span><span data-only="esential">Doi pași</span></h2>
             <ol>
               <li><span><b>Deschide înregistrările.</b> Pe pagina instituției, lângă semnal, vezi ce s-a cumpărat, când și de la cine, cu link spre SEAP.</span></li>
-              <li><span><b>Cere documentele.</b> <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: Legea 544/2001">Legea 544/2001</button><span className="mt-def" hidden>legea liberului acces la informațiile de interes public: oricine poate cere documente de la orice instituție, iar instituția trebuie să răspundă</span> îți dă dreptul să ceri <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: referatele de necesitate">referatele de necesitate</button><span className="mt-def" hidden>documentele în care instituția explică de ce îi trebuie ce cumpără</span>, <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: notele justificative">notele justificative</button><span className="mt-def" hidden>documentele în care instituția arată cum a ales firma și cum a stabilit valoarea</span> și <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: programul anual al achizițiilor">programul anual al achizițiilor</button><span className="mt-def" hidden>lista achizițiilor planificate pe anul în curs, cu valorile estimate</span>. Instituția răspunde în 10 zile (în 30, dacă cererea e complicată). <a href="#req">Model de cerere</a>. Dacă ești ales local, le poți cere în comisie sau în ședință: <a href="#alesi">vezi „aleși locali”</a>.</span></li>
-              <li><span><b>Citează tiparul, nu scorul.</b> „Trei comenzi adunate peste plafon, de verificat”, nu „printre cele mai riscante”. <a href="#citeaza">Așa da, așa nu</a>.</span></li>
+              <li><span><b>Cere documentele.</b> <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: Legea 544/2001">Legea 544/2001</button><span className="mt-def" hidden>legea liberului acces la informațiile de interes public: oricine poate cere documente de la orice instituție, iar instituția trebuie să răspundă</span> îți dă dreptul să ceri <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: referatele de necesitate">referatele de necesitate</button><span className="mt-def" hidden>documentele în care instituția explică de ce îi trebuie ce cumpără</span>, <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: notele justificative">notele justificative</button><span className="mt-def" hidden>documentele în care instituția arată cum a ales firma și cum a stabilit valoarea</span> și <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: programul anual al achizițiilor">programul anual al achizițiilor</button><span className="mt-def" hidden>lista achizițiilor planificate pe anul în curs, cu valorile estimate</span>. Instituția răspunde în 10 zile (în 30, dacă cererea e complicată). <a href="#req">Model de cerere</a>.<span data-only="complet"> Dacă ești ales local, le poți cere în comisie sau în ședință: <a href="#alesi">vezi „aleși locali”</a>.</span></span></li>
+              <li data-only="complet"><span><b>Citează tiparul, nu scorul.</b> „Trei comenzi adunate peste plafon, de verificat”, nu „printre cele mai riscante”. <a href="#citeaza">Așa da, așa nu</a>.</span></li>
             </ol>
           </section>
-          <section className="mt-roles" aria-labelledby="roles-t">
+          <section className="mt-roles" aria-labelledby="roles-t" data-only="complet">
             <h2 id="roles-t">După rolul tău</h2>
             <details suppressHydrationWarning className="mt-sock mt-role" id="citeaza">
               <summary>Ești jurnalist?</summary>
@@ -448,13 +460,19 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               </div>
             </details>
           </section>
-          <div className="mt-go-row">
+          {/* The ways into „Povestea” and „Regulile”, which belong to Complet. */}
+          <div className="mt-go-row" data-only="complet">
             <button type="button" className="mt-go" data-go="poveste">Citește povestea <span className="mt-go-t">7 capitole și o ramură, cam 20 de minute</span></button>
             <button type="button" className="mt-go2" data-go="reguli">Regulile și formula</button>
           </div>
           <p className="mt-how" style={{ marginTop: "14px" }}>Cine face site-ul: <a href="#despre">despre cinecâștigă?</a></p>
         </div>
-        <div className="mt-lane" id="lane-poveste" role="tabpanel" aria-labelledby="tab-poveste" hidden>
+        {/* „Povestea” and „Regulile” belong to Complet (owner, 18 November 2026): in Esențial their tabs and the ways into
+            them are hidden, and one opened from a link shows whole, with Complet's line (components/mode/CompletOnly.tsx,
+            the same mark on the lane itself: it follows the lane shown). A link to #req, #acoperire or #despre opens only
+            that section instead (esential-ghid.css). */}
+        <div className="mt-lane" id="lane-poveste" role="tabpanel" aria-labelledby="tab-poveste" hidden data-whole="">
+          <CompletLine className="mt-col" />
           <div className="mt-col">
             <p className="mt-jumpnote" id="jumpnote" hidden />
             <details suppressHydrationWarning className="mt-toc-wrap">
@@ -1477,7 +1495,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <button type="button" className="mt-go2" data-go="scurt">Înapoi la „Pe scurt”</button>
           </div>
         </div>
-        <div className="mt-lane" id="lane-reguli" role="tabpanel" aria-labelledby="tab-reguli" hidden>
+        <div className="mt-lane" id="lane-reguli" role="tabpanel" aria-labelledby="tab-reguli" hidden data-whole="">
+          <CompletLine className="mt-col" />
           <section className="mt-col mt-ref" id="detalii" aria-labelledby="h-detalii">
             <h2 id="h-detalii">Toate regulile, pentru cine verifică</h2>
             <p style={{ color: "var(--ink2)", margin: "10px 0 18px" }}>Metodologia în vigoare: <b>{VERSION}</b>, din {VERSION_SINCE}. Aici sunt pragurile, formulele și excepțiile exacte, plus istoricul schimbărilor. Fiecare regulă are linkul ei.</p>

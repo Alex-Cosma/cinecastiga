@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import Popover from "@/app/intreaba/builder/pickers/Popover";
 import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
@@ -21,6 +21,7 @@ import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide, usePanelShift } from "./motion";
+import { MAP_ARRIVAL_HOLD_MS, MAP_TRAVEL_NAME, clearMapArrival, peekMapArrival, warmMapGeo, warmedMapGeo } from "@/lib/map-arrival";
 import { useLastOpen, useLeaving } from "../../components/motion/leave";
 import { SelectPath, useLeaving as useLeft } from "../../components/motion/Selection";
 import WorkLine from "../../components/motion/WorkLine";
@@ -160,7 +161,10 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // The address is the view. Back from a page opened here (a year of a UAT's panel) remounts the map from the
   // router's cache, whose props are the first visit's (often a bare /harta), while the address already holds the
   // county and the UAT that were open: the browser reads the address, the server its own copy of it.
-  const [start] = useState<AddressView>(() => viewOf(typeof window === "undefined" ? initial : addressOf(new URLSearchParams(window.location.search))));
+  // Coming from another page by a link, the browser's address is still that page's at the first render (the router
+  // changes it after), so the link's own view is in the props: read the address only when it is already this page's
+  // (found 18 November 2026: a county opened from the home page lost its `judet`).
+  const [start] = useState<AddressView>(() => viewOf(typeof window === "undefined" || window.location.pathname !== "/harta" ? initial : addressOf(new URLSearchParams(window.location.search))));
   const [years, setYears] = useState<Years>(start.years);
   const [cpv, setCpv] = useState<Years>(start.cpv);
   const [dataset, setDataset] = useState<MapDataset>(start.dataset);
@@ -178,7 +182,12 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const [county, setCounty] = useState<string | null>(start.county);
   // The UAT whose panel is open (owner, 6 November 2026): its SIRUTA, inside the open county.
   const [uat, setUat] = useState<string | null>(start.uat);
-  const [geo, setGeo] = useState<Geo | null>(null);
+  // The country's shapes: already here when the reader came from the home page's map (lib/map-arrival.ts).
+  const [geo, setGeo] = useState<Geo | null>(() => warmedMapGeo() as Geo | null);
+  // Arriving from a county clicked on the home page's map (owner, 18 November 2026): the map opens on the whole
+  // country, the home map travelling into it, and the camera then glides into the county, as a click on it here would.
+  const [arriving, setArriving] = useState(() => typeof window !== "undefined" && start.county !== null && peekMapArrival(start.county)
+    && "startViewTransition" in document && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [countyGeo, setCountyGeo] = useState<Record<string, CountyGeo>>({});
   const [options, setOptions] = useState<MapOptions | null>(null);
   const [national, setNational] = useState<{ key: string; data: MapResponse } | null>(null);
@@ -225,7 +234,20 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 
   // The country's shapes, once; the filter options, once per kind.
   useEffect(() => {
-    void fetch("/geo/romania.json").then((r) => r.json()).then((g: Geo) => setGeo(g)).catch(() => setError("Harta nu s-a putut încărca. Reîncearcă."));
+    if (geo) return;
+    void warmMapGeo().then((g) => { if (g) setGeo(g as Geo); else setError("Harta nu s-a putut încărca. Reîncearcă."); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once
+  }, []);
+  // The arrival: the map's frame takes the travelling name before the page's first picture, and gives it back when the
+  // camera starts for the county.
+  useLayoutEffect(() => {
+    clearMapArrival();
+    if (!arriving) return;
+    const stage = stageRef.current;
+    stage?.style.setProperty("view-transition-name", MAP_TRAVEL_NAME);
+    const timer = window.setTimeout(() => { stage?.style.removeProperty("view-transition-name"); setArriving(false); }, MAP_ARRIVAL_HOLD_MS);
+    return () => { window.clearTimeout(timer); stage?.style.removeProperty("view-transition-name"); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once
   }, []);
   useEffect(() => {
     let live = true;
@@ -336,11 +358,12 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const shape = geo && county ? geo.counties.find((c) => c.key === county) : undefined;
   const target: View | null = useMemo(() => {
     if (!geo) return null;
-    if (!shape) return [0, 0, geo.width, geo.height];
+    // While arriving from the home page the view is the country's; the county's box follows, and the camera glides.
+    if (!shape || arriving) return [0, 0, geo.width, geo.height];
     const [x0, y0, x1, y1] = box(shape.box) as [number, number, number, number];
     const w = x1 - x0, h = y1 - y0, pad = Math.max(w, h) * 0.08;
     return [x0 - pad, y0 - pad, w + 2 * pad, h + 2 * pad];
-  }, [geo, shape]);
+  }, [geo, shape, arriving]);
   const { view, cam } = useGlide(target);
   // M-06: on a phone the UAT's sheet leaves (180 ms, no clicks) with the UAT it showed; on wider screens it goes at once.
   const panelOpen = Boolean(county && uat && !dots);
@@ -407,7 +430,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // A selection draws once (M-03): the county one enters while the camera moves, in the camera's time; a UAT or a tapped
   // county without the camera in 600 ms × pace; leaving („← România”, Escape) runs it back in 200 ms.
   const camAt = useRef(0);
-  useEffect(() => { camAt.current = performance.now(); }, [county]);
+  useEffect(() => { camAt.current = performance.now(); }, [county, arriving]);
   const drawTime = () => { const glide = 560 * chartPace(), since = performance.now() - camAt.current; return since < glide ? Math.max(300, glide - since) : 600 * chartPace(); };
   const openSel = useLeft(useMemo(() => (county && shape ? { id: `c:${county}`, d: shape.d } : null), [county, shape]), 200);
   const pickSel = useLeft(useMemo(() => (chosen ? { id: `u:${uat}`, d: chosen } : tappedShape ? { id: `t:${tapped}`, d: tappedShape } : null), [chosen, uat, tappedShape, tapped]), 200);
@@ -582,13 +605,15 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
             {/* The camera (M-17, motion.ts): the whole drawing moves as one transform while the viewBox is already the new one. */}
             <g ref={cam} className="mx-cam">
-            <g className={county ? "mx-counties is-back" : "mx-counties"}>
+            {/* Arriving from the home page's map: the country is drawn as the country's own view (its fills, not the
+                faded backdrop of an open county) until the camera starts for the county. */}
+            <g className={county && !arriving ? "mx-counties is-back" : "mx-counties"}>
               {geo.counties.map((c) => {
                 const a = nat?.areas.find((x) => x.key === c.key);
                 const gap = natFilled && (!a || fig(a) === null);
                 return <path key={c.key} d={c.d} fillRule="evenodd" vectorEffect="non-scaling-stroke"
                   className={`mx-area${gap ? " is-gap" : ""}${!county && hover === c.key ? " is-hover" : ""}${county === c.key ? " is-open" : ""}`}
-                  style={county ? undefined : natFilled ? fill(a) : BASE}
+                  style={county && !arriving ? undefined : natFilled ? fill(a) : BASE}
                   onPointerEnter={county ? undefined : () => { fromMap.current = true; setHover(c.key); }} onClick={() => { if (county === c.key) return; if (touch && tapped !== c.key) setTapped(c.key); else openCounty(c.key); }} />;
               })}
             </g>
@@ -668,16 +693,18 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         </div>}
         <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}${metric === "perBed" || metric === "perPupil" ? " has-total" : metric === "value" ? " is-lei" : ""}`} ref={listRef} key={rankLevel}
           data-chart="" onAnimationEnd={rankMotion.onAnimationEnd} onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>
+          {/* Esențial (owner, 18 November 2026): a row is the area's name and its figure; the place, the bar and the
+              institutions' part exist only in Complet, and the row's grid closes up (components/mode/esential-acasa-harta.css). */}
           {ranked.map((a, i) => {
             const f = fig(a), gap = f === null;
-            const bar = <span className="mx-bar" aria-hidden="true">{!gap && <i className={`cm-tw ${rankMotion.mark(a.key, i < 10 ? "cm-x" : "")}`}
+            const bar = <span className="mx-bar" aria-hidden="true" data-only="complet">{!gap && <i className={`cm-tw ${rankMotion.mark(a.key, i < 10 ? "cm-x" : "")}`}
               style={{ width: `${Math.max(1.5, (f / max) * 100)}%`, opacity: 0.25 + 0.75 * (f / max), "--i": i } as CSSProperties} />}</span>;
             const total = metric === "perBed" || metric === "perPupil" ? <span className="mx-v2">{a.value === null ? "—" : short(a.value)}</span> : null;
             // A county's hospital or school (owner, 8 November 2026): its name is the link to its page; the row lights its circle.
             if (county && dots) return <li key={a.key} data-key={a.key}>
               <div className={`mx-row${(hover ?? lit) === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)}>
-                <span className="mx-n">{gap ? "" : i + 1}</span>
+                <span className="mx-n" data-only="complet">{gap ? "" : i + 1}</span>
                 <span className="mx-name"><EntityName id={a.entityId} className="mx-clamp" title={a.name}>{a.name}</EntityName><small>{schools ? (a.pupils ? withDe(a.pupils, "elev", "elevi") : "fără elevi în lista ministerului") : a.beds ? withDe(a.beds, "pat", "paturi") : "fără paturi în lista CNAS"}</small></span>
                 {bar}
                 <span className="mx-v">{gap ? "—" : say(f)}</span>{total}
@@ -687,13 +714,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
               <button type="button" className={`mx-row${hover === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? openUat(a.key) : openCounty(a.key))}
                 aria-label={`${a.name}: ${gap ? "fără cifră" : `${say(f)} lei ${UNIT[metric]}`}${total && a.value !== null ? `, ${short(a.value)} lei în total` : ""}${county ? ". Deschide fișa UAT-ului" : hospitals ? ". Deschide spitalele județului" : schools ? ". Deschide școlile și grădinițele județului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
-                <span className="mx-n">{gap ? "" : i + 1}</span>
+                <span className="mx-n" data-only="complet">{gap ? "" : i + 1}</span>
                 <span className="mx-name">{dots ? <>{a.name}{a.institutions ? <small>{hospitals ? withDe(a.institutions, "spital", "spitale") : withDe(a.institutions, "școală sau grădiniță", "școli și grădinițe")}</small> : null}</> : (() => {
                   // With the institutions, their part in brackets right after the name, fading in on the row's hover
                   // (owner, 8 November 2026); the coverage under 90% on the line below.
                   const cover = a.coverage !== undefined && a.coverage < 0.9 ? `acoperire ${Math.round(a.coverage * 100)}%` : null;
                   const inst = sub && a.subValue ? `(instituțiile: ${short(a.subValue)} lei)` : null;
-                  return <>{inst ? <span className="mx-line"><span>{a.name}</span><span className="mx-inst">{inst}</span></span> : a.name}{cover && <small>{cover}</small>}</>;
+                  return <>{inst ? <span className="mx-line"><span>{a.name}</span><span className="mx-inst" data-only="complet">{inst}</span></span> : a.name}{cover && <small>{cover}</small>}</>;
                 })()}</span>
                 {bar}
                 <span className="mx-v">{gap ? "—" : say(f)}</span>{total}
@@ -774,8 +801,8 @@ function RankGhost({ names, rows, city, folded }: { names: string[] | null; rows
     {city && <div className="mx-city" aria-hidden="true"><b>Primăria Municipiului București</b><span><G.Line w="70%" /></span><em><G.Line w="4.5em" /></em></div>}
     <ol className={`mx-rows${folded ? " is-folded" : ""}`} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => <li key={i}><div className="mx-row">
-        <span className="mx-n" /><span className="mx-name">{names?.[i] ?? <G.Line w={`${58 - (i % 4) * 9}%`} />}</span>
-        <span className="mx-bar" /><span className="mx-v"><G.Line w="100%" /></span>
+        <span className="mx-n" data-only="complet" /><span className="mx-name">{names?.[i] ?? <G.Line w={`${58 - (i % 4) * 9}%`} />}</span>
+        <span className="mx-bar" data-only="complet" /><span className="mx-v"><G.Line w="100%" /></span>
       </div></li>)}
     </ol>
     {n > 15 && folded && <p className="mx-more" aria-hidden="true">Toate cele {n}</p>}

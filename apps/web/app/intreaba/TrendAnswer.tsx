@@ -155,6 +155,7 @@ function TrendRowItem({ view, swatch, onRecords, actions = [] }: { view: TrendRo
         Înregistrări<span className="qb-glyph" aria-hidden="true">→</span>
       </button>}
     </div>
-    {actions.length > 0 && <RowMenu name={view.name} actions={actions} />}
+    {/* Esențial (lib/view-mode.ts): the row's „⋯” is Complet's (owner, 18 November 2026). */}
+    {actions.length > 0 && <RowMenu name={view.name} actions={actions} only="complet" />}
   </div>;
 }

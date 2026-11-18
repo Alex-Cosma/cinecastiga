@@ -27,7 +27,8 @@ export default function OutsideMenu({ items, current }: { items: readonly Outsid
   }, [open]);
 
   return (
-    <li className="sgc-more" ref={box}>
+    // The score's grouping: Complet only; in Esențial the same patterns are plain tabs (CasePage.tsx; owner, 18 November 2026).
+    <li className="sgc-more" ref={box} data-only="complet">
       {/* As wide open on one of them as closed, so it never leaves the row: the pattern's name under the label, cut if long. */}
       <button ref={button} type="button" className={`sgc-morebtn${on ? " cur" : ""}${open ? " open" : ""}`} aria-expanded={open} aria-controls={id}
         title={on ? `${on.label} · în afara scorului` : undefined} onClick={() => setOpen((v) => !v)}>
