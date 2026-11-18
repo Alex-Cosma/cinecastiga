@@ -12,14 +12,17 @@ import { Facts, RecordSection } from "./Record";
 
 const YEARS_SHOWN = 8;
 
-export default function FirmCard({ firm, years = [], title = "Firma" }: { firm: FirmCardData; years?: readonly number[]; title?: string }) {
+/** `people={false}`: beside „Reprezentant comun” the names stay on the firm's own page (the signal page shows its person only on request). */
+export default function FirmCard({ firm, years = [], title = "Firma", people = true }: { firm: FirmCardData; years?: readonly number[]; title?: string; people?: boolean }) {
   const sheets = firm.financials.slice(-YEARS_SHOWN);
   const marked = new Set(years);
   const reps = firm.reps;
   return <RecordSection id="firma" title={title}>
     <Facts facts={[
       { label: "Numele", value: <><EntityName id={firm.id} role="supplier">{cleanName(firm.name)}</EntityName>{(firm.cui || firm.county) && <small>{[firm.cui && `CUI ${firm.cui}`, countyLabel(firm.county)].filter(Boolean).join(" · ")}</small>}</> },
-      { label: <Term hold="line" tip id="conducere-onrc">Conducere (ONRC)</Term>, value: reps.length
+      { label: <Term hold="line" tip id="conducere-onrc">Conducere (ONRC)</Term>, value: !people
+        ? <span className="record-quiet">{reps.length ? <>{formatInt(reps.length)} {reps.length === 1 ? "persoană" : "persoane"}, <EntityName id={firm.id} role="supplier">pe pagina firmei</EntityName></> : firm.cui ? "Nicio persoană în registrul disponibil" : "CUI neconfirmat: fără date ONRC"}</span>
+        : reps.length
         ? <ul className="record-reps">{reps.slice(0, 6).map((r, i) => <li key={`${r.personName}:${i}`}>{cleanName(r.personName)}{r.calitate && <span className="record-quiet"> · {r.calitate.toLowerCase()}</span>}</li>)}
           {reps.length > 6 && <li className="record-quiet">și încă {formatInt(reps.length - 6)}, pe pagina firmei</li>}</ul>
         : <span className="record-quiet">{firm.cui ? "Nicio persoană în registrul disponibil" : "CUI neconfirmat: fără date ONRC"}</span> },

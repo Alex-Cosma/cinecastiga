@@ -1,4 +1,5 @@
 import { createElement, type ReactNode } from "react";
+import { noted } from "./csv-note";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BUZAU_LIST, RUSETU_CHART, RUSETU_SCORE_CHART, VASLUI_LIST } from "../../lib/ask/fixtures/distribution-screen";
@@ -116,7 +117,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
   });
 
   it("exports the entity's score and band, each pattern's points, the bands and the members with their scores", () => {
-    const lines = answerCsv({ block: "distribution", distribution: VASLUI_LIST }, { block: "distribution", measure: "value", filters: {} }, "Unde").text.split("\r\n");
+    const lines = answerCsv({ block: "distribution", distribution: VASLUI_LIST }, { block: "distribution", measure: "value", filters: {} }, "Unde").text.split("\r\n").map(noted);
     expect(lines[0]).toBe("﻿sectiune,nume,judet,populatie,scor,risc,tipare,achizitii_directe,criteriu,puncte,fapt,scor_de,scor_pana,din_grup,din_tara,entitatea");
     expect(lines[1]).toBe('"entitatea","MUNICIPIUL VASLUI","Vaslui",63035,54,"moderat","da_split|da_round",1953,,,,,,,,da');
     expect(lines[2]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_split} (da_split)",44,"18 grupuri · 11% din valoare",,,30,3610,da`);
@@ -185,7 +186,7 @@ describe("an answer stored before (distribution-2, the criteria)", () => {
   });
 
   it("exports the chart, each criterion against the group and the country, the entity and the members on screen (final §7.7)", () => {
-    const lines = answerCsv({ block: "distribution", distribution: BUZAU_LIST }, { block: "distribution", measure: "value", filters: {} }, "Unde").text.split("\r\n");
+    const lines = answerCsv({ block: "distribution", distribution: BUZAU_LIST }, { block: "distribution", measure: "value", filters: {} }, "Unde").text.split("\r\n").map(noted);
     expect(lines[0]).toBe("﻿sectiune,criterii,indice_de_risc,criteriu,nume,judet,populatie,semnale,achizitii_directe,din_grup,din_tara,entitatea");
     expect(lines[1]).toBe('"criterii",0,0,,,,,,,1,,');
     expect(lines[4]).toBe('"criterii",3,0.6,,,,,,,0,,da');

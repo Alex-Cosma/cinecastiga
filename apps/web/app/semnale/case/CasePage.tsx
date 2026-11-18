@@ -18,7 +18,9 @@ import { DOMAIN_ALIASES } from "@/lib/cpv-aliases";
 import { readableCpvName } from "@/lib/entity-summary";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
 import { signalLei } from "@/lib/signal-money";
-import { groupSharedAdmin, peopleByFirms, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
+import { groupSharedAdmin, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
+import RevealNames from "@/components/RevealNames";
+import { REVEAL_MAX_SIGNALS } from "@/lib/shared-admin-names";
 import {
   aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, splitTotals, topPartners, yearEnd,
   type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
@@ -567,13 +569,12 @@ function classWords(code: string, official: string | undefined): string {
   return short.charAt(0).toLowerCase() + short.slice(1);
 }
 
-/** A person of a shared representatives' row: the name, its ONRC role on hover or a tap. */
-function Person({ p }: { p: SharedAdminPerson }) {
-  return <Term tip hold="line" className="sgc-person" title="Calitatea în ONRC" text={p.roles.length ? p.roles.join("; ") : "Nepublicată în datele preluate."}>{p.name}</Term>;
-}
-function People({ people }: { people: readonly SharedAdminPerson[] }) {
-  return <>{sharedPeopleWords(people.length)}: {peopleByFirms(people).map((g, i) => <span key={g.firms}>{i > 0 && " · "}
-    {g.people.map((p, k) => <span key={p.name}>{k > 0 && ", "}<Person p={p} /></span>)} ({countWords(g.firms, "firmă", "firme")})</span>)}</>;
+/**
+ * The shared representatives of a row: how many, and their names on the reader's request (legal audit, 18 November
+ * 2026: the page does not carry a person's name; RevealNames reads it from the row's signals, with roles and firms).
+ */
+function People({ people, ids }: { people: readonly SharedAdminPerson[]; ids: readonly string[] }) {
+  return <>{sharedPeopleWords(people.length)}: <RevealNames src={`/api/semnale/reprezentanti?semnale=${ids.slice(0, REVEAL_MAX_SIGNALS).join(",")}`} count={people.length} /></>;
 }
 
 /**
@@ -591,14 +592,14 @@ function SharedAdminCase({ data, state }: { data: SignalCase; state: SignalState
   const more = data.total > data.instances.length;
   return <>
     <div className="sgc-cases-h"><h2>{countWords(rows.length, "instituție", "instituții")}{more ? ` · primele ${formatInt(data.instances.length)} de legături din ${formatInt(data.total)}` : ""}</h2></div>
-    {common && <p className="sgc-list-note sgc-people-all">La toate: <People people={common} />.</p>}
+    {common && <p className="sgc-list-note sgc-people-all">La toate: <People people={common} ids={data.instances.filter((i) => i.partnerId === rows[0]!.partnerId).map((i) => i.id)} />.</p>}
     <div className="sgc-cases" data-case-index={JSON.stringify(index)}>
       {shown.map((r) => {
         const ids = data.instances.filter((i) => i.partnerId === r.partnerId).map((i) => i.id);
         return <article key={r.largest.id} id={`caz-${r.largest.id}`} className="sgc-row outside sgc-shared">
           {ids.filter((id) => id !== r.largest.id).map((id) => <span key={id} id={`caz-${id}`} className="sgc-anchor" />)}
           <span className="sgc-who"><b><EntityName id={r.partnerId} role="authority">{cleanName(r.partnerName) || "—"}</EntityName></b>
-            {!common && <span className="sgc-people"><People people={r.people} /></span>}</span>
+            {!common && <span className="sgc-people"><People people={r.people} ids={ids} /></span>}</span>
           <span className="sgc-sum">{lei(r.largest.value)}<small>cel mai mare grup: {countWords(r.largest.firms, "firmă", "firme")}</small></span>
           <span className="sgc-src"><Link prefetch={false} href={`/semnale/${r.largest.id}`} aria-label={`Sursele celui mai mare grup: ${cleanName(r.partnerName)}`}>Sursele →</Link></span>
         </article>;

@@ -54,7 +54,9 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const { id } = await params;
   if (!validId(id)) return { title: "Semnale" };
   const r = await resolve(id, await searchParams).catch(() => null);
-  return { title: r ? `${r.none ? "Semnale" : flagLabel(r.state.code)} · ${cleanName(r.profile.name)}` : "Semnale" };
+  // „Reprezentant comun” lists people by name (owner, 18 November 2026, legal audit): out of search engines, links followed.
+  return { title: r ? `${r.none ? "Semnale" : flagLabel(r.state.code)} · ${cleanName(r.profile.name)}` : "Semnale",
+    ...(r && !r.none && r.state.code === "net_shared_admin" ? { robots: { index: false, follow: true } } : {}) };
 }
 
 export default async function EntitySignalsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {

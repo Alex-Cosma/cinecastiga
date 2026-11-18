@@ -1,4 +1,5 @@
 import { createElement, type ReactNode } from "react";
+import { noted } from "./csv-note";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { EntityCardData } from "../../lib/ask/compile";
@@ -290,7 +291,7 @@ describe("the shown CSV", () => {
   it("holds the listed profiles of the risk axis: their place, the score over 100, its band and their patterns (entity_card-3)", () => {
     const rows = [scored(1, 71, { flags: ["da_split", "da_year_end"], nFlags: 2 }), scored(2, 60), scored(3, 60), scored(4, 25, { county: "Bucuresti" })];
     const ranking: RiskRanking = { version: 3, pool: 9, scored: 4, top: 71, topCount: 1, rows };
-    const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ranking }, { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").filter(Boolean);
+    const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ranking }, { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").filter(Boolean).map(noted);
     expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,achizitii,risc_din_100,banda,tipare");
     expect(lines.slice(1)).toEqual([
       '1,"Spital 1","Cluj",190000000,1000,71,"pronunțat","da_split|da_year_end"',
@@ -300,7 +301,7 @@ describe("the shown CSV", () => {
     ]);
     // A firm's place is its seat, as on the ranking's CSV.
     const firms = answerCsv({ block: "entity_card", card: card(), ranking: { ...ranking, rows: [scored(1, 40, { name: "ALFA SRL" })] } },
-      { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} } as never, "Cine").text.split("\r\n");
+      { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} } as never, "Cine").text.split("\r\n").map(noted);
     expect(lines[0]).toContain("judet");
     expect(firms[0]).toBe("﻿loc,nume,sediu,valoare_lei,achizitii,risc_din_100,banda,tipare");
     expect(firms[1]).toBe('1,"ALFA SRL","Cluj",190000000,1000,40,"moderat","da_split"');
@@ -308,7 +309,7 @@ describe("the shown CSV", () => {
 
   it("holds every profile at the top level of an answer stored as entity_card-2, as it was exported", () => {
     const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ties: { ...TIES, count: 2, rows: [tie(1), tie(2, { flags: ["da_split", "da_rapid"], nFlags: 2 })] } },
-      { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n");
+      { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").map(noted);
     expect(lines[0]).toBe("﻿nume,judet,valoare_lei,achizitii,cri,semnale,flags");
     expect(lines[1]).toBe('"Spital 1","Cluj",190000000,1000,0.2,1,"da_split"');
     expect(lines[2]).toBe('"Spital 2","Cluj",180000000,2000,0.2,2,"da_split|da_rapid"');

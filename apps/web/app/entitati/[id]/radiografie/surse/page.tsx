@@ -3,6 +3,7 @@ import { cache, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
+import RevealNames from "@/components/RevealNames";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import Term from "@/components/Term";
 import { RecordHead, RecordPage, RecordSection, Sources, type RecordValue } from "@/components/record/Record";
@@ -66,7 +67,7 @@ function headOf(data: RadiografieSourcesData): Head {
     const members = joinWords(p.members.map((m) => <EntityName key={m.id} id={m.id} role="supplier">{cleanName(m.name)}</EntityName>));
     const who = p.kind === "consortiu" ? <>a contractat de fiecare dată cu asocierea {members}</>
       : p.kind === "maturare" ? <>· câștigătorul: {members}</>
-      : p.kind === "impartire" ? <>· loturile, împărțite între {members}</>
+      : p.kind === "impartire" ? <>· loturile, câștigate de {members}</>
       : <>· câștigătorii: {members}</>;
     return {
       title: patternTitle(p.kind, p.reps),
@@ -75,7 +76,7 @@ function headOf(data: RadiografieSourcesData): Head {
         amount: lei(p.valueExact), label: "valoarea contractelor din aceste anunțuri",
         notes: [
           p.known > 0 ? `${countWords(p.single, "lot", "loturi")} cu ofertă unică, din ${countWords(p.known, "lot", "loturi")} cu oferte cunoscute` : "Numărul ofertelor nu e cunoscut.",
-          p.sharedAdmin && <>Administrator comun în ONRC: {cleanName(p.sharedAdmin)}. De verificat în documentele de acum.</>,
+          p.sharedAdmin && <>Administrator comun în ONRC: <RevealNames what="administrator" src={`/api/semnale/reprezentanti?autoritate=${data.authority.id}&tipar=${p.patternId}`} />. De verificat în documentele de acum.</>,
         ],
       },
       meta: [

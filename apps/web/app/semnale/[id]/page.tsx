@@ -25,6 +25,7 @@ import { joinWords, partyShares, ratioNumber, shareWords } from "@/lib/signal-pa
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { groupSourceRecords } from "@/lib/source-groups";
 import { SIGNAL_RECORDS_PAGE, titlesPage } from "./records-page";
+import RevealNames from "@/components/RevealNames";
 
 /*
  * One signal on the record template (owner, 7 November 2026): the head is the finding (who, how much, against what),
@@ -48,7 +49,10 @@ export async function generateMetadata({ params, searchParams }: {
   const d = await pageData(id, pageOf(p)).catch(() => null);
   if (!d) return { title: "Semnal negăsit" };
   const who = d.code === "net_shared_admin" && d.partner ? d.partner.name : d.entity?.name;
-  return { title: `${flagFindingLabel(d.code)} · ${cleanName(who) || "semnal"}`, description: FLAG_META[d.code]?.short };
+  // The one signal that names a person (owner, 18 November 2026, legal audit): its pages stay out of search engines;
+  // the links on them are still followed.
+  return { title: `${flagFindingLabel(d.code)} · ${cleanName(who) || "semnal"}`, description: FLAG_META[d.code]?.short,
+    ...(d.code === "net_shared_admin" ? { robots: { index: false, follow: true } } : {}) };
 }
 
 /** An exact decimal from the evidence (a string, or a JSON number that is one), else null. */
@@ -169,13 +173,13 @@ function headOf(d: SignalPageData): Head {
     }
     case "net_shared_admin": {
       const firms = numOf(e.n_firms);
-      const roles = Array.isArray(e.roles) ? e.roles.filter((r): r is string => typeof r === "string" && r.trim() !== "") : [];
       // The firms with records at the institution (the ones the rule counts), else the group the registry links.
       const withRecords = partyShares(d.source.records, "supplier");
       const related = withRecords.length ? withRecords : d.related.length ? d.related : d.entity ? [d.entity] : [];
       return {
         title: <>{firms === null ? "Mai multe firme" : countWords(firms, "firmă", "firme")} cu același reprezentant legal au contracte la <Party party={d.partner} role="authority" /></>,
-        parties: <>Reprezentant comun: <strong>{cleanName(String(e.person ?? "")) || "nume nepublicat"}</strong>{roles.length ? ` (${roles.join("; ")})` : ""} · {joinWords(related.map((f, i) => <Party key={f.id ?? i} party={f} role="supplier" />))}</>,
+        // The person's name is read on the reader's click, never sent with the page (legal audit, 18 November 2026).
+        parties: <>Reprezentant comun: {String(e.person ?? "").trim() ? <RevealNames src={`/api/semnale/reprezentanti?semnale=${d.id}`} /> : <strong>nume nepublicat</strong>} · {joinWords(related.map((f, i) => <Party key={f.id ?? i} party={f} role="supplier" />))}</>,
         value: { amount: lei(e.combined), label: "înregistrați de aceste firme la instituție", notes: ["Registrul ONRC de acum: nu arată o legătură la data atribuirii."] },
       };
     }
@@ -289,7 +293,7 @@ export default async function SignalPage({ params, searchParams }: {
     />
 
     <Shares d={d} />
-    {d.firm && <FirmCard firm={d.firm} years={signalYears(d)} title={d.code === "net_shared_admin" ? "Firma semnalului" : "Firma"} />}
+    {d.firm && <FirmCard firm={d.firm} years={signalYears(d)} title={d.code === "net_shared_admin" ? "Firma semnalului" : "Firma"} people={d.code !== "net_shared_admin"} />}
 
     <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : d.code === "award_calloffs_over_ceiling" ? "Comenzile anunțului" : "Înregistrările din semnal"}>
       {/* The records' count and sum are the head's when its value is theirs; the institution, when the head names it (owner,

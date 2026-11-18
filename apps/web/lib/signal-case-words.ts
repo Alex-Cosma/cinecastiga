@@ -56,7 +56,7 @@ export const ABOVE_RULE = "Cu valoarea estimată sau cu suma finală, chiar și 
 
 /** `tagged`: the case page's „Sub prag” tag stands before the line and says why the case adds nothing. */
 export function aboveWords(items: readonly AboveCeiling[], part: ScorePart | undefined, tagged = false): CaseWords {
-  const title = `${countWords(items.length, "achiziție directă a trecut", "achiziții directe au trecut")} de plafon.`;
+  const title = `${countWords(items.length, "achiziție directă are", "achiziții directe au")} valoarea publicată peste plafon.`;
   const scored = part ? `Împreună: ${formatRon(n(part.value))}, ${pctWords(n(part.share))} din valoarea achizițiilor directe.`
     : items.length === 1 && !tagged ? "Se vede aici, dar nu intră în scor: tiparul cere cel puțin două cazuri." : "";
   return { title, lede: scored || null };

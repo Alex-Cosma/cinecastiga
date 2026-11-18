@@ -239,6 +239,10 @@ function bandColumns(band: BandState): [string, string][] {
   ];
 }
 
+/** The columns that say a risk score, a band or signals of the named row. */
+const SIGNAL_COLUMNS = new Set(["cri", "cri_istoric", "semnale", "semnale_istorice", "flags", "indice_de_risc", "scor", "risc", "risc_din_100", "banda", "tipare"]);
+export const CSV_SIGNAL_NOTE = "pistă de verificat, nu dovadă";
+
 /**
  * The shown result as CSV text (UTF-8 BOM, CRLF, as the source export) and its
  * file name: the title's slug, then the strip's values ("…-directe.csv").
@@ -248,6 +252,10 @@ export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: B
   // A strip column the rows already carry (the network's „grupa”, with its year) names the file only: one column per name (S4 tests).
   const own = new Set(header!.split(","));
   const columns = bandColumns(band).filter(([name]) => !own.has(name));
+  // A file that puts a risk score or a signal beside a name carries the caveat on every row (owner, 18 November 2026,
+  // legal audit): the file travels without the page and its "i" marks. A last column, not a comment line, so it opens
+  // as a table.
+  if (header!.split(",").some((name) => SIGNAL_COLUMNS.has(name))) columns.push(["nota", CSV_SIGNAL_NOTE]);
   const lines = columns.length
     ? [`${header},${columns.map(([name]) => name).join(",")}`, ...rows.map((row) => `${row},${columns.map(([, value]) => csvQ(value)).join(",")}`)]
     : [header!, ...rows];

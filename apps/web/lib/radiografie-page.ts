@@ -27,7 +27,9 @@ export interface RadiografiePattern {
   /** Lots with a single tender, of those whose tenders are known. */
   single: number;
   known: number;
-  sharedAdmin: string | null;
+  /** Its members share an administrator in ONRC; the name is read on request. */
+  sharedAdmin: boolean;
+  patternId: number;
 }
 
 export interface RadiografieSlice {
@@ -74,7 +76,7 @@ export async function readRadiografieSources(sql: DbSql, authorityId: string, se
         kind: String(p.kind), cpvClass: String(p.cpv_class), cpvName: (p.cpv_name as string | null) ?? null,
         members: ids.map((m, i) => ({ id: m, name: names[i] ?? "" })),
         reps: Number(p.reps), y0: p.y0 ?? null, y1: p.y1 ?? null, valueExact: String(p.value),
-        single: Number(p.single), known: Number(p.known), sharedAdmin: (p.shared_admin as string | null) ?? null,
+        single: Number(p.single), known: Number(p.known), sharedAdmin: Boolean((p.shared_admin as string | null)?.trim()), patternId: Number(selection.patternId),
       };
     }
   } else {

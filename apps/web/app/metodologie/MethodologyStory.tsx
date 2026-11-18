@@ -35,7 +35,7 @@ function scoreRoles(code: string): string | null {
 
 /** The version in force and its day; both change together with FLAGS_METHODOLOGY_VERSION (packages/db). */
 const VERSION = FLAGS_METHODOLOGY_VERSION;
-const VERSION_SINCE = "5 noiembrie 2026";
+const VERSION_SINCE = "13 noiembrie 2026";
 
 const longDate = (iso: string | null | undefined) =>
   iso ? new Intl.DateTimeFormat("ro-RO", { timeZone: "Europe/Bucharest", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso)) : null;
@@ -1987,6 +1987,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Ce s-a schimbat și când</summary>
               <div className="mt-body">
                 <ul>
+                  <li id="schimbari-risc-20261113"><b>13 noiembrie 2026, rf-2026.24</b>, semnal nou, în afara scorului: „Contracte în prima lună de la înființare” (la firme) și reversul lui, „Contracte cu firme în prima lună de la înființare” (la instituții). Achiziții directe de cel puțin 100.000 lei, publicate în primele 30 de zile de la înmatricularea firmei. Niciun alt semnal nu se schimbă.</li>
+                  <li id="schimbari-risc-20261108"><b>8 noiembrie 2026, rf-2026.23</b>, semnal nou, în afara scorului: „Comenzi declarate peste plafonul acordului-cadru”. Comenzile subsecvente declarate în SEAP depășesc acordul-cadru cu peste 20% și cu cel puțin 50.000 lei. Niciun alt semnal nu se schimbă.</li>
                   <li id="schimbari-nume-20261107"><b>7 noiembrie 2026, nume nou</b>, cu aceleași reguli și scoruri: „O firmă primește mare parte din bani” → „O firmă are mare parte din valoare” (valorile sunt contractate, nu plăți).</li>
                   <li id="schimbari-risc-20261105"><b>5 noiembrie 2026, rf-2026.22</b>, după un audit al tuturor instituțiilor și firmelor:
                     <ul>

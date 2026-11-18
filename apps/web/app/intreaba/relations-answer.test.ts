@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { noted } from "./csv-note";
 import { unknownSeatWords, type NetworkData } from "../../lib/ask/network-shared";
 import type { SankeyData } from "../../lib/ask/sankey-shared";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -109,7 +110,7 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
 
   it("exports the rows on screen with their group, years, share, association and signals", () => {
     const { text, filename } = answerCsv(NETWORK, { ...spec, network: { partners: "continuing", since: 2025 } }, "Cu cine a continuat să lucreze MUNICIPIUL BUZAU din 2025?");
-    const lines = text.trim().split("\r\n");
+    const lines = text.trim().split("\r\n").map(noted);
     expect(lines[0]).toBe("partener,judet,valoare_lei,inregistrari,grupa,primul_an,ultimul_an,ani,procent_din_total,valoare_in_asociere_lei,pondere_in_castigurile_firmei,semnale");
     expect(lines.slice(1)).toEqual([
       `"RER SUD","Buzău",332540727,14,"Continuă din 2025",2019,2025,"2019 2020 2021 2022 2023 2024 2025",86.68,0,65.4,""`,
@@ -120,7 +121,8 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     const banded = answerCsv(NETWORK, { ...spec, network: { partners: "continuing", since: 2025 } }, "Cu cine a continuat?", { stream: "all", group: "Continuă din 2025", groupFile: "continua" });
     const head = banded.text.trim().split("\r\n")[0]!.split(",");
     expect(head.filter((name) => name === "grupa")).toHaveLength(1);
-    expect(head.at(-1)).toBe("canal");
+    // The strip's column, then the caveat column, last (the rows carry signals).
+    expect(head.slice(-2)).toEqual(["canal", "nota"]);
     expect(banded.filename).toBe("cu-cine-a-continuat-toate-continua.csv");
   });
 

@@ -80,7 +80,7 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
       const found = n(part.n);
       if (!found) return null;
       // The rule (rf-2026.20): the estimate above the ceiling, or the final sum above it even with VAT.
-      return `${countWords(found, "achiziție directă a trecut", "achiziții directe au trecut")} de plafon: cu valoarea estimată sau cu suma finală, chiar și cu TVA. Împreună: ${formatRon(n(part.value))}, ${pct(n(part.share))} din bani.`;
+      return `${countWords(found, "achiziție directă are", "achiziții directe au")} valoarea publicată peste plafon: estimată sau finală, chiar și cu TVA. Împreună: ${formatRon(n(part.value))}, ${pct(n(part.share))} din bani.`;
     }
     case "da_year_end": {
       const years = Array.isArray(part.years) ? (part.years as { y: number; pct: number }[]) : [];

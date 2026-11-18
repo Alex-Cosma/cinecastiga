@@ -1,4 +1,5 @@
 import { createElement, type ReactNode } from "react";
+import { noted } from "./csv-note";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BUZAU_CLOUD, BUZAU_CLOUD_V2, BUZAU_ROWS, BUZAU_SPLIT, NATIONAL_BANDS, NATIONAL_FINE, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
@@ -191,7 +192,7 @@ describe("the risk cloud's answer", () => {
   it("exports the list on screen, in its order, with the risk, the patterns and the strip's state beside it", () => {
     const { text: csv, filename } = answerCsv({ block: "scatter", scatter: BUZAU_SPLIT }, spec({ scatter: { rankBy: "value", flag: "da_split" } }), "Ce primării ies din tipar",
       { rank: "valoare", signal: SPLIT, signalFile: "achizitii-repetate" });
-    const lines = csv.replace(/^﻿/, "").trim().split("\r\n");
+    const lines = csv.replace(/^﻿/, "").trim().split("\r\n").map(noted);
     expect(lines[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare,primele_dupa,semnal");
     expect(lines).toHaveLength(4);
     // Every line has a header for each value (review: the count of signals had none, so every column after it slid).

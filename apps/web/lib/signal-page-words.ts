@@ -101,7 +101,7 @@ export function daySpan(from: string | null, to: string | null): number | null {
 /** A Radiografie lot pattern's kind, named as the Radiografie names it (LotMatrix). */
 export const PATTERN_LABEL: Record<string, string> = {
   rotatie: "Câștigători care reapar împreună",
-  impartire: "Împărțire repetată între câștigători",
+  impartire: "Loturi câștigate repetat de aceleași firme",
   maturare: "Același câștigător în toate loturile",
   consortiu: "Asociere repetată",
 };
@@ -111,7 +111,7 @@ export function patternTitle(kind: string, reps: number): string {
   const notices = countAnunturi(reps);
   switch (kind) {
     case "consortiu": return `Aceeași asociere a câștigat ${notices}`;
-    case "impartire": return `Aceleași firme își împart loturile în ${notices}`;
+    case "impartire": return `Aceleași firme câștigă loturi în aceleași ${notices}`;
     case "maturare": return `Același câștigător ia toate loturile în ${notices}`;
     default: return `Aceiași câștigători reapar împreună în ${notices}`;
   }

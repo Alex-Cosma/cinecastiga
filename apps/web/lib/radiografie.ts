@@ -13,8 +13,7 @@ export { shortName, daysBetween };
 /**
  * Data for /entitati/{id}/radiografie (contracting authorities). Reads the
  * radiografie marts built by apps/ingestion/src/flags/radiografie.ts plus the
- * per-authority contract/DA rows the charts draw. Headline cards are derived
- * here from the same rows, never hand-written.
+ * per-authority contract/DA rows the charts draw.
  */
 const g = globalThis as unknown as { __seapRxSql?: DbSql };
 function db(): DbSql {
@@ -230,7 +229,8 @@ export interface PatternRow {
   single: number;
   known: number;
   strength: "puternic" | "mediu" | "slab";
-  sharedAdmin: string | null;
+  /** Its members share an administrator in ONRC; the name is read on request (lib/shared-admin-names.ts). */
+  sharedAdmin: boolean;
   y0: string;
   y1: string;
   notices: string[];
@@ -277,15 +277,6 @@ export interface SliceRow {
     id?: string; ceiling?: number | null; purchaseType?: DaPurchaseType | null; referenceDate?: string }[];
 }
 
-export interface Headline {
-  k: string;
-  t: string;
-  w: string;
-  go: "dep" | "mx" | "da";
-  cls?: string | undefined;
-  supplierId?: string | undefined;
-}
-
 export interface RxData {
   profile: RxProfile;
   dep: DepRow[];
@@ -297,7 +288,6 @@ export interface RxData {
   familiesTotal: number;
   slices: SliceRow[];
   nDaSuppliers: number;
-  headlines: Headline[];
   win: { from: number; to: number };
 }
 
@@ -387,7 +377,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     single: num(r["single"]),
     known: num(r["known"]),
     strength: r["strength"] as PatternRow["strength"],
-    sharedAdmin: (r["shared_admin"] as string | null) ?? null,
+    sharedAdmin: Boolean((r["shared_admin"] as string | null)?.trim()),
     y0: String(r["y0"] ?? ""),
     y1: String(r["y1"] ?? ""),
     notices: (r["notices"] as string[]) ?? [],
@@ -499,7 +489,6 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
       where authority_id = ${id} and not value_suspect group by 1 having count(*) >= 3) t
   `) as unknown as { c: number }[];
 
-  const headlines = buildHeadlines(patterns, dep, slices, families);
   return {
     profile,
     dep,
@@ -510,121 +499,6 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     familiesTotal: famCounts[0]?.total ?? 0,
     slices,
     nDaSuppliers: dsup?.c ?? 0,
-    headlines,
     win,
   };
-}
-
-const fmtM = (v: number): string => formatRon(v).replace(" lei", "");
-const yrs = yearRange;
-
-/** Top three findings across the three lenses, worded from templates. */
-/** CPV class name → short lowercase phrase usable after "de": "alte lucrări de finisare a construcțiilor" → "finisare a construcțiilor" */
-function famLabel(name: string): string {
-  let n = name.toLowerCase().replace(/^alte\s+/, "").replace(/^(lucr[ăa]ri|servicii|echipamente|produse)\s+de\s+/, "");
-  if (n.length > 32) n = n.slice(0, 32).replace(/\s+\S*$/, "") + "…";
-  return n;
-}
-
-export function buildHeadlines(
-  patterns: PatternRow[],
-  dep: DepRow[],
-  slices: SliceRow[],
-  families: RxData["families"],
-): Headline[] {
-  const out: (Headline & { score: number })[] = [];
-  for (const p of patterns) {
-    const fam = famLabel(families[p.cpvClass]?.name ?? p.cpvClass);
-    const els = p.elsewhere;
-    const elsN = els.reduce((s, e) => s + e.n, 0);
-    const elsV = els.reduce((s, e) => s + e.value, 0);
-    const base = p.strength === "puternic" ? 3 : p.strength === "mediu" ? 2 : 1;
-    const score = base * 10 + Math.min(9, p.reps) + (p.sharedAdmin ? 5 : 0) + (els.length >= 3 ? 3 : 0) + (p.kind === "rotatie" ? 6 : 0) + (p.single >= 2 ? 5 : 0);
-    if (p.kind === "rotatie")
-      out.push({
-        score,
-        k: "loturi",
-        t: `${p.memberIds.length} firme, aceleași loturi de ${fam}, ${yrs(p.y0, p.y1)}`,
-        w: `${fmtM(p.value)} · ${p.known ? `${p.single}/${p.known} loturi cu un singur ofertant` : "oferte nepublicate"}${els.length ? ` · și la ${els.length === 1 ? els[0]!.authorityName : els.length + " alte autorități"}` : ""}`,
-        go: "mx",
-        cls: p.cpvClass,
-      });
-    else if (p.kind === "consortiu")
-      out.push({
-        score,
-        k: p.sharedAdmin ? "aceiași actori" : "consorțiu stabil",
-        t: p.sharedAdmin
-          ? `${p.memberNames.map(shortName).join(" + ")}: un administrator, ${p.memberIds.length} firme, „consorțiu” de ${p.reps} ori`
-          : `${p.memberNames.map(shortName).join(" + ")}: consorțiu de ${p.reps} ori la ${fam}`,
-        w: `${fmtM(p.value)} aici${els.length ? ` · ${els.length} alte autorități, ${elsN} licitații, ${fmtM(elsV)}` : ""}${p.sharedAdmin ? ` · ${p.sharedAdmin}` : ""}`,
-        go: "mx",
-        cls: p.cpvClass,
-      });
-    else if (p.kind === "maturare")
-      out.push({
-        score,
-        k: "loturi",
-        t: `${shortName(p.memberNames[0] ?? "")} ia toate loturile de ${fam}, de ${p.reps} ori`,
-        w: `${fmtM(p.value)} · ${yrs(p.y0, p.y1)} · ${p.reps} din ${p.nLotTenders} licitații cu loturi`,
-        go: "mx",
-        cls: p.cpvClass,
-      });
-    else
-      out.push({
-        score,
-        k: "loturi",
-        t: `${p.memberNames.map(shortName).join(" și ")} își împart toate loturile de ${fam}, ${yrs(p.y0, p.y1)}`,
-        w: `${fmtM(p.value)} · ${p.reps} din ${p.nLotTenders} licitații cu loturi`,
-        go: "mx",
-        cls: p.cpvClass,
-      });
-  }
-  // capacity: plain contracts far above the firm's turnover
-  const cap = dep
-    .filter((d) => d.ratio !== null && d.ratio > 3 && d.cPlain > d.cFrame && d.cPlain >= 1_000_000)
-    .sort((a, b) => (b.ratio ?? 0) - (a.ratio ?? 0))[0];
-  if (cap)
-    out.push({
-      score: 25 + Math.min(9, Math.round(cap.ratio ?? 0)),
-      k: "capacitate",
-      t: `${shortName(cap.name)}: contracte de ${fmtM(cap.cPlain)}, cifră de afaceri de ${fmtM(cap.turnWin ?? 0)}`,
-      w: `contractează ${(cap.ratio ?? 0).toFixed(1).replace(".", ",")}× cât încasează · ${cap.yrs[0]}${cap.yrs.length > 1 ? `–${cap.yrs[cap.yrs.length - 1]}` : ""} · ${Math.round(cap.shareLife * 100)}% din tot ce a câștigat pe SEAP vine de aici`,
-      go: "dep",
-      supplierId: cap.id,
-    });
-  const captive = dep.filter((d) => d.shareLife >= 0.9 && d.all >= 10_000_000).sort((a, b) => b.all - a.all);
-  if (captive.length >= 2)
-    out.push({
-      score: 22,
-      k: "dependență",
-      t: `${captive.length} furnizori de peste 10 mil lei trăiesc aproape numai din această autoritate`,
-      w: captive
-        .slice(0, 3)
-        .map((d) => `${shortName(d.name)} ${Math.round(d.shareLife * 100)}%`)
-        .join(" · "),
-      go: "dep",
-      supplierId: captive[0]!.id,
-    });
-  const s = slices[0];
-  if (s)
-    out.push({
-      score: 20 + Math.min(9, Math.round(s.ratio)),
-      k: "achiziții directe",
-      t: `${shortName(s.supplierName)}: ${s.n} achiziții directe, ${fmtM(s.sum)}, în ${daysBetween(s.d0, s.d1)} zile`,
-      w: `${s.d0.slice(0, 7)} · ${s.ratio.toFixed(1).replace(".", ",")}× plafonul de referință · ${s.cpvName.toLowerCase()}${slices.length > 1 ? ` · ${slices.length} furnizori cu grupuri similare` : ""}`,
-      go: "da",
-      supplierId: s.supplierId,
-    });
-  // one card per lens first (so a slicing story isn't crowded out by three lot patterns), then by score
-  out.sort((a, b) => b.score - a.score);
-  const picked: typeof out = [];
-  for (const lens of ["mx", "dep", "da"] as const) {
-    const first = out.find((h) => h.go === lens && !picked.includes(h));
-    if (first) picked.push(first);
-  }
-  for (const h of out) if (picked.length < 4 && !picked.includes(h)) picked.push(h);
-  return picked
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map(({ score: _s, ...h }) => h);
 }

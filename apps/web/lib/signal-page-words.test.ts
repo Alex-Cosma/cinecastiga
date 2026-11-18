@@ -109,7 +109,7 @@ describe("patternTitle", () => {
   it("names each lot pattern with its notices, in Romanian plural", () => {
     expect(patternTitle("consortiu", 3)).toBe("Aceeași asociere a câștigat 3 anunțuri");
     expect(patternTitle("rotatie", 1)).toBe("Aceiași câștigători reapar împreună în 1 anunț");
-    expect(patternTitle("impartire", 21)).toBe("Aceleași firme își împart loturile în 21 de anunțuri");
+    expect(patternTitle("impartire", 21)).toBe("Aceleași firme câștigă loturi în aceleași 21 de anunțuri");
     expect(patternTitle("maturare", 4)).toBe("Același câștigător ia toate loturile în 4 anunțuri");
   });
 });
