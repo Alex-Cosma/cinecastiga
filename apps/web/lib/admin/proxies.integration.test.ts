@@ -299,20 +299,20 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   const refused=()=>vi.fn(async()=>({value:'refused',status:403}));
   const free=()=>q`update app.collection_control set next_allowed_at=null`;
   const blocked=async()=>(await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason as string|null;
-  it('disables only that proxy, audits it',async()=>{
+  it('disables only that proxy and audits it',async()=>{
    await expect(request(refused())).rejects.toBeInstanceOf(CollectionSuspendedError);
    expect(await blocked()).toBeNull();
    const [first]=await q`select proxy_id,status,outcome,error from app.collection_requests`;
-   expect(first).toMatchObject({status:403,outcome:'failed',error:expect.stringContaining('restricționat')});
-   expect((await q`select enabled,last_error from app.collection_proxies where id=${first!.proxy_id}`)[0]).toMatchObject({enabled:false,last_error:expect.stringContaining('restricționat')});
+   expect(first).toMatchObject({status:403,outcome:'failed',error:expect.stringContaining('403')});
+   expect((await q`select enabled,last_error from app.collection_proxies where id=${first!.proxy_id}`)[0]).toMatchObject({enabled:false,last_error:expect.stringContaining('403')});
    const [audit]=await q`select action,after from app.collection_audit where action='proxy-restricted'`;expect(audit!.after).toMatchObject({proxyId:first!.proxy_id,enabled:false});
    await free();
    const next=await request();expect(next).not.toBe(first!.proxy_id);
   });
   it('stops everything when the same address is refused on three IPs',async()=>{
    for(let i=0;i<2;i++){await expect(request(refused())).rejects.toBeInstanceOf(CollectionSuspendedError);expect(await blocked()).toBeNull();await free();}
-   await expect(request(refused())).rejects.toThrow('aceeași cerere pe 3 IP-uri');
-   expect(await blocked()).toContain('aceeași cerere');
+   await expect(request(refused())).rejects.toThrow('cerere refuzată (403) pe 3 proxy-uri');
+   expect(await blocked()).toContain('cerere refuzată (403)');
    expect((await q`select count(*)::int n from app.collection_proxies where enabled`)[0]!.n).toBe(0);
   });
   it('stops everything when five IPs that were working are refused within half an hour, counted from the last unblock',async()=>{
@@ -325,8 +325,8 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
    await q`insert into app.collection_audit(actor_id,actor_name,action,before,after,created_at) values('fixture','Admin','unblock','{}','{}',now()-interval '1 minute')`;
    await expect(request(refused())).rejects.toBeInstanceOf(CollectionSuspendedError);expect(await blocked()).toBeNull();
    await q`delete from app.collection_audit where action='unblock'`;await free();
-   await expect(request(refused())).rejects.toThrow('IP-uri care mergeau');
-   expect(await blocked()).toContain('IP-uri care mergeau');
+   await expect(request(refused())).rejects.toThrow('proxy-uri oprite cu 403');
+   expect(await blocked()).toContain('proxy-uri oprite cu 403');
   });
   it('IPs refused on their first request do not stop everything',async()=>{
    for(const [i,id] of ['proxy-90','proxy-91','proxy-92','proxy-93','proxy-94'].entries())await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id,status,outcome,started_at) values('da','fixture','GET',${`/elsewhere/${i}`},${id},403,'failed',now()-interval '5 minutes')`;

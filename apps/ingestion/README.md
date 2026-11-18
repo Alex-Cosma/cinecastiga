@@ -25,8 +25,7 @@ pnpm --filter @seap/db db:migrate
 
 Defaults are moderate (~8 req/s; 30-day DA backfill a few hours). The throttle
 gates request starts, so req/s ≈ `1000 / SCRAPE_MIN_DELAY_MS`; concurrency is
-headroom over latency. The platform tolerates far more, but a steady mid-rate
-The client
+headroom over latency. A steady mid-rate is kind to the source. The client
 always honors `429`/`Retry-After` with exponential backoff on top.
 For a faster one-off backfill: `SCRAPE_CONCURRENCY=16 SCRAPE_MIN_DELAY_MS=0 ...`.
 

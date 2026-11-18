@@ -21,5 +21,6 @@ export const SEAP_MAX_REQUESTS_PER_MINUTE=2500;
  * ceiling; in any minute at most the ceiling plus the burst (at 2,500/minute, 0.5 s = ~21 requests). A fixed gap of 24 ms
  * blocked 71% of arrivals and kept the pace at ~1,850 a minute. Direct mode keeps its fixed pause. */
 export const SEAP_PACE_BURST_SECONDS=0.5;
-/** A proxied 403 stops only that IP. Thresholds at which 403s through proxies stop the whole collection. */
+/** Thresholds at which 403s through proxies stop the whole collection: proxies that had worked refused within the
+ * window, and the same address refused on several proxies. */
 export const RESTRICTED_PROXY_LIMIT=5,RESTRICTED_PROXY_WINDOW_MINUTES=30,REFUSED_ENDPOINT_LIMIT=3;

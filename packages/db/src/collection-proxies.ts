@@ -89,9 +89,9 @@ export async function recordProxyFailure(q:DbSql,id:string){
 
 export const PROXY_RESTRICTED='Proxy oprit automat (403).';
 /**
- * A 403 through a proxy (owner, 11 November 2026): disables that proxy (audited). Collection stops when
- * - several IPs that had worked in the week before are refused within the window;
- * - the same address is refused on several IPs.
+ * A 403 through a proxy (owner, 11 November 2026) disables that proxy (audited). Collection stops when
+ * - several proxies that had worked in the week before are refused within the window;
+ * - the same address is refused on several proxies.
  * Both count from the last confirmed unblock. Returns the reason when everything stops, otherwise null.
  */
 export async function restrictProxy(q:DbSql,id:string,requestId:number,endpoint:string):Promise<string|null>{

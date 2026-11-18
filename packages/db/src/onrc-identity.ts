@@ -39,7 +39,8 @@ export function onrcIdentityBirthDate(q: Query, alias = 'r') {
  * The person key of an ONRC representative (reference.company_reps.person_key):
  * folded name | birth date | folded birth locality. Since 1 November 2026 the
  * name folds its punctuation and spacing too (lower case, no diacritics, every
- * run of other characters one space): ONRC writes one person as "EXEMPLU MARIA ELENA" on one firm and "EXEMPLU MARIA ELENA" on another, and 19,290 dated
+ * run of other characters one space): ONRC writes one person as "EXEMPLU MARIA
+ * ELENA" on one firm and "EXEMPLU MARIA-ELENA" on another, and 19,290 dated
  * persons were split that way into 39,472 keys (local copy). The birth date
  * still tells namesakes apart; the locality keeps its old fold.
  */

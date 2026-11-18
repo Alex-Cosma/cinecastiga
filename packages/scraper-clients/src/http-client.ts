@@ -1,7 +1,6 @@
 /**
- * HTTP client for the public e-licitatie.ro endpoints.
- *
- * Low concurrency, honest identification and automatic backoff.
+ * HTTP client for the public e-licitatie.ro endpoints: low concurrency,
+ * honest identification and automatic backoff.
  */
 
 export interface HttpClientOptions {
@@ -25,10 +24,11 @@ export interface HttpClientOptions {
   circuitThreshold?: number;
   /** How long the circuit stays open before the next request is allowed through. */
   circuitCooldownMs?: number;
-  /** Baseline headers sent on every request (e.g. Referer — WAF requires same-site). */
+  /** Baseline headers sent on every request (e.g. the same-site Referer). */
   defaultHeaders?: Record<string, string>;
   /**
-   * Page-accurate Referer per request path : the page of the portal that shows the same data. Falls back to defaultHeaders.referer.
+   * Referer per request path: the page of the portal that shows the same
+   * data. Falls back to defaultHeaders.referer.
    */
   refererFor?: (path: string) => string | undefined;
 }

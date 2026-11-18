@@ -3,7 +3,8 @@ import { createHttpClient, type HttpClient } from "../http-client.js";
 export const ELICITATIE_BASE_URL = "https://e-licitatie.ro";
 
 /**
- * The public API expects the same-site Referer the portal's own interface sends. Identity stays honest via User-Agent.
+ * The public API expects the same-site Referer the portal's own interface
+ * sends. Identity stays honest via User-Agent.
  */
 const DEFAULT_REFERER = "https://e-licitatie.ro/pub/notices/contract-notices/list/1";
 

@@ -25,8 +25,8 @@ describe('ONRC birth dates that may identify a person (audit F37)', () => {
 
 describe('the person key with the name\'s punctuation and spacing folded (0090, 1 November 2026)', () => {
   it('makes the spellings of one name one key, and leaves the date and the locality as they were', () => {
-    expect(canonicalPersonKey('EXEMPLU MARIA ELENA|1975-02-03|loc. exemplu')).toBe('EXEMPLU MARIA ELENA|1975-02-03|loc. exemplu');
-    expect(canonicalPersonKey('EXEMPLU MARIA ELENA|1975-02-03|loc. exemplu')).toBe('EXEMPLU MARIA ELENA|1975-02-03|loc. exemplu');
+    expect(canonicalPersonKey('exemplu maria-elena|1975-02-03|loc. exemplu')).toBe('exemplu maria elena|1975-02-03|loc. exemplu');
+    expect(canonicalPersonKey('exemplu maria elena|1975-02-03|loc. exemplu')).toBe('exemplu maria elena|1975-02-03|loc. exemplu');
     expect(canonicalPersonKey('ionescu  maria -ana|1961-02-03|campina,prahova')).toBe('ionescu maria ana|1961-02-03|campina,prahova');
     expect(canonicalPersonKey('ana - maria popa|1982-04-12|bucuresti')).toBe('ana maria popa|1982-04-12|bucuresti');
   });
