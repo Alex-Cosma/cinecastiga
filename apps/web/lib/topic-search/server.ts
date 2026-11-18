@@ -122,7 +122,7 @@ async function documentSearch(s:TopicScope,others:Others=null):Promise<Omit<Topi
    and ${scopeSql(q,s,others)} order by a.ref_id limit 1) l on true
   where exists(select 1 from app.procurement_documents d where d.notice_key=n.key)
  ),sources as materialized (
-  select d.id,d.filename,d.processed_at is not null and d.pdf_hash is not null ready,l.notice_no,l.notice_title,l.url,l.ref_id
+  select d.id,d.filename,d.processed_at is not null and d.pdf_hash is not null and (d.privacy_hold is null or d.privacy_hold='released') ready,l.notice_no,l.notice_title,l.url,l.ref_id
   from app.procurement_documents d join linked l on l.key=d.notice_key
  ),matches as materialized (
   select s.id,p.page from sources s join app.document_page_search p on p.document_id=s.id where s.ready and ${match}

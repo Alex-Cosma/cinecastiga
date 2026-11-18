@@ -3,6 +3,7 @@ import {isWorkspaceId,withInvestigationAccess} from '../investigation-access';
 import {WorkspaceError} from '../investigation-workspace';
 import {validQuote,noticeViewUrl,awardViewUrl,awardDocumentsKey,AWARD_NOTICE_TYPE,DOCUMENT_NOTICE_TYPES,type AwardAttachments,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
 import {effectiveClassification} from './classify';
+import {isWithheld} from './privacy-hold';
 const iso=(v:unknown)=>v?new Date(v as string).toISOString():null;
 const g=globalThis as unknown as {documentSql?:DbSql};
 export const documentDb=()=>g.documentSql??=createDb().sql;
@@ -56,7 +57,7 @@ async function sourceState(key:string,q:DbSql){
   from app.document_jobs j where j.notice_key=${key} order by created_at desc,id desc`;
  const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${key}`;
  return {meta,job:jobRow(jobs.find(j=>j.kind==='list')),requests:Number(requests?.n??0),
-  files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents,section:r.section,sourceType:r.source_type}),job:jobRow(jobs.find(j=>j.document_id===r.id))})) as ContractFile[]};
+  files:files.map(r=>(isWithheld(r.privacy_hold)?{id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:null,pdfHash:null,downloadedAt:null,processedAt:null,pageCount:null,signature:null,contents:null,job:null,withheld:true,sourceUrl:meta.url??null}:{id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents,section:r.section,sourceType:r.source_type}),job:jobRow(jobs.find(j=>j.document_id===r.id))})) as ContractFile[]};
 }
 export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<ContractFiles>{
  const [notice,context]=await Promise.all([contractNotice(nid,q),awardContext(nid,q)]);
@@ -124,7 +125,7 @@ export async function saveDocumentQuote(uid:string,id:string,input:Record<string
  if(!isWorkspaceId(id)||!isWorkspaceId(investigationId)||typeof contractId!=='string'||!Number.isInteger(page)||Number(page)<1||typeof originalHash!=='string'||(input.note!=null&&typeof input.note!=='string'))throw new WorkspaceError('Pasaj sau destinație invalidă.');
  const saved=await withInvestigationAccess(uid,investigationId,'edit',async s=>{
   const keys=await contractFileKeys(contractId,s);
-  const [r]=await s`select d.*,p.text,p.method,n.url,n.notice_no from app.procurement_documents d join app.document_pages p on p.document_id=d.id join app.document_notices n on n.key=d.notice_key where d.id=${id} and p.page=${Number(page)} and d.processed_at is not null`;
+  const [r]=await s`select d.*,p.text,p.method,n.url,n.notice_no from app.procurement_documents d join app.document_pages p on p.document_id=d.id join app.document_notices n on n.key=d.notice_key where d.id=${id} and p.page=${Number(page)} and d.processed_at is not null and (d.privacy_hold is null or d.privacy_hold='released')`;
   if(!r||!keys.includes(r.notice_key)||originalHash!==r.original_hash||!validQuote(r.text,quote))throw new WorkspaceError('Pasajul nu corespunde paginii și versiunii păstrate. Redeschide documentul.',409);
   const snapshot={verification:'document-passage',title:`${r.filename} · pagina ${page}`,documentId:id,contractId,page,quote,filename:r.filename,originalHash:r.original_hash,pdfHash:r.pdf_hash,method:r.method,processor:r.processor,contentSource:Array.isArray(r.contents)?r.contents.find((p:{firstPage?:number;pages?:number})=>p.firstPage&&Number(page)>=p.firstPage&&Number(page)<p.firstPage+(p.pages??0))??null:null,sourceUrl:r.url,noticeNo:r.notice_no,downloadedAt:r.downloaded_at,processedAt:r.processed_at};
   const [clip]=await s`insert into app.clips(investigation_id,kind,ref_id,snapshot,note,created_by) values(${investigationId},'document_quote',${id},${JSON.stringify(snapshot)}::jsonb,${typeof input.note==='string'?input.note.trim().slice(0,4000):null},${uid}) returning id`;

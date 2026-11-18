@@ -8,6 +8,6 @@ export async function GET(req:Request,ctx:{params:Promise<{nid:string}>}){
  // The participation notice's files and the award's own.
  const keys=await contractFileKeys((await ctx.params).nid);if(!keys.length)return NextResponse.json({error:'Sursa documentelor nu este identificată.'},{status:404});
  const q=documentDb();
- const rows=await q`select d.id,d.filename,p.page,substring(p.text from greatest(1,strpos(lower(unaccent(p.text)),lower(unaccent(${query})))-120) for 600) text,p.method from app.procurement_documents d join app.document_pages p on p.document_id=d.id where d.notice_key=any(${keys}::text[]) and d.processed_at is not null and (${id}::uuid is null or d.id=${id}::uuid) and strpos(lower(unaccent(p.text)),lower(unaccent(${query})))>0 order by d.filename,p.page limit 101`;
+ const rows=await q`select d.id,d.filename,p.page,substring(p.text from greatest(1,strpos(lower(unaccent(p.text)),lower(unaccent(${query})))-120) for 600) text,p.method from app.procurement_documents d join app.document_pages p on p.document_id=d.id where d.notice_key=any(${keys}::text[]) and d.processed_at is not null and (d.privacy_hold is null or d.privacy_hold='released') and (${id}::uuid is null or d.id=${id}::uuid) and strpos(lower(unaccent(p.text)),lower(unaccent(${query})))>0 order by d.filename,p.page limit 101`;
  return NextResponse.json({hits:rows.slice(0,100),truncated:rows.length>100},{headers:{'Cache-Control':'no-store'}});
 }

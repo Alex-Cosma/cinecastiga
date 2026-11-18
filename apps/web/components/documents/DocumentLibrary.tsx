@@ -5,6 +5,7 @@ import Term from '@/components/Term';
 import InfoMark from '@/components/InfoMark';
 import {countWords} from '@/lib/ask/answer-text';
 import {foldText,SIGNATURE_UNVERIFIED,stageLabel,isActiveFileJob,type ContractFile} from '@/lib/documents/shared';
+import {WITHHELD_NOTE} from '@/lib/documents/privacy-hold';
 import {DOCUMENT_CATEGORIES,categoryLabel,classifyDocumentContents,classifyDocumentName,classificationDescription,hasSpecifications,type DocumentCategory,type Classification} from '@/lib/documents/classification';
 import './library.css';
 import '@/components/record/pager.css';
@@ -52,6 +53,13 @@ export default function DocumentLibrary({files,enabled,busy,onOpen,onEnqueue}:Pr
  </div>;
 }
 function FileRow({file:f,classification:c,enabled,busy,onOpen,onEnqueue}:Omit<Props,'files'>&{file:ContractFile;classification:Classification}){
+ // Personal data in its text (privacy-hold.ts): the name, the note and the way to SEAP; nothing to open or download.
+ if(f.withheld)return <article className="df-file df-library-file" data-document-id={f.id}>
+  <span className="df-library-icon"><DiscoveryIcon name="document"/></span>
+  <div className="df-file-body"><h3>{friendlyName(f.filename)}</h3>
+   <p className="df-status">{WITHHELD_NOTE}{f.sourceUrl&&/^https:\/\/www\.e-licitatie\.ro\//.test(f.sourceUrl)&&<>{' '}<a href={f.sourceUrl} target="_blank" rel="noopener noreferrer">Îl găsești în SEAP ↗</a></>}</p>
+  </div>
+ </article>;
  const j=f.job,active=!!j&&isActiveFileJob(j),ready=!!f.processedAt&&!!f.pdfHash,spec=hasSpecifications(c);
  const archive=!!f.contents?.length&&(f.contents.length>1||f.contents.some(p=>p.name.includes(' / ')));
  return <article className={`df-file df-library-file${f.originalHash?' df-file-downloaded':''}${spec?' df-specification':''}`} data-document-id={f.id}>

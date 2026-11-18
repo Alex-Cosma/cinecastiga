@@ -13,6 +13,7 @@ import ProcessingOverview from './ProcessingOverview';
 import ScheduleForm, {type Schedule, scheduleOf} from './ScheduleForm';
 import DocumentCollection from './DocumentCollection';
 import DocumentQueue from './DocumentQueue';
+import WithheldDocuments from './WithheldDocuments';
 import {collectionState, viewOf, type AdminView} from './model';
 
 /**
@@ -182,6 +183,7 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
       </div>
       <div className="admin-view" hidden={view !== 'fisiere'}>
         {view === 'fisiere' && <DocumentCollection/>}
+        <WithheldDocuments enabled={view === 'fisiere'}/>
         <DocumentQueue enabled={view === 'fisiere'} retryAt={state.retry?.retry_at ? String(state.retry.retry_at) : null} quiet={state.quiet} paused={state.paused} maintenance={state.maintenance} blocked={state.blocked}/>
       </div>
       <div className="admin-view" hidden={view !== 'oameni'}>{children}</div>

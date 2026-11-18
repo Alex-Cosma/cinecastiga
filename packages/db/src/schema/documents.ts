@@ -30,6 +30,11 @@ export const procurementDocuments = appSchema.table('procurement_documents', {
   // Where SEAP lists the file: 'list' (NoticeDocument) or a documentation part (documentation, espd,
   // strategy, decision, ex_ante); SEAP's own type of a listed file.
   section:text('section').notNull().default('list'), sourceType:text('source_type'), sourceTypeId:integer('source_type_id'),
+  // A personal identifier found in the text (migration 0112): 'held' until an administrator decides, then 'kept' or
+  // 'released'. Served and searchable only when null or 'released'.
+  privacyHold:text('privacy_hold'), privacyReason:text('privacy_reason'), privacyPage:integer('privacy_page'),
+  privacyAt:timestamp('privacy_at',{withTimezone:true}), privacyDecidedBy:text('privacy_decided_by'),
+  privacyDecidedAt:timestamp('privacy_decided_at',{withTimezone:true}),
 },t=>[uniqueIndex('procurement_document_source_uq').on(t.noticeKey,t.sourceId),index('procurement_document_priority').on(t.priority,t.noticeKey).where(sql`${t.processedAt} is null`)]);
 export const documentPages = appSchema.table('document_pages', {
   documentId: uuid('document_id').notNull().references(()=>procurementDocuments.id),

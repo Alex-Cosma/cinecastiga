@@ -1,7 +1,9 @@
 import type {Classification} from './classification';
 export type DocumentNotice = { key:string; noticeId:string; noticeType:number; noticeNo:string; title:string; url:string };
 export type FileJob = {id:string; status:string; stage:string; pagesDone:number; pagesTotal:number|null; error:string|null; position:number;automatic?:boolean};
-export type ContractFile = {id:string; code:string; filename:string; section:string; sourceType:string|null; publishedAt:string|null; originalHash:string|null; pdfHash:string|null; downloadedAt:string|null; processedAt:string|null; pageCount:number|null; signature:string|null; classification?:Classification; contents?:{name:string;firstPage?:number;pages?:number;rendition?:string;error?:string}[]|null; job:FileJob|null};
+export type ContractFile = {id:string; code:string; filename:string; section:string; sourceType:string|null; publishedAt:string|null; originalHash:string|null; pdfHash:string|null; downloadedAt:string|null; processedAt:string|null; pageCount:number|null; signature:string|null; classification?:Classification; contents?:{name:string;firstPage?:number;pages?:number;rendition?:string;error?:string}[]|null; job:FileJob|null;
+ /** Not shown here: its text holds personal data (privacy-hold.ts). The row keeps the name and the way to SEAP. */
+ withheld?:boolean; sourceUrl?:string|null};
 /** Files SEAP attaches to the award notice itself (documente constatatoare): their count, from the list once
  * it was read, before that from the award's detail as last collected; the list's job. */
 export type AwardAttachments = {caNoticeId:string; count:number; checkedAt:string; listed:boolean; job:FileJob|null};
