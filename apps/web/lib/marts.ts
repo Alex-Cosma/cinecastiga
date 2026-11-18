@@ -5,6 +5,7 @@ import { contractRonValue, contractOriginalValue, contractOriginalCurrency, cont
 import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
+import { sealPersonKeyOrNull } from "./person-token";
 import type { ScoreParts } from "./risk-score";
 import { sumDecimalStrings } from "./ask/evidence";
 import { createDb, type DbSql } from "@seap/db";
@@ -408,7 +409,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
     ...onrcBirthYear(r.by, r.sy, r.bd),
     // ONRC birth localities can be punctuation-only junk (".")
     birthLocality: r.birth_locality && /\p{L}/u.test(r.birth_locality) ? r.birth_locality : null,
-    personKey: r.person_key,
+    personKey: sealPersonKeyOrNull(r.person_key),
     nOtherFirms: Math.max(0, Number(r.n_other ?? 0)),
     nOtherOnrcOnly: Math.max(0, Number(r.n_other_onrc ?? 0)),
   }));

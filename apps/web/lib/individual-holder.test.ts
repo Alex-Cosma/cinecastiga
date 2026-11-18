@@ -3,7 +3,7 @@ import { individualHolder } from "./individual-holder";
 
 describe("the holder of an individual practice, from its name", () => {
   it("reads the form and the holder's folded name", () => {
-    expect(individualHolder('CABINET INDIVIDUAL DE PSIHOLOGIE "EXEMPLU MARIA ELENA"')).toEqual({ form: "psiholog", holder: "EXEMPLU MARIA ELENA" });
+    expect(individualHolder('CABINET INDIVIDUAL DE PSIHOLOGIE "EXEMPLU MARIA ELENA"')).toEqual({ form: "psiholog", holder: "exemplu maria elena" });
     expect(individualHolder("POPESCU ION PFA")).toEqual({ form: "pfa", holder: "popescu ion" });
     expect(individualHolder("P.F.A. IONESCU MARIA-ELENA")).toEqual({ form: "pfa", holder: "ionescu maria elena" });
     expect(individualHolder("ÎNTREPRINDERE INDIVIDUALĂ VASILESCU DAN")).toEqual({ form: "ii", holder: "vasilescu dan" });

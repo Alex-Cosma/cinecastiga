@@ -103,6 +103,10 @@ services:
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set in .env}
+      # Optional: its own secret for the tokens of ONRC persons in links (apps/web/lib/person-token.ts).
+      # Empty = derived from BETTER_AUTH_SECRET. After a change, list the old one in PERSON_KEY_SECRET_PREVIOUS.
+      PERSON_KEY_SECRET: ${PERSON_KEY_SECRET:-}
+      PERSON_KEY_SECRET_PREVIOUS: ${PERSON_KEY_SECRET_PREVIOUS:-}
       BETTER_AUTH_URL: https://${DOMAIN:-cinecastiga.ro}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

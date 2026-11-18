@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "@seap/db";
 import { catalogUatSource } from "./places";
+import { sealPersonKey } from "../person-token";
 import { interpretQuestion } from "./server";
 import { loadSharedLists, resetSharedLists, sqlVocabulary } from "./vocabulary-sql";
 import { entityCandidates, personsByExactName, suggestAuthorities, suggestCpv, suggestPersons, suggestSuppliers, suggestUat } from "./vocabulary-queries";
@@ -130,13 +131,13 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
     expect(maria.alternatives).toEqual([]);
     // diacritics and double spaces in ONRC are matched when the index can search the name tolerantly
     const serban = await interpretQuestion(sql, "firmele lui Popescu Serban", { now: NOW });
-    expect(serban.interpretation.person?.key).toBe("serban popescu|1971");
+    expect(serban.interpretation.person?.key).toBe(sealPersonKey("serban popescu|1971"));
     // "Ion Stefan" is all short or a/i/s/t-letter words: searched as written only, never a silent pick
     const stefan = await interpretQuestion(sql, "firmele lui Ion Stefan", { now: NOW });
     expect(stefan.interpretation.person).toBeNull();
 
     const hyphen = await interpretQuestion(sql, "firmele lui Maria Popescu-Ionescu", { now: NOW });
-    expect(hyphen.interpretation.person?.key).toBe("popescu-ionescu maria|1980");
+    expect(hyphen.interpretation.person?.key).toBe(sealPersonKey("popescu-ionescu maria|1980"));
 
     // a county council is a named buyer, registered as "Consiliul Judetean X" or "JUDETUL X"
     // two registry entities for one council ("JUDETUL BUZAU" and "Consiliul Judetean Buzau") are a choice

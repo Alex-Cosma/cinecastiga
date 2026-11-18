@@ -1,5 +1,6 @@
 import { createDb, cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { onrcBirthYear } from "./format";
+import { sealPersonKey } from "./person-token";
 
 /*
  * An individual practice — PFA, întreprindere individuală, cabinet individual
@@ -33,7 +34,7 @@ export type IndividualForm = "psiholog" | "medic" | "avocat" | "notar" | "pfa" |
 /** The words of the form and titles, never part of the holder's name. */
 const NOISE = /cabinet|individual[a-z]*|de|psiholog[a-z]*|medical|stomatologic|medicina|avocat|birou|notarial|notar|public|persoana|fizica|autorizata|intreprindere|pfa|p f a|ii|i i|dr|doctor|prof|ing|ec|av/g;
 
-/** The practice's form and its holder's folded name ("EXEMPLU MARIA ELENA"), or null. */
+/** The practice's form and its holder's folded name ("exemplu maria elena"), or null. */
 export function individualHolder(entityName: string | null | undefined): { form: IndividualForm; holder: string } | null {
   if (!entityName) return null;
   const spaced = fold(entityName).replace(/[^a-z]+/g, " ").trim();
@@ -70,7 +71,7 @@ export async function readHolderTwin(q: DbSql, entityName: string | null | undef
   if (rows.length !== 1) return null;
   const r = rows[0]!;
   const { birthYear } = onrcBirthYear(r.by, r.sy);
-  return { personKey: r.person_key, name: r.nm, birthYear, locality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null, firms: Number(r.firms) };
+  return { personKey: sealPersonKey(r.person_key), name: r.nm, birthYear, locality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null, firms: Number(r.firms) };
 }
 
 /**

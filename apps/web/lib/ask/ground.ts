@@ -1,4 +1,5 @@
-import { canonicalPersonKey, cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
+import { openPersonKey, sealPersonKey } from "../person-token";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { likeContains } from "../sql-like";
@@ -440,7 +441,8 @@ async function groundAdmin(
   q: { key?: string | undefined; name?: string | undefined },
 ): Promise<AdminGrounding> {
   // A link, a saved question or a watch may hold a key from before the name fold (0090).
-  let personKey: string | null = q.key ? canonicalPersonKey(q.key) : null;
+  // The database key, for the queries below; what goes back to the reader is its token.
+  let personKey: string | null = q.key ? openPersonKey(q.key) || null : null;
   let display: string | null = null;
   let alternatives: string[] = [];
   if (!personKey && q.name) {
@@ -522,7 +524,7 @@ async function groundAdmin(
       select 1 from reference.company_reps where person_key = ${personKey} limit 1
     `;
     return {
-      query: q.name ?? personKey,
+      query: q.name ?? "persoana aleasă",
       personKey: null,
       display: null,
       supplierIds: [],
@@ -538,7 +540,7 @@ async function groundAdmin(
   const holderIds = (await readHolderPractices(sql, personKey)).filter((id) => !firmIds.includes(id));
   return {
     query: q.name ?? r.nm,
-    personKey,
+    personKey: sealPersonKey(personKey),
     display: `${r.nm}${birthYear ? ` (n. ${birthYear}${loc ? `, ${loc}` : ""})` : ""}`,
     supplierIds: [...firmIds, ...holderIds],
     nFirms: Number(r.nf ?? 0),

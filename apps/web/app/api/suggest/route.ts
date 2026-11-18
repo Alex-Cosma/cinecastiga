@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "@/lib/format";
 import { devlog } from "@/lib/devlog";
+import { sealPersonKey } from "@/lib/person-token";
 import { officialUnitPopulation, sectorSuggestions } from "@/lib/peer-population";
 import {
   TIP_LABEL, foldSuggest as fold, prettyUat,
@@ -128,7 +129,7 @@ export async function GET(req: Request) {
       .filter((r) => r.name_display)
       .map((r) => ({ name: cleanName(r.name_display), county: r.county })),
     person: person.map((r) => ({
-      key: r.person_key,
+      key: sealPersonKey(r.person_key),
       name: cleanName(r.nm),
       ...onrcBirthYear(r.by, r.sy),
       birthLocality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null,

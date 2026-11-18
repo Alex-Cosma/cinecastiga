@@ -5556,7 +5556,7 @@
      "measure": "value",
      "filters": {
       "adminName": "POPESCU FIXTURE ION",
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      },
      "dim": "supplier"
     },
@@ -6869,7 +6869,7 @@
      "block": "table",
      "measure": "value",
      "filters": {
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      },
      "dim": "supplier"
     },
@@ -7212,7 +7212,7 @@
      "block": "stat",
      "measure": "value",
      "filters": {
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      }
     },
     "pills": ["total","valoarea înregistrată","conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)","toți anii","toate achizițiile: directe și din proceduri"],
@@ -17420,7 +17420,7 @@
      "measure": "value",
      "filters": {
       "adminName": "POPESCU FIXTURE ION",
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca",
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw",
       "yearFrom": 2024,
       "yearTo": 2025
      },
@@ -17851,7 +17851,7 @@
      "block": "entity_card",
      "measure": "value",
      "filters": {
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      },
      "dim": "supplier",
      "rankBy": "value"
@@ -24339,7 +24339,7 @@
      "measure": "value",
      "filters": {
       "adminName": "POPESCU FIXTURE ION",
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      },
      "dim": "supplier",
      "topN": 10
@@ -26674,7 +26674,7 @@
      "measure": "value",
      "filters": {
       "adminName": "POPESCU FIXTURE ION",
-      "adminPersonKey": "popescu fixture ion|1970-05-01|cluj-napoca"
+      "adminPersonKey": "p1.QRqwvlBW-62wc1wmH2d1_LdMOioDp0-lYzWpMfoNKcVFxakrVsRVbhGi07P5KIA7uQpUkyrjKV7F5W7b1mvCm7Vu13TOTw"
      },
      "dim": "supplier",
      "topN": 10

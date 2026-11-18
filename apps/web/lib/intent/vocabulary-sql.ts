@@ -1,5 +1,6 @@
 import type { DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "../format";
+import { sealPersonKey } from "../person-token";
 import { buildPlaces, type UatSource } from "./places";
 import { entitiesByCui, entityCandidates, personsByExactName, suggestCpv } from "./vocabulary-queries";
 import type { PlaceEntry, Vocabulary } from "./types";
@@ -140,7 +141,7 @@ export function sqlVocabulary(sql: DbSql, shared: SharedLists, opts: { signal?: 
       }
       return {
         hits: rows.map((r) => ({
-          key: r.person_key,
+          key: sealPersonKey(r.person_key),
           name: cleanName(r.nm),
           birthYear: onrcBirthYear(r.by, r.sy).birthYear,
           birthLocality: r.bl && LETTER.test(r.bl) ? r.bl : null,

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
 import { readHolderPractices, readHolderTwin } from "./individual-holder";
 import { ground } from "./ask/ground";
+import { openPersonKey, sealPersonKey } from "./person-token";
 
 // Owner decisions of 1 November 2026: an individual practice links to the one dated ONRC person with its holder's name
 // (the page's "Titular"), and Ask's «conduse azi de» for that person includes the practice, by name only. Names and
@@ -47,7 +48,7 @@ describe.skipIf(!url)("an individual practice and the ONRC person with its holde
   it("finds the practices whose holder has the person's name and no ONRC representative of their own", async () => {
     // Not the S.R.L. with the same words (no individual form) nor the I.I. with its own representative.
     expect((await readHolderPractices(sql, person)).sort()).toEqual([cabinet, pfa].sort());
-    expect(await readHolderTwin(sql, 'CABINET INDIVIDUAL DE PSIHOLOGIE "FIXTUR HOLDERX ANA"')).toMatchObject({ personKey: person, firms: 1 });
+    expect(await readHolderTwin(sql, 'CABINET INDIVIDUAL DE PSIHOLOGIE "FIXTUR HOLDERX ANA"')).toMatchObject({ personKey: sealPersonKey(person), firms: 1 });
   });
 
   it("links nobody when two dated people share the name", async () => {
@@ -60,5 +61,14 @@ describe.skipIf(!url)("an individual practice and the ONRC person with its holde
     expect(admin?.supplierIds.sort()).toEqual([firm, cabinet, pfa].sort());
     expect(admin?.holderIds?.sort()).toEqual([cabinet, pfa].sort());
     expect(admin?.nFirms).toBe(1);
+  });
+
+  it("hands the reader a token, never the key with the birth date, and answers the same through either", async () => {
+    const plain = await ground(sql, { adminPersonKey: person });
+    const token = plain.admin!.personKey!;
+    expect(openPersonKey(token)).toBe(person);
+    expect(JSON.stringify(plain)).not.toMatch(/\|\d{4}-\d{2}-\d{2}\|/);
+    expect(JSON.stringify(await readHolderTwin(sql, 'CABINET INDIVIDUAL DE PSIHOLOGIE "FIXTUR HOLDERX ANA"'))).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(await ground(sql, { adminPersonKey: token })).toEqual(plain);
   });
 });
