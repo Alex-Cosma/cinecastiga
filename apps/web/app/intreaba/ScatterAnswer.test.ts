@@ -13,7 +13,7 @@ import {
   SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
   listHeadWords, listSumParts, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, rowPlace, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
-import type { ScatterData } from "../../lib/ask/scatter-shared";
+import { scatterNote, type ScatterData } from "../../lib/ask/scatter-shared";
 
 /*
  * scatter-3 as markup and as pure words (rf-2026.18; final scatter §3.3–§3.6, §4.4, §4.6): the strip's two rows
@@ -64,15 +64,17 @@ describe("the risk cloud's answer", () => {
 
   it("draws the risk score upwards, 10–100 with the bands tinted and named, lines at 40 and 68, the strip of the scores under 10, and the top 10% line", () => {
     const markup = render();
-    expect(markup.match(/class="sc-idx"/g)).toHaveLength(5);
-    // The bands' edges (owner's variant 1, 15 November 2026): no line at 20; „0” beside the strip.
-    for (const label of ["0", "10", "40", "68", "100"]) expect(markup).toContain(`>${label}</text>`);
+    expect(markup.match(/class="sc-idx"/g)).toHaveLength(4);
+    // The bands' edges (owner's variant 1, 15 November 2026): no line at 20; no „0” since the strip is gone (19 November).
+    for (const label of ["10", "40", "68", "100"]) expect(markup).toContain(`>${label}</text>`);
+    expect(markup).not.toContain(">0</text>");
     expect(markup).not.toContain(">20</text>");
     expect(markup.match(/class="sc-zone [^"]+"/g)).toEqual(['class="sc-zone risk-slab"', 'class="sc-zone risk-mid"', 'class="sc-zone risk-high"']);
     expect(markup.match(/class="sc-grid sc-grid-y"/g)).toHaveLength(2);
-    // The bands' words in the margin, beside a rail, with their ranges; the strip's words and count.
-    for (const words of ["slab", "moderat", "pronunțat", "10–39", "40–67", "68–100", "fără semnal"]) expect(markup).toContain(`>${words}</text>`);
-    expect(markup).toContain('class="sc-strip-bg"');
+    // The bands' words in the margin, beside a rail, with their ranges; no strip under the field (owner, 19 November 2026).
+    for (const words of ["slab", "moderat", "pronunțat", "10–39", "40–67", "68–100"]) expect(markup).toContain(`>${words}</text>`);
+    expect(markup).not.toContain("sc-strip");
+    expect(markup).toContain("achiziții directe, lei (pas = de zece ori mai mult)");
     expect(markup).toContain("cele mai mari 10%");
     expect(markup.match(/class="sc-dot[^"]*"/g)).toHaveLength(4);
     // No band per number of criteria, no index.
@@ -106,10 +108,16 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("2.567 de înregistrări");
     // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
     expect(words).toContain("Vezi cele 4.827 de înregistrări →");
+    // The whole list on the page (owner, 19 November 2026): a funnel on each column (Complet's), never „Arată încă 10”.
+    expect(markup).toMatch(/<div class="sc-cols" role="group" aria-label="Filtre pe coloane" data-only="complet">/);
+    for (const label of ["instituție", "județ", "tipare", "valoare", "risc", "achiziții directe"]) expect(markup).toContain(`aria-label="Filtrează după ${label}"`);
+    expect(markup).not.toContain("Arată încă");
     expect(words).toContain("Toată lista pe /semnale");
-    // The answer's caveats are one (i) at its foot, no words on the page (owner, 17 November 2026: less small print).
+    // The answer's caveats are in „Cum am calculat” under the answer, not in an (i) at the list's foot (owner, 19 November 2026).
     expect(words).not.toContain("Valori înregistrate, nu plăți");
-    expect(markup).toMatch(/<p class="sc-foot"><span class="term term-tip[^"]*info-mark">.*?role="tooltip"[^>]*><b>De știut\.<\/b> Tiparele sunt piste, nu dovezi\. Valori înregistrate, nu plăți: suma achizițiilor directe acceptate/);
+    expect(markup).not.toContain("sc-foot");
+    expect(scatterNote()).toBe("Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți: suma achizițiilor directe acceptate, fiecare de cel mult 2 mil. lei. Contractele din proceduri nu intră în profil.");
+    expect(scatterNote(true)).toMatch(/^Semnalele sunt piste, nu dovezi\./);
   });
 
   it("with a signal: the group stays the cloud, the head counts the signal's list, the records are the signal's", () => {
@@ -159,7 +167,7 @@ describe("the risk cloud's answer", () => {
   it("draws a national cloud stored by tenths as it can: the tenths 1–9 as cells, the first (0–9) as the strip, the named profiles exact", () => {
     const markup = render(NATIONAL_BANDS, spec({ filters: {} }));
     expect(markup.match(/class="sc-cell s\d"/g)).toHaveLength(3);
-    expect(markup.match(/class="sc-bar"/g)).toHaveLength(1);
+    expect(markup).not.toContain('class="sc-bar"');
     expect(markup.match(/class="sc-dot[^"]*"/g)).toHaveLength(3);
     expect(text(markup)).toContain("Tot grupul 15.729");
   });
@@ -170,15 +178,15 @@ describe("the risk cloud's answer", () => {
     const cells = markup.match(/class="sc-cell s\d"/g) ?? [];
     expect(cells.length).toBeGreaterThan(0);
     expect(cells.length).toBeLessThanOrEqual(8);
-    expect(markup.match(/class="sc-bar"/g)).toHaveLength(3);
+    expect(markup).not.toContain('class="sc-bar"');
     const words = text(markup);
     expect(words).toMatch(/instituții pe pătrățel: 1 · /);
-    expect(words).toContain("fără semnal în scor, după valoare");
+    expect(words).toMatch(/[\d.]+ fără semnal în scor: nedesenate/);
     // Who is left of the axis: in the (i) after the ramp (owner, 17 November 2026: less small print).
     expect(words).not.toContain("la stânga axei");
     expect(markup).toMatch(/role="tooltip"[^>]*><b>La stânga axei\.<\/b> 3 instituții, sub 3 mii lei\.<\/span>/);
-    // The strip's count, beside it.
-    expect(markup).toContain(">14.100</text>");
+    // The count of the profiles without a signal in the score: at the legend's end.
+    expect(text(markup)).toContain("14.100 fără semnal în scor: nedesenate");
     expect(markup).not.toContain(">grupul<");
   });
 
@@ -237,7 +245,8 @@ describe("a stored scatter-2, drawn as it was", () => {
     expect(words).toContain("Finalizare rapidă 15");
     expect(words).toContain("Finalizare rapidă · 25,2%");
     expect(words).toContain("0,6 · 3 din 5");
-    expect(markup).toMatch(/<b>De știut\.<\/b> Semnalele sunt piste, nu dovezi\./);
+    // Its note („Semnalele sunt piste…”) is in „Cum am calculat” (scatterNote(true)), not in the chart.
+    expect(markup).not.toContain("sc-foot");
     expect(markup).not.toContain("cri-pill");
     expect(stripStatusWords(BUZAU_CLOUD_V2)).toBe("82 în listă, după semnale");
   });
@@ -272,12 +281,11 @@ describe("the chart's geometry and words", () => {
     expect(wide.yAt(100)).toBeGreaterThan(wide.pad.t);
     // Even steps from 10 to 100: the field is continuous.
     expect(wide.yAt(10) - wide.yAt(55)).toBeCloseTo(wide.yAt(55) - wide.yAt(100), 6);
-    // Under 10: the strip, under the field, inside the chart.
-    const strip = wide.strip!;
-    expect(wide.yAt(0)).toBe(strip.y + strip.h / 2);
+    // Under 10: on the value axis, at the field's foot, under the line of 10.
+    expect(wide.yAt(0)).toBe(wide.axisY);
     expect(wide.yAt(9)).toBe(wide.yAt(0));
-    expect(strip.y).toBeGreaterThan(wide.yAt(10));
-    expect(strip.y + strip.h).toBeLessThanOrEqual(wide.box.height - wide.pad.b);
+    expect(wide.axisY!).toBeGreaterThan(wide.yAt(10));
+    expect(wide.axisY).toBe(wide.box.height - wide.pad.b);
     // The bands' words have the desktop's right margin; a phone keeps them in the plot.
     expect(wide.pad.l + wide.plotW).toBeLessThanOrEqual(wide.box.width - 90);
     expect(narrow.pad.l + narrow.plotW).toBe(narrow.box.width - 14);
@@ -296,10 +304,9 @@ describe("the chart's geometry and words", () => {
     expect(b.cells.length).toBeLessThanOrEqual(a.cells.length);
     const row = a.cells.find((c) => c.n === 30)!;
     expect(row.y + row.h).toBeCloseTo(wide.yAt(30) - 0.5, 0);
-    // The strip: the tallest column fills it, the others by the square root of their share.
-    const tallest = Math.max(...a.bars.map((x) => x.h));
-    expect(tallest).toBeCloseTo(wide.strip!.h, 6);
-    expect(a.bars.find((x) => x.n === 900)!.h).toBeCloseTo(Math.sqrt(900 / 13_000) * wide.strip!.h, 6);
+    // The profiles without a signal in the score are counted, not drawn (owner, 19 November 2026: no strip under the field).
+    expect(a.none).toBeGreaterThan(0);
+    expect("bars" in a).toBe(false);
   });
 
   it("steps the green ramp at 1 and the cells' quantiles, says the steps, and drops the steps the counts never reach", () => {
@@ -322,9 +329,9 @@ describe("the chart's geometry and words", () => {
         expect(g.y(score, id)).toBeGreaterThanOrEqual(g.pad.t);
         expect(g.y(score, id)).toBeLessThanOrEqual(g.box.height - g.pad.b);
       }
-      // Under 10, spread inside the strip.
-      expect(g.y(0, id)).toBeGreaterThan(g.strip!.y);
-      expect(g.y(0, id)).toBeLessThan(g.strip!.y + g.strip!.h);
+      // Under 10: on the value axis itself, at the field's foot.
+      expect(g.y(0, id)).toBe(g.axisY);
+      expect(g.axisY).toBe(g.box.height - g.pad.b);
     }
   });
 

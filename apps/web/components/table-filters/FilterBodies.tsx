@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatInt } from "@/lib/format";
-import { monthLabel } from "@/lib/table-filters/describe";
-import { datesChoice, monthsValue, parseAmount } from "@/lib/table-filters/values";
-import type { ColumnDef, Facet, FilterValue } from "@/lib/table-filters/types";
+import { formatInt } from "../../lib/format";
+import { monthLabel } from "../../lib/table-filters/describe";
+import { datesChoice, monthsValue, parseAmount } from "../../lib/table-filters/values";
+import type { ColumnDef, Facet, FilterValue } from "../../lib/table-filters/types";
 
 /*
  * The insides of a funnel's window, one per kind of filter. Each draws the options the server counted under the other

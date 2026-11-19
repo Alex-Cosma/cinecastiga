@@ -31,7 +31,7 @@ type Fragment = ReturnType<DbSql>;
 /** A fragment is a query nobody has awaited: the tagged template types it by its rows. */
 const frag = (query: unknown): Fragment => query as Fragment;
 /** A profile as the answer reads it: the score as displayed (0–100) and unrounded (real, the order). */
-interface ScoredRow { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; score: number; score_raw: number; n_flags: number; flags: string[] | null; historic?: string | null }
+export interface ScoredRow { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; score: number; score_raw: number; n_flags: number; flags: string[] | null; historic?: string | null }
 
 export interface ScatterInput {
   spec: AskSpec;
@@ -56,8 +56,10 @@ export function scatterOrder(s: DbSql, rank: RankBy): Fragment {
  * A historic profile's last record (its day), null for an active one (riskActive: a record in the last 24 months;
  * historic.ts); '' for a profile without its profile row (none expected): historic, the day unknown.
  */
-const historicDay = (s: DbSql): Fragment => frag(s`case when ${riskActive(s, "ef")} then null else coalesce((
+export function historicDay(s: DbSql): Fragment {
+  return frag(s`case when ${riskActive(s, "ef")} then null else coalesce((
   select left(ep.last_activity, 10) from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = ef.role), '') end`);
+}
 
 /** The profiles of a group that have the signal: the cloud's group, narrowed by the strip's choice. */
 export const hasFlag = (s: DbSql, flag: ScatterFlag | null | undefined): Fragment => frag(flag ? s`ef.flags ? ${flag}` : s`true`);
@@ -141,28 +143,7 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     where ${listCond}${out ? s` and ${riskActive(s, "ef")}` : s``}
     order by ${scatterOrder(s, rank)} limit ${SCATTER_LIST_MAX}
   `) as unknown as ScoredRow[];
-  const ids = listed.map((r) => r.id);
-  const years = await instanceFacts(s, role, ids);
-  const kinds = role === "authority" && !spec.filters.authorityKind && ids.length ? (await readAuthorityKinds(s)).byId : null;
-  const profiles = role === "supplier" && ids.length ? (await s`
-    select ep.entity_id::text id, ep.employees, ep.employees_year from marts.entity_profile ep
-    where ep.role = 'supplier' and ep.entity_id = any(${s.array(ids)}::bigint[])
-  `) as unknown as { id: string; employees: number | null; employees_year: number | null }[] : [];
-  const filed = new Map(profiles.map((p) => [p.id, p]));
-  data.list = listed.map((r) => {
-    const have = Array.isArray(r.flags) ? r.flags : [];
-    const cheap = years.get(r.id) ?? [];
-    // Every signal of the profile, in the strip's order, with the years or the share its instances say.
-    const facts: ScatterFlagFact[] = flags.filter((code) => have.includes(code)).map((code) => cheap.find((f) => f.code === code) ?? { code });
-    const row: ScatterListRow = {
-      entityId: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das),
-      score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), flags: facts,
-    };
-    if (kinds) row.kind = kinds.get(r.id) ?? null;
-    if (typeof r.historic === "string") row.historic = r.historic;
-    if (role === "supplier") { const f = filed.get(r.id); row.employees = f?.employees ?? null; row.employeesYear = f?.employees_year ?? null; }
-    return row;
-  });
+  data.list = await listRows(s, input, listed);
   const named = (): ScatterCloudPoint[] => data.list.map((r) => ({
     id: r.entityId, name: r.name, value: r.value, score: r.score, scoreRaw: r.scoreRaw, nFlags: r.nFlags, nDas: r.nDas, flags: bit(role, r.flags.map((f) => f.code)),
   }));
@@ -193,6 +174,37 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     ...(flag ? { flagged: await bands(s, frag(s`${group} and ef.flags ? ${flag}`), x, minLog, maxLog) } : {}),
   };
   return data;
+}
+
+/**
+ * The list's rows from the profiles read: every signal of each (in the strip's order) with the years or the share its
+ * instances say, an institution's kind, a firm's employees. One builder for the answer's first rows and for any page of
+ * the whole list (scatter-list.ts).
+ */
+export async function listRows(s: DbSql, input: Pick<ScatterInput, "spec" | "role">, listed: readonly ScoredRow[]): Promise<ScatterListRow[]> {
+  const { spec, role } = input, flags = scatterFlagsOf(role);
+  const ids = listed.map((r) => r.id);
+  const years = await instanceFacts(s, role, ids);
+  const kinds = role === "authority" && !spec.filters.authorityKind && ids.length ? (await readAuthorityKinds(s)).byId : null;
+  const profiles = role === "supplier" && ids.length ? (await s`
+    select ep.entity_id::text id, ep.employees, ep.employees_year from marts.entity_profile ep
+    where ep.role = 'supplier' and ep.entity_id = any(${s.array(ids)}::bigint[])
+  `) as unknown as { id: string; employees: number | null; employees_year: number | null }[] : [];
+  const filed = new Map(profiles.map((p) => [p.id, p]));
+  return listed.map((r) => {
+    const have = Array.isArray(r.flags) ? r.flags : [];
+    const cheap = years.get(r.id) ?? [];
+    // Every signal of the profile, in the strip's order, with the years or the share its instances say.
+    const facts: ScatterFlagFact[] = flags.filter((code) => have.includes(code)).map((code) => cheap.find((f) => f.code === code) ?? { code });
+    const row: ScatterListRow = {
+      entityId: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das),
+      score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), flags: facts,
+    };
+    if (kinds) row.kind = kinds.get(r.id) ?? null;
+    if (typeof r.historic === "string") row.historic = r.historic;
+    if (role === "supplier") { const f = filed.get(r.id); row.employees = f?.employees ?? null; row.employeesYear = f?.employees_year ?? null; }
+    return row;
+  });
 }
 
 // --- the facts of the profiles on screen (part=profile) and the search in the group (part=locate)

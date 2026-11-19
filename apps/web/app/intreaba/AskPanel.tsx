@@ -113,6 +113,7 @@ import WorkLine from "../../components/motion/WorkLine";
 import { useChangedMark } from "../../components/motion/changed";
 import ShareMenu from "./answer/ShareMenu";
 import { splitCaveats } from "@/lib/ask/caveat-kinds";
+import { scatterNote } from "@/lib/ask/scatter-shared";
 import HowComputed from "./answer/HowComputed";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
@@ -1729,7 +1730,8 @@ export default function AskPanel({
               const notes = splitCaveats(resp.caveats ?? []);
               return <>
                 {notes.shown.map((c) => <p key={c} className="cq-caveat-shown">{c}</p>)}
-                <HowComputed key={JSON.stringify(applied)} notes={notes.calc} sql={shown.displaySql ?? resp.displaySql} />
+                {/* The risk map's own note (what its value is, that patterns are leads) goes first. */}
+                <HowComputed key={JSON.stringify(applied)} notes={data.block === "scatter" && "scatter" in data ? [scatterNote(data.scatter.version === 2), ...notes.calc] : notes.calc} sql={shown.displaySql ?? resp.displaySql} />
               </>;
             })()}
             {/* Z3-15: „Copiază linkul” is in „Trimite ▾”, „Exportă” in the head; the row stays for the AI mode's „Ajustează”. */}

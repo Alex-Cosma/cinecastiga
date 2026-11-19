@@ -45,12 +45,6 @@ export function plotPad(box: ChartBox) {
   return { l: box.compact ? 44 : 58, r: box.compact ? 14 : 100, t: 24, b: box.compact ? 40 : 46 };
 }
 
-/**
- * The strip under the plot (owner, 15 November 2026, variant 1): the profiles without a signal in the score (under 10;
- * 85% of the institutions), apart from the field of the scored ones, so the least telling group is no longer the
- * heaviest mark of the chart.
- */
-export const stripBox = (box: ChartBox): { gap: number; h: number } => (box.compact ? { gap: 10, h: 22 } : { gap: 12, h: 26 });
 
 /** A stable spread: -0.5…0.5 from the id, so a point does not move between runs (no Math.random). */
 export function jitter(id: string): number {
@@ -115,8 +109,12 @@ export interface Geometry {
   plotW: number; plotH: number;
   /** A stored scatter-2: one band per number of criteria met, this tall. 0 on scatter-3's continuous risk axis. */
   bandH: number;
-  /** scatter-3: the strip of the profiles under 10, under the plot (its top and height); none on a stored scatter-2. */
-  strip: { y: number; h: number } | null;
+  /**
+   * scatter-3: the value axis under the field, where a profile without a signal in the score (under 10) is drawn when it
+   * is listed, found or one of a small group's points. Until 19 November 2026 a strip under the field held a histogram
+   * of all of them (owner: the extra chart is gone; they are counted in the legend). null on a stored scatter-2.
+   */
+  axisY: number | null;
   /** Pixels of a value; of a level (scatter-3: the score 0–100; scatter-2: the middle of the band of k criteria). */
   x(value: number): number;
   yAt(level: number): number;
@@ -145,15 +143,14 @@ export function geometry(data: ScatterData, width: number): Geometry {
   if (data.version === 2) {
     const bandH = plotH / (data.levels + 1);
     const yAt = (k: number) => bottom - (k + 0.5) * bandH;
-    return { box, pad, x0, x1, plotW, plotH, bandH, strip: null, x, yAt, y: (k, id) => yAt(k) + jitter(id) * bandH * 0.62, ticks, legacy: true };
+    return { box, pad, x0, x1, plotW, plotH, bandH, axisY: null, x, yAt, y: (k, id) => yAt(k) + jitter(id) * bandH * 0.62, ticks, legacy: true };
   }
-  // scatter-3: the field from 10 to 100, the strip of the profiles under 10 below it.
-  const band = stripBox(box), field = plotH - band.gap - band.h, floor = pad.t + field;
-  const strip = { y: floor + band.gap, h: band.h };
-  const yAt = (score: number) => score < SCATTER_FIELD_MIN ? strip.y + strip.h / 2
-    : floor - SCORE_INSET - ((Math.min(100, score) - SCATTER_FIELD_MIN) / (100 - SCATTER_FIELD_MIN)) * (field - 2 * SCORE_INSET);
-  const y = (score: number, id: string) => score < SCATTER_FIELD_MIN ? yAt(score) + jitter(id) * (strip.h - 8) : yAt(score) + jitter(id) * SCORE_SPREAD;
-  return { box, pad, x0, x1, plotW, plotH: field, bandH: 0, strip, x, yAt, y, ticks, legacy: false };
+  // scatter-3: the field from 10 to 100 down to the value axis; a profile under 10 sits on the axis itself.
+  const floor = pad.t + plotH;
+  const yAt = (score: number) => score < SCATTER_FIELD_MIN ? floor
+    : floor - SCORE_INSET - ((Math.min(100, score) - SCATTER_FIELD_MIN) / (100 - SCATTER_FIELD_MIN)) * (plotH - 2 * SCORE_INSET);
+  const y = (score: number, id: string) => score < SCATTER_FIELD_MIN ? floor : yAt(score) + jitter(id) * SCORE_SPREAD;
+  return { box, pad, x0, x1, plotW, plotH, bandH: 0, axisY: floor, x, yAt, y, ticks, legacy: false };
 }
 
 /** The index beside a band of a stored scatter-2: "0,6" with "3/5" under it (the index was shown unchanged, decision 22.10). */
@@ -176,13 +173,11 @@ export function cellRects(bands: ScatterBands, g: Geometry): { x: number; y: num
 
 /** A cell of the density field: its box, its profiles and its step of the colour ramp (0 the palest … 4). */
 export interface DensityCell { x: number; y: number; w: number; h: number; n: number; step: number }
-/** A column of the strip's histogram (the profiles under 10 at that value). */
-export interface DensityBar { x: number; y: number; w: number; h: number; n: number }
 export interface Density {
-  cells: DensityCell[]; bars: DensityBar[];
+  cells: DensityCell[];
   /** The ramp's lower bounds (1, then the quantiles of the cells' counts), strictly increasing: the legend's words. */
   steps: number[];
-  /** The profiles in the strip, and those left of the axis's start (out of the chart). */
+  /** The profiles without a signal in the score (not drawn; the legend counts them), and those left of the axis's start. */
   none: number; below: number;
 }
 
@@ -209,13 +204,12 @@ export function stepWords(steps: readonly number[]): string[] {
 }
 
 /**
- * The density field and the strip of a scatter-3 cloud of cells. A cloud stored since 15 November 2026 (`fine`) joins
- * its fine columns into cells about CELL_PX wide, its rows of 2 points aligned with the bands' edges; an older stored
- * cloud keeps its tenths (the first, 0–9, becomes the strip). The strip is a histogram: the square root of each
- * column's profiles over the tallest. `steps` reuses another layer's ramp; by default the cells' own.
+ * The density field of a scatter-3 cloud of cells. A cloud stored since 15 November 2026 (`fine`) joins its fine
+ * columns into cells about CELL_PX wide, its rows of 2 points aligned with the bands' edges; an older stored cloud
+ * keeps its tenths. The profiles under 10 (the first tenth, or `none`) are counted, not drawn (owner, 19 November
+ * 2026). `steps` reuses another layer's ramp; by default the cells' own.
  */
 export function density(bands: ScatterBands, g: Geometry, steps?: readonly number[]): Density {
-  const strip = g.strip ?? { y: g.box.height - g.pad.b, h: 0 };
   const cw = (bands.maxLog - bands.minLog) / Math.max(1, bands.nx);
   const px = (lg: number) => g.pad.l + ((lg - g.x0) / (g.x1 - g.x0)) * g.plotW;
   const fx = bands.fine ? Math.max(1, Math.round((g.box.compact ? CELL_PX.compact : CELL_PX.wide) / Math.max(0.01, px(bands.minLog + cw) - px(bands.minLog)))) : 1;
@@ -240,12 +234,7 @@ export function density(bands: ScatterBands, g: Geometry, steps?: readonly numbe
     const { x0, x1 } = span(c.m), top = g.yAt(c.s1), low = g.yAt(c.s0);
     return { x: x0 + 0.5, y: top + 0.5, w: Math.max(1, x1 - x0 - 1), h: Math.max(1, low - top - 1), n: c.n, step: stepOf(ramp, c.n) };
   });
-  const peak = Math.max(1, ...floor.values());
-  const bars = [...floor.entries()].map(([m, n]): DensityBar => {
-    const { x0, x1 } = span(m), h = Math.max(1.5, Math.sqrt(n / peak) * strip.h);
-    return { x: x0 + 0.5, y: strip.y + strip.h - h, w: Math.max(1, x1 - x0 - 1), h, n };
-  });
-  return { cells, bars, steps: ramp, none: [...floor.values()].reduce((a, b) => a + b, 0), below: bands.below ?? 0 };
+  return { cells, steps: ramp, none: [...floor.values()].reduce((a, b) => a + b, 0), below: bands.below ?? 0 };
 }
 
 /** The line at the top 10%: the value above which a profile is among the group's largest tenth. */

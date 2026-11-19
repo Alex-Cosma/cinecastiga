@@ -1,7 +1,7 @@
 "use client";
 
-import { chipsOf, type Labels } from "@/lib/table-filters/describe";
-import type { FilterState, TableColumns } from "@/lib/table-filters/types";
+import { chipsOf, type Labels } from "../../lib/table-filters/describe";
+import type { FilterState, TableColumns } from "../../lib/table-filters/types";
 import "./table-filters.css";
 import { useRef } from "react";
 import { useChipMotion } from "../motion/chips";

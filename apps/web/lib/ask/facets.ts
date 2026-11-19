@@ -7,7 +7,9 @@ import {
   andAll, asksWinners, employeesBounds, fold, fullValueUnion, groupPredicates, newFirmCond, ownCountySql, predicateContext, profileCounty, profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendYearsPredicate,
   type PredicateCtx,
 } from "./predicates";
-import { scatterLocate, scatterProfileFacts } from "./scatter";
+import { scatterLocate, scatterProfileFacts , type ScatterInput } from "./scatter";
+import { scatterListFacet, scatterListPage, type ScatterListPage } from "./scatter-list";
+import type { Facet, FilterState } from "../table-filters/types";
 import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
 import { coveragePeriods, daCoverageYears, REGISTERED_YEAR_MISSING, txAggFragment, uatUnmappedError } from "./compile";
 import { buyerRowsSql, dominantIdsSql, rankedFacts, RELATION_MIN_RECORDS, RELATION_SHARE, resolveWinners } from "./winners";
@@ -931,6 +933,32 @@ async function locateProfiles(sql: DbSql, spec: AskSpec, q: string): Promise<Loc
     if (timedOut(e)) return { timeout: true };
     throw e;
   }
+}
+
+/**
+ * The risk map's whole list, a page at a time under its column filters, and a funnel's options (owner, 19 November
+ * 2026; lib/ask/scatter-list.ts). The group is the answer's: the same predicates as the cloud and as locateProfiles.
+ */
+async function withScatterInput<T>(sql: DbSql, spec: AskSpec, work: (tx: DbSql, input: ScatterInput) => Promise<T>): Promise<T | FacetFailure> {
+  if (spec.block !== "scatter") return { error: "Lista se cere la harta riscului." };
+  try {
+    const grounding = await ground(sql, spec.filters, spec.population);
+    return await inFacetTransaction(sql, async (tx) => {
+      const p = await prepare(tx, spec, grounding);
+      if ("error" in p) return p;
+      const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+      return work(tx, { spec, role, where: andAll(tx, profilePredicates(p.ctx, role, RISK_MIN_DAS)), county: profileCounty(tx, role, p.ctx.seatColumn), logTotal: false });
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
+}
+export function scatterList(sql: DbSql, spec: AskSpec, state: FilterState, page: number): Promise<ScatterListPage | FacetFailure> {
+  return withScatterInput(sql, spec, (tx, input) => scatterListPage(tx, input, state, page));
+}
+export function scatterListOptions(sql: DbSql, spec: AskSpec, key: string, state: FilterState, term: string): Promise<Facet | FacetFailure> {
+  return withScatterInput(sql, spec, (tx, input) => scatterListFacet(tx, input, key, state, term ? { term } : {}));
 }
 
 /**

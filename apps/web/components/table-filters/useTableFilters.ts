@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { activeOnly, withValue, writeFilters } from "@/lib/table-filters/codec";
-import type { FilterState, FilterValue, TableColumns } from "@/lib/table-filters/types";
+import { activeOnly, withValue, writeFilters } from "../../lib/table-filters/codec";
+import type { FilterState, FilterValue, TableColumns } from "../../lib/table-filters/types";
 import { useFacetNames } from "./useFacetNames";
 
 /**

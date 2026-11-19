@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createDb, TRANSACTION_MART_BUILD_INDEXES, type DbSql } from "@seap/db";
 import { forgetAuthorityKinds } from "./authority-kind";
 import { runRows, runSpec } from "./compile";
-import { locate, profileFacts } from "./facets";
+import { locate, profileFacts, scatterList, scatterListOptions } from "./facets";
 import { ground } from "./ground";
 import { scatterWithFacts } from "./scatter";
 import { builtFlagTotals, flaggedRecordKeys } from "./scatter-records";
@@ -317,6 +317,58 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-3, isolated Postgre
     // The group is Buzau's: a hospital of Cluj is not found.
     expect(out.outside).toEqual({ total: 4, by: "risk", matches: [] });
     expect(out.score).toBe(0.52);
+  });
+
+  it("pages the whole list in the answer's own order and narrows it by any column, each funnel counting under the others (owner, 19 November 2026)", async () => {
+    const out = await withAskFixture(connection!.sql, "scatter_list", seed, async (q) => {
+      const spec = cloud();
+      const first = (await answer(q, spec)).list.map((r) => r.entityId);
+      const page = async (state: Parameters<typeof scatterList>[2], n = 1) => {
+        const r = await scatterList(q, spec, state, n);
+        if (!("rows" in r)) throw new Error(JSON.stringify(r));
+        return { ids: r.rows.map((x) => x.entityId.slice(-2).replace(/^0/, "")), total: r.total, all: r.all, page: r.page, same: r.rows.map((x) => x.entityId).join() === first.join() };
+      };
+      const options = async (key: string, state: Parameters<typeof scatterList>[2] = {}, term = "") => {
+        const f = await scatterListOptions(q, spec, key, state, term);
+        if (!("kind" in f)) throw new Error(JSON.stringify(f));
+        return f.kind === "range" ? { min: f.min, max: f.max } : "options" in f ? f.options.map((o) => [o.label, o.n]) : f;
+      };
+      const split = { tipare: { kind: "options" as const, values: ["da_split"] } };
+      return {
+        whole: await page({}), beyond: await page({}, 9),
+        risk: await page({ risc: { kind: "range", min: 40, max: null } }),
+        split: await page(split),
+        cheap: await page({ valoare: { kind: "range", min: null, max: 1000 } }),
+        one: await page({ nume: { kind: "pick", values: [id(3)] } }),
+        both: await page({ ...split, risc: { kind: "range", min: 40, max: null } }),
+        none: await page({ achizitii: { kind: "range", min: 500, max: null } }),
+        // A signal of the strip keeps its own list under the column filters.
+        signal: await (async () => { const r = await scatterList(q, cloud({ scatter: { rankBy: "risk", flag: "da_year_end" } }), {}, 1); return "rows" in r ? [r.rows.map((x) => x.name), r.total] : r; })(),
+        patterns: await options("tipare"), patternsUnderRisk: await options("tipare", { risc: { kind: "range", min: 40, max: null } }),
+        counties: await options("judet"), names: await options("nume", {}, "gama"), riskRange: await options("risc"),
+      };
+    });
+    // Page 1 without filters is the answer's own list; a page past the end is the last one.
+    expect(out.whole).toEqual({ ids: ["1", "3", "2", "4"], total: 4, all: 4, page: 1, same: true });
+    expect(out.beyond.page).toBe(1);
+    expect(out.risk).toMatchObject({ ids: ["1", "3"], total: 2, all: 4 });
+    // Zeta has the pattern but only 12 acquisitions: under the list's floor, filtered or not.
+    expect(out.split.ids).toEqual(["1", "2"]);
+    expect(out.cheap.ids).toEqual(["3", "4"]);
+    expect(out.one).toMatchObject({ ids: ["3"], total: 1 });
+    expect(out.both.ids).toEqual(["1"]);
+    expect(out.none).toMatchObject({ ids: [], total: 0, all: 4 });
+    expect(out.signal).toEqual([["Comuna Alfa", "Comuna Delta"], 2]);
+    // A funnel counts its options in the rows the other filters leave, the score's patterns alone.
+    expect(Object.fromEntries(out.patterns as [string, number][])).toEqual({
+      "Adunate, trec de plafon": 2, "Mulți bani contractați în decembrie": 2, "Declarate directe, peste plafon": 2, "O firmă are mare parte din valoare": 1,
+    });
+    expect(Object.fromEntries(out.patternsUnderRisk as [string, number][])).toEqual({
+      "Adunate, trec de plafon": 1, "Mulți bani contractați în decembrie": 1, "Declarate directe, peste plafon": 2, "O firmă are mare parte din valoare": 1,
+    });
+    expect(out.counties).toEqual([["Buzău", 4]]);
+    expect(out.names).toEqual([["Comuna Gama", 1]]);
+    expect(out.riskRange).toEqual({ min: 20, max: 74 });
   });
 
   it("leaves the historic profiles out of the list in the order of risk, counted, and lists them marked when asked or by value (S8)", async () => {

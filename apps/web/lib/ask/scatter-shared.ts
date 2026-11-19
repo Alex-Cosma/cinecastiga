@@ -33,6 +33,12 @@ export const SCATTER_CLOUD_MIN_DAS = 10;
 export const SCATTER_CLOUD_MIN_PROFILES = 10;
 /** The list: at least this many (ENTITY_CARD_MIN_DAS), so its first row is the answer of "Cine conduce?" on risk. */
 export const SCATTER_LIST_MIN_DAS = 20;
+/**
+ * What the risk map's value is and what its patterns are (owner, 19 November 2026: the lone (i) under the list moved to
+ * „Cum am calculat”). A stored scatter-2 answer speaks of „semnale”.
+ */
+export const scatterNote = (legacy = false): string =>
+  `${legacy ? "Semnalele" : "Tiparele"} sunt piste, nu dovezi. Valori înregistrate, nu plăți: suma achizițiilor directe acceptate, fiecare de cel mult 2 mil. lei. Contractele din proceduri nu intră în profil.`;
 /** The list holds at most this many profiles; the rest is on /semnale. */
 export const SCATTER_LIST_MAX = 50;
 /** Rows shown at first, and added by „Arată încă 10”. */

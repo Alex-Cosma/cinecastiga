@@ -2,8 +2,8 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { isActive } from "@/lib/table-filters/codec";
-import type { ColumnDef, Facet, FilterValue } from "@/lib/table-filters/types";
+import { isActive } from "../../lib/table-filters/codec";
+import type { ColumnDef, Facet, FilterValue } from "../../lib/table-filters/types";
 import { DatesBody, ListBody, RangeBody } from "./FilterBodies";
 import { useFacet } from "./useFacet";
 import "./table-filters.css";

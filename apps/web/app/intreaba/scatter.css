@@ -84,7 +84,6 @@
 .sc-rec{justify-self:end;white-space:nowrap}
 .sc-more{margin:0}
 .sc-none{margin:0;font-size:13px;color:var(--muted)}
-.sc-foot{margin:0;font-size:11.5px;color:var(--muted)}
 
 @media (max-width:640px){
   .sc-chart{max-height:340px}
@@ -124,7 +123,6 @@
 .sc-cells.is-flag .sc-cell.s4{fill:var(--orange)}
 .sc-bar{fill:var(--accent-line)}
 .sc-cells.is-flag .sc-bar{fill:var(--orange);opacity:.85}
-.sc-strip-bg{fill:var(--sunk);opacity:.45}
 .sc-floor{stroke:var(--line-strong);stroke-width:1}
 .sc-zone-word{font-size:12px;font-weight:600;fill:currentColor}
 .sc-rail{color:var(--ink2)}
@@ -132,8 +130,6 @@
 .sc-rail .sc-tick{fill:var(--muted)}
 .sc-rail.risk-mid,.sc-zone-word.risk-mid{color:var(--amber-pill)}
 .sc-rail .sc-zone-word{fill:currentColor}
-.sc-strip .sc-zone-word{fill:var(--ink2)}
-.sc-strip-word{font-size:12px;fill:var(--ink2);paint-order:stroke;stroke:var(--paper);stroke-width:3px;stroke-linejoin:round}
 .sc-ramp{display:inline-flex;gap:2px}
 .sc-ramp i{width:12px;height:10px;border-radius:2px;display:inline-block}
 .sc-ramp i.s0{background:color-mix(in srgb,var(--accent) 26%,var(--paper))}
@@ -141,7 +137,6 @@
 .sc-ramp i.s2{background:color-mix(in srgb,var(--accent) 58%,var(--paper))}
 .sc-ramp i.s3{background:color-mix(in srgb,var(--accent) 76%,var(--paper))}
 .sc-ramp i.s4{background:var(--accent)}
-.sc-key.is-bars{width:12px;height:10px;border-radius:1px;opacity:1;background:linear-gradient(90deg,var(--accent-line) 0 3px,transparent 3px 4.5px,var(--accent-line) 4.5px 7.5px,transparent 7.5px 9px,var(--accent-line) 9px 12px);clip-path:polygon(0 55%,25% 55%,25% 0,62% 0,62% 30%,100% 30%,100% 100%,0 100%)}
 /* The signal: pills on a wide screen, one menu on a phone (the same choice, the same counts). */
 .sc-signal-pills{display:contents}
 .qb-field.sc-signal-select{display:none}
@@ -153,7 +148,7 @@
 /* Phones: no text under 12 px (owner, 1 November 2026), the chart's included. */
 @media (max-width:700px){
   .sc-tick,.sc-axis,.sc-p90 text{font-size:12px}
-  .sc-who small,.sc-risk small,.sc-foot{font-size:12px}
+  .sc-who small,.sc-risk small{font-size:12px}
 }
 
 /* UX audit Z3-22 (owner, 16 November 2026): a list row on a phone puts the score the list is ordered by on the name's
@@ -172,4 +167,17 @@
 }
 
 /* UX audit Z3-32: the phone's strip word sits over the strip's dots with a wider halo of paper, as the points' names. */
-.sc-strip-word{stroke-width:4px;font-weight:600}
+/* The profiles without a signal in the score: counted at the legend's end, not drawn (owner, 19 November 2026). */
+.sc-none-note{color:var(--muted)}
+/* The list's column filters (owner, 19 November 2026, variant B): a quiet header on the rows' own grid, a funnel on
+   each column; on a phone the funnels wrap in one line of words. The pager stands where „Arată încă 10” was. */
+.sc-cols{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:center;gap:4px 12px;padding:4px 6px;border-bottom:1px solid var(--line2);font-size:12px;font-weight:500;color:var(--muted)}
+.sc-col-who{grid-column:2;display:flex;flex-wrap:wrap;gap:2px 16px;min-width:0}
+.sc-col-val,.sc-col-cri,.sc-col-rec{display:flex;justify-content:flex-end;min-width:0}
+.sc-listfoot .ent-pager{margin:0}
+.sc-clear{display:inline;min-height:0;font-size:inherit}
+@media (max-width:640px){
+  .sc-cols{display:flex;flex-wrap:wrap;gap:2px 14px;padding:4px 0}
+  .sc-col-who{display:contents}
+  .sc-cols .th-filter{min-height:44px}
+}

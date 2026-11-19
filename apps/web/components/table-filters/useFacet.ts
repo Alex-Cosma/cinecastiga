@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createLatestRequest } from "@/lib/latest-request";
-import type { Facet } from "@/lib/table-filters/types";
+import { createLatestRequest } from "../../lib/latest-request";
+import type { Facet } from "../../lib/table-filters/types";
 
 /**
  * A funnel's options, asked only while it is open (`url` null when closed). The last answer stays shown while a

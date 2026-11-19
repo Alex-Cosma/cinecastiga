@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Labels } from "@/lib/table-filters/describe";
-import type { Facet, FilterState, TableColumns } from "@/lib/table-filters/types";
-import { createLatestRequest } from "@/lib/latest-request";
+import type { Labels } from "../../lib/table-filters/describe";
+import type { Facet, FilterState, TableColumns } from "../../lib/table-filters/types";
+import { createLatestRequest } from "../../lib/latest-request";
 
 /**
  * The names of a table's chosen values, so a chip says „ROTACO”, not its id: learned from every funnel's answer, and

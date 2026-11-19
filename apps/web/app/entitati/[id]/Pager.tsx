@@ -1,6 +1,6 @@
 "use client";
 
-import { formatInt } from "@/lib/format";
+import { formatInt } from "../../../lib/format";
 import "./pager.css";
 
 /**
