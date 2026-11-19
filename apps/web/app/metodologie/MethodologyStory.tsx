@@ -2048,8 +2048,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           </section>
           <section className="mt-col mt-despre" id="despre" aria-labelledby="h-despre">
             <h2 id="h-despre">Despre cinecâștigă?</h2>
-            <p>Un proiect independent. Codul e public: <a href="https://github.com/Alex-Cosma/cinecastiga">github.com/Alex-Cosma/cinecastiga</a>. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare.</p>
-            <p>Datele despre administratorii firmelor vin din Registrul Comerțului (nume, dată de naștere, localitate) și le folosim doar ca să recunoaștem aceeași persoană în mai multe firme. Data nașterii nu se publică. Pentru dreptul de opoziție sau de rectificare, scrie-ne la <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>.</p>
+            <p>Un proiect independent. Codul e public: <a href="https://github.com/Alex-Cosma/cinecastiga">github.com/Alex-Cosma/cinecastiga</a>. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare. <a href="/despre">Despre și contact</a></p>
+            <p>Datele despre administratorii firmelor vin din Registrul Comerțului (nume, dată de naștere, localitate) și le folosim doar ca să recunoaștem aceeași persoană în mai multe firme. Lângă nume apar anul și localitatea nașterii; ziua și luna nu se publică. Ce ținem și cum ceri corectarea sau ștergerea: <a href="/date-personale">Date personale</a>.</p>
           </section>
         </div>
       </div>

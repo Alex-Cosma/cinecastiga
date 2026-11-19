@@ -4,11 +4,13 @@
  * Pure helpers, shared by the server page, the client form and their tests.
  */
 
-export const CONTACT_EMAIL = "contact@cinecastiga.ro";
+import { CONTACT_EMAIL, mailHref } from "../../lib/site";
+
+export { CONTACT_EMAIL };
 
 /** The contact address as a mailto link with a ready subject. */
 export function contactHref(subject = "Acces la cont"): string {
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`;
+  return mailHref(subject);
 }
 
 /**

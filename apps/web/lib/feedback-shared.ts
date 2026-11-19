@@ -9,7 +9,7 @@ export const feedbackIdValid = (id:string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]
 export function feedbackSourcePath(raw:unknown):string | null {
   if (typeof raw !== "string" || raw.length > 400 || !raw.startsWith("/") || raw.startsWith("//") || /[\\\s\u0000-\u001f]/.test(raw)) return null;
   const path = raw.split(/[?#]/)[0]!;
-  return /^\/(?:$|(?:intreaba|cauta|domenii|harta|metodologie|supra-prag|semnale)\/?$|(?:achizitii|contracte|anunturi|semnale)\/\d+\/?$|entitati\/\d+(?:\/(?:radiografie(?:\/surse)?|comparatii|legaturi))?\/?$)/.test(path) ? path : null;
+  return /^\/(?:$|(?:intreaba|cauta|domenii|harta|metodologie|supra-prag|semnale|despre|date-personale)\/?$|(?:achizitii|contracte|anunturi|semnale)\/\d+\/?$|entitati\/\d+(?:\/(?:radiografie(?:\/surse)?|comparatii|legaturi))?\/?$)/.test(path) ? path : null;
 }
 
 export function feedbackInput(raw:unknown):FeedbackInput | { error:string } {

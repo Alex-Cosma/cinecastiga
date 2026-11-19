@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CODE_VALID_MINUTES, codeDigits, contactHref, loginContext, safeReturnPath } from "./login-context";
+import { CONTACT_EMAIL, mailHref } from "../../lib/site";
 
 describe("login return path", () => {
   it("keeps a path on this site", () => {
@@ -39,5 +40,10 @@ describe("e-mailed code", () => {
 describe("contact", () => {
   it("opens a message to the project with a subject", () => {
     expect(contactHref()).toBe("mailto:contact@cinecastiga.ro?subject=Acces%20la%20cont");
+  });
+
+  it("is the site's one address, with or without a subject", () => {
+    expect(mailHref()).toBe(`mailto:${CONTACT_EMAIL}`);
+    expect(mailHref("Corectură")).toBe("mailto:contact@cinecastiga.ro?subject=Corectur%C4%83");
   });
 });

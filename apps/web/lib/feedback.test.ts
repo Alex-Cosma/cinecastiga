@@ -7,6 +7,7 @@ const input = () => ({ id:randomUUID(),category:"data",message:"Valoarea afișat
 describe("anonymous feedback input", () => {
   it("retains public context without query strings or hashes", () => expect(feedbackInput(input())).toMatchObject({ sourcePath:"/contracte/123" }));
   it.each(["/anchete/private-id", "/anchete/invitatie/token", "/admin/conturi", "/login?next=/", "//evil.test", "https://evil.test/", "/\\evil.test", "/contracte/%31"])("does not attach private or unsafe context %s", path => expect(feedbackSourcePath(path)).toBeNull());
+  it.each(["/despre", "/date-personale"])("attaches the pages about the project: %s", path => expect(feedbackSourcePath(`${path}?x=1`)).toBe(path));
   it("keeps an anonymous report on a private route, without attaching its identifiers", () => expect(feedbackInput({ ...input(),sourcePath:"/anchete/private-id" })).toMatchObject({ sourcePath:null }));
   it.each([{ message:"short" },{message:"x".repeat(3001)},{ category:"unknown" },{id:"bad"},{userId:"account"},{email:"user@example.invalid"},{website:"spam"},{message:"valid length but nul\0 character"}])("rejects invalid or identifying fields %j", patch => expect(feedbackInput({...input(),...patch})).toHaveProperty("error"));
   it("limits the actual streamed request body, even without Content-Length", async () => {

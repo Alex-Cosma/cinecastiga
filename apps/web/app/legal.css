@@ -1,0 +1,72 @@
+/*
+ * „Despre și contact” and „Date personale” (owner, 19 November 2026): two reading pages. One column of text at a
+ * reading measure, and beside it the short version: the address, or the page in four lines. On a phone the short
+ * version comes first.
+ */
+.lg { padding: 14px 0 32px; }
+.lg-head { max-width: 46rem; margin-bottom: clamp(28px, 5vw, 46px); }
+.lg h1 {
+  font-family: var(--display); font-weight: 700; font-size: clamp(34px, 5.4vw, 52px); line-height: 1.04;
+  letter-spacing: -.03em; margin: 0 0 14px; color: var(--ink); text-wrap: balance;
+}
+.lg-lede { font-size: clamp(17px, 2vw, 20px); line-height: 1.5; color: var(--ink2); margin: 0; max-width: 36em; text-wrap: pretty; }
+
+.lg-cols { display: grid; grid-template-columns: minmax(0, 42rem) minmax(0, 19rem); justify-content: space-between; gap: clamp(32px, 6vw, 88px); align-items: start; }
+
+.lg-text { font-size: 16.5px; line-height: 1.65; color: var(--ink2); }
+.lg-text section + section { margin-top: 46px; }
+.lg-text h2 {
+  font-family: var(--display); font-weight: 650; font-size: 25px; line-height: 1.15; letter-spacing: -.02em;
+  margin: 0 0 12px; color: var(--ink); text-wrap: balance; scroll-margin-top: 84px;
+}
+.lg-text p { margin: 0 0 12px; max-width: 68ch; text-wrap: pretty; }
+.lg-text p:last-child { margin-bottom: 0; }
+.lg-text ul { margin: 0 0 12px; padding-left: 1.15em; max-width: 68ch; }
+.lg-text li { margin-bottom: 6px; }
+.lg-text li::marker { color: var(--faint); }
+.lg-text b { font-weight: 600; color: var(--ink); }
+.lg-text a, .lg-side p a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .18em; }
+.lg-text a:hover, .lg-side p a:hover { text-decoration-thickness: 2px; }
+
+/* What we hold, row by row: who on the left, what and where from on the right. */
+.lg-rows { margin: 18px 0 0; border-top: 1px solid var(--line); }
+.lg-row { display: grid; grid-template-columns: minmax(0, 12.5rem) minmax(0, 1fr); gap: 6px 28px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.lg-row dt { font-weight: 600; color: var(--ink); line-height: 1.4; }
+.lg-row dd { margin: 0; }
+.lg-row dd p { margin: 0 0 6px; }
+.lg-row dd p:last-child { margin-bottom: 0; }
+
+.lg-text .lg-stamp { margin-top: 46px; font-size: 14px; color: var(--muted); }
+
+/* The short version. */
+.lg-side {
+  position: sticky; top: 84px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2);
+  padding: 22px 22px 20px; font-size: 14.5px; line-height: 1.5; color: var(--ink2);
+}
+.lg-side h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
+.lg-mail { display: block; font-family: var(--display); font-weight: 650; font-size: 21px; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.lg-side p { margin: 8px 0 0; }
+.lg-points { list-style: none; margin: 0; padding: 0; }
+.lg-points li { padding: 9px 0; border-top: 1px solid var(--line); }
+.lg-points li:first-child { border-top: 0; padding-top: 0; }
+.lg-acts { list-style: none; margin: 16px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.lg-acts li { border-bottom: 1px solid var(--line); }
+.lg-acts a { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; font-weight: 500; }
+.lg-acts a::after { content: "→"; color: var(--faint); transition: transform var(--fast) var(--ease), color var(--fast); }
+.lg-acts a:hover { text-decoration: none; }
+.lg-acts a:hover::after { transform: translateX(3px); color: var(--accent); }
+.lg-side .lg-other { margin-top: 14px; }
+
+@media (max-width: 900px) {
+  .lg-cols { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  .lg-side { position: static; order: -1; }
+}
+@media (max-width: 560px) {
+  .lg-text { font-size: 16px; }
+  .lg-text section + section { margin-top: 38px; }
+  .lg-text h2 { font-size: 22px; }
+  .lg-row { grid-template-columns: minmax(0, 1fr); padding: 16px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-acts a::after { transition: none; }
+}

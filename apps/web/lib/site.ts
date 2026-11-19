@@ -7,3 +7,11 @@ export const SITE_DESCRIPTION =
 export function pageTitle(t?: string): string {
   return t ? `${t} — ${SITE_NAME}` : `${SITE_NAME} — ${SITE_TAGLINE}`;
 }
+
+/** The one public address: corrections, requests about personal data, access to an account. */
+export const CONTACT_EMAIL = "contact@cinecastiga.ro";
+
+/** The contact address as a mailto link, with a ready subject when one is given. */
+export function mailHref(subject?: string): string {
+  return `mailto:${CONTACT_EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
+}
