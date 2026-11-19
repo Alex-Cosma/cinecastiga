@@ -1,7 +1,7 @@
 import { noticeLotsSource } from "./notice-lots";
 import { channelWhere } from "./table-filters/server/query";
 import type { FilterState } from "./table-filters/types";
-import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, contractDatePlausible, CONTRACT_VALUE_CAP_RON } from "@seap/db";
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractValueHeld, contractValueAdmitted, contractWinnerIsAuthority, contractDatePlausible } from "@seap/db";
 import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
@@ -574,6 +574,9 @@ export interface ContractAboveCap {
   contractDate: string | null;
   valueRonExact: string;
   nWinners: number;
+  /** Why the last processing run held it: the guard's finding and the administrators' decision, if any. */
+  guard: string | null;
+  decision: string | null;
 }
 export interface EntityContractsAboveCap {
   /** All matching contracts, not only the listed ones. */
@@ -583,9 +586,10 @@ export interface EntityContractsAboveCap {
   rows: ContractAboveCap[];
 }
 
-/** Contracts that meet every other inclusion condition but exceed the 1 mld. lei
- * value cap, so they are absent from this entity's totals and partner lists.
- * Disclosure only; the rows link to their contract pages. */
+/** Contracts above 1 mld. lei that meet every other inclusion condition and that the last processing run held out
+ * of the totals (their notice contradicts the value, or an administrator excluded them: contractValueHeld, @seap/db),
+ * so they are absent from this entity's totals and partner lists. Since 19 November 2026 the others above 1 mld. lei
+ * are counted. Disclosure only; the rows link to their contract pages. */
 export async function getEntityContractsAboveCap(entityId: string, role: Role, sql: DbSql = db(), limit = 100): Promise<EntityContractsAboveCap> {
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const party = role === "authority"
@@ -595,14 +599,16 @@ export async function getEntityContractsAboveCap(entityId: string, role: Role, s
     with x as (
       select c.id, c.ca_notice_contract_id, c.title, c.contract_no, c.contract_date, ${contractRonValue(sql)} v
       from core.contracts c join core.awards a on a.ca_notice_id = c.ca_notice_id
-      where ${party} and ${contractAboveValueCap(sql)}
+      where ${party} and ${contractValueHeld(sql)}
     ), t as (select count(*)::int n, coalesce(trim_scale(sum(v)), 0)::text total from x)
     select t.n, t.total, l.* from t left join lateral (
       select x.ca_notice_contract_id::text nat_id, x.title, x.contract_no,
         to_char(x.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date,
         trim_scale(x.v)::text value_ron,
-        (select count(distinct w.entity_id)::int from core.contract_winners w where w.contract_id = x.id) n_winners
-      from x order by x.v desc, x.id limit ${limit}
+        (select count(distinct w.entity_id)::int from core.contract_winners w where w.contract_id = x.id) n_winners,
+        vr.guard, vr.decision
+      from x left join marts.contract_value_review vr on vr.contract_nat_id = x.ca_notice_contract_id
+      order by x.v desc, x.id limit ${limit}
     ) l on true
   `;
   return {
@@ -611,6 +617,7 @@ export async function getEntityContractsAboveCap(entityId: string, role: Role, s
     rows: rows.filter((r) => r.nat_id != null).map((r) => ({
       natId: String(r.nat_id), title: (r.title as string | null) ?? null, contractNo: (r.contract_no as string | null) ?? null,
       contractDate: (r.contract_date as string | null) ?? null, valueRonExact: String(r.value_ron), nWinners: Number(r.n_winners ?? 0),
+      guard: (r.guard as string | null) ?? null, decision: (r.decision as string | null) ?? null,
     })),
   };
 }
@@ -1091,7 +1098,9 @@ export interface ContractDetail {
   nonAdditive: boolean;
   excludedIdentity: string | null;
   /** RON value above the 1 mld. lei product cap: kept out of every total. */
+  /** Above 1 mld. lei and held out of the totals by the last processing run. */
   aboveValueCap: boolean;
+  valueHeld: { guard: string | null; decision: string | null };
   /** The only recorded winner is the contracting authority itself (audit F12):
    * no known supplier, so kept out of every total and partner ranking. */
   winnerIsAuthority: boolean;
@@ -1103,7 +1112,10 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
-           coalesce(${contractRonValue(sql)} > ${CONTRACT_VALUE_CAP_RON}, false) above_value_cap,
+           -- Above 1 mld. lei and held out of the totals by the last processing run (19 November 2026).
+           coalesce(not ${contractValueAdmitted(sql)}, false) above_value_cap,
+           (select vr.guard from marts.contract_value_review vr where vr.contract_nat_id=c.ca_notice_contract_id) value_guard,
+           (select vr.decision from marts.contract_value_review vr where vr.contract_nat_id=c.ca_notice_contract_id) value_decision,
            coalesce(${contractWinnerIsAuthority(sql)}, false) winner_is_authority,
            (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
@@ -1224,6 +1236,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,
     aboveValueCap:r["above_value_cap"]===true,
+    valueHeld:{guard:(r["value_guard"] as string|null)??null,decision:(r["value_decision"] as string|null)??null},
     winnerIsAuthority:r["winner_is_authority"]===true,
     excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),

@@ -14,6 +14,7 @@ import ScheduleForm, {type Schedule, scheduleOf} from './ScheduleForm';
 import DocumentCollection from './DocumentCollection';
 import DocumentQueue from './DocumentQueue';
 import WithheldDocuments from './WithheldDocuments';
+import ContractValueReview from './ContractValueReview';
 import {collectionState, viewOf, type AdminView} from './model';
 
 /**
@@ -176,6 +177,7 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
       <div className="admin-view" hidden={view !== 'procesare'}>
         {page('procesare', () => <div className="processing-layout">
           <ProcessingOverview data={data}/>
+          <ContractValueReview enabled={view === 'procesare'}/>
           <ScheduleForm data={data} form={schedule} setForm={next => { dirty.current.schedule = true; setSchedule(next); }} dirty={scheduleDirty} stale={stale} saving={saving}
             reset={() => { dirty.current.schedule = false; setSchedule(scheduleOf(c)); }}
             submit={() => change({action: 'settings', part: 'schedule', revision: schedule.revision, minSeconds: c.min_seconds, maxSeconds: c.max_seconds, dailyLimit: c.daily_limit, processingTime: schedule.at, processingEnabled: schedule.enabled, riskWeekday: schedule.riskDay}, 'Programul a fost salvat.')}/>

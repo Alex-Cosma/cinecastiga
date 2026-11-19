@@ -26,6 +26,9 @@ export interface Observation {
   /** Otherwise-included contracts above the value cap, kept out of totals. */
   above_value_cap?: string;
   above_value_cap_value?: string;
+  /** Contracts above the cap that the last processing run counts (19 November 2026). */
+  above_value_cap_counted?: string;
+  above_value_cap_counted_value?: string;
   value_cap?: string;
   /** Otherwise-included contracts whose only winner is their own authority (audit F12). */
   winner_is_authority?: string;

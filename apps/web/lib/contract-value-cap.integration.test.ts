@@ -41,6 +41,7 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
   afterAll(async () => {
     if (!sql) return;
     delete globals.__seapSql;
+    await sql`delete from marts.contract_value_review where contract_nat_id between ${contract(1)} and ${contract(5)}`;
     await sql`delete from core.contracts where id between ${contract(1)} and ${contract(5)}`;
     await sql`delete from core.awards where ca_notice_id=991192001`;
     await sql`delete from core.entities where id in (${authority},${supplier},${partner})`;
@@ -50,9 +51,9 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
   it("lists an authority's above-cap contracts with an exact total, excluding framework ceilings", async () => {
     const result = await getEntityContractsAboveCap(authority, "authority", sql);
     expect(result).toEqual({ count: 2, totalExact: "11356159333.14", rows: [
-      { natId: contract(1), title: "Autostradă secțiunea 3B", contractNo: "C1", contractDate: "2025-03-01", valueRonExact: "6626404001", nWinners: 1 },
+      { natId: contract(1), title: "Autostradă secțiunea 3B", contractNo: "C1", contractDate: "2025-03-01", valueRonExact: "6626404001", nWinners: 1, guard: null, decision: null },
       // 22:30 UTC on 30 June is 1 July in Romania.
-      { natId: contract(4), title: "Varianta ocolitoare, consorțiu", contractNo: "C4", contractDate: "2024-07-01", valueRonExact: "4729755332.14", nWinners: 2 },
+      { natId: contract(4), title: "Varianta ocolitoare, consorțiu", contractNo: "C4", contractDate: "2024-07-01", valueRonExact: "4729755332.14", nWinners: 2, guard: null, decision: null },
     ] });
     expect(await getEntityContractsAboveCap(partner, "supplier", sql)).toMatchObject({ count: 1, totalExact: "4729755332.14" });
     const limited = await getEntityContractsAboveCap(supplier, "supplier", sql, 1);
@@ -73,5 +74,19 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
     // Not otherwise eligible: no supplier, so it is neither in the totals nor in the cap disclosure.
     expect(await getEntityContractsAboveCap(authority, "authority", sql)).toMatchObject({ count: 2, totalExact: "11356159333.14" });
     expect(await getEntityContractsAboveCap(authority, "supplier", sql)).toMatchObject({ count: 0 });
+  });
+  // Owner, 19 November 2026 (migration 0113): the last processing run's review decides. A contract it admitted is
+  // counted and leaves the list; one it held stays, with the reason.
+  it("lists only what the last review held, with its reason, once a run has reviewed the contracts", async () => {
+    await sql`insert into marts.contract_value_review(contract_nat_id,value_ron,admitted,guard,decision) values
+      (${contract(1)},6626404001,true,null,null),(${contract(4)},4729755332.14,false,'lowest_offer',null)`;
+    const result = await getEntityContractsAboveCap(authority, "authority", sql);
+    expect(result).toMatchObject({ count: 1, totalExact: "4729755332.14" });
+    expect(result.rows).toMatchObject([{ natId: contract(4), guard: "lowest_offer", decision: null }]);
+    expect(await getContractDetail(contract(1))).toMatchObject({ aboveValueCap: false });
+    expect(await getContractDetail(contract(4))).toMatchObject({ aboveValueCap: true, valueHeld: { guard: "lowest_offer", decision: null } });
+    await sql`update marts.contract_value_review set admitted=false, decision='exclude' where contract_nat_id=${contract(1)}`;
+    expect((await getEntityContractsAboveCap(authority, "authority", sql)).rows.map(r => [r.natId, r.guard, r.decision]))
+      .toEqual([[contract(1), null, "exclude"], [contract(4), "lowest_offer", null]]);
   });
 });

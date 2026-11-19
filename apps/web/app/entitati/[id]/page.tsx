@@ -64,6 +64,7 @@ import { glossaryEntry } from "@/lib/glossary";
 import { roCount } from "@/lib/ro-count";
 import "./entity.css";
 import { parseRoleParam } from "@/lib/role-param";
+import { VALUE_REVIEW_RULE, heldValueReason } from "@/lib/contract-value-words";
 
 /** Stat card → search drill with exactly this entity's rows from one channel. */
 function entityTxSearchUrl(
@@ -625,14 +626,17 @@ export default async function EntityPage({
           count={txCounts.nDa + txCounts.nCt}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
-          <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
-          <p>Peste plafonul de 1 mld. lei folosit pentru totaluri: nu intră în niciun total. Valori integrale din SEAP, nu plăți.
+          <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, ținut" : "contracte peste 1 miliard lei, ținute"} în afara totalului · {formatRon(Number(aboveCap.totalExact))}</summary>
+          {/* Owner, 19 November 2026: above 1 mld. lei a contract is counted unless its notice contradicts the value or it
+              was reported as wrong; this list is what stayed out, each with its reason. */}
+          <p>{VALUE_REVIEW_RULE} {aboveCap.count === 1 ? "Acesta a rămas afară." : "Acestea au rămas afară."} Valori integrale din SEAP, nu plăți.
             {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
-          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
+          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th><th scope="col">De ce e ținut afară</th></tr></thead><tbody>
             {aboveCap.rows.map((c) => <tr key={c.natId}>
               <td><Link prefetch={false} href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
               <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
               <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
+              <td>{heldValueReason(c)}</td>
             </tr>)}
           </tbody></table></div>
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
@@ -663,7 +667,7 @@ export default async function EntityPage({
       <details className="data-context entity-data-context" data-only="complet">
         <summary>Ce includ aceste cifre?</summary>
         <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
-          cu valoare pozitivă de cel mult 1 miliard lei.
+          cu valoare pozitivă. {VALUE_REVIEW_RULE}
           Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
         {cuiUncorroborated && (registryCollision
           ? <p>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual
@@ -673,7 +677,7 @@ export default async function EntityPage({
             iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
             reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
         {/* Said once, plainly (UX audit Z5-04): the line under the top and the list under the table say the rest. */}
-        {aboveCap.count > 0 && <p>Contractele peste 1 mld. lei nu intră în totaluri și nici în lista partenerilor (filtru al aplicației, nu dovada unei erori).</p>}
+        {aboveCap.count > 0 && <p>Contractele de peste 1 mld. lei ținute afară nu intră în totaluri și nici în lista partenerilor; sunt listate sub tabel, fiecare cu motivul.</p>}
         <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
           Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
           Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>

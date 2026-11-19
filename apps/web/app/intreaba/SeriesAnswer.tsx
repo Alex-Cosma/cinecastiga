@@ -39,7 +39,7 @@ export type Sources = (spec: AskSpec, scope?: EvidenceScope, title?: string, opt
 const DA_CAP_YEAR = 2022;
 const DA_CAP_TIP = { title: "Plafonul achizițiilor directe", text: "Din 10.09.2022 plafonul legal e mai mare (270.120 lei produse și servicii, 900.400 lei lucrări); o mutare între directe și proceduri poate veni din lege." };
 const YEAR_TIP = { title: "Lei ai fiecărui an", text: "Neajustați la inflație. Un contract pe mai mulți ani intră întreg în anul atribuirii." };
-const ABOVE_TIP = { title: "Contracte peste 1 mld. lei", text: "Filtru al aplicației, nu dovada unei erori. Le listăm separat; valoarea lor nu intră în bare." };
+const ABOVE_TIP = { title: "Contracte peste 1 mld. lei, ținute afară", text: "Anunțul lor le contrazice valoarea sau au fost semnalate ca greșite. Le listăm separat; valoarea lor nu intră în bare." };
 
 export default function SeriesAnswer({ data, spec, partial, onSources }: { data: SeriesData; spec: AskSpec; partial: readonly PartialYear[]; onSources: Sources }) {
   const t = useTip();

@@ -28,6 +28,7 @@ import { consortiumShareLabel } from "@/lib/consortium";
 import RecordTitle from "@/components/record/RecordTitle";
 import "@/components/record/record-pages.css";
 import { ghostHold } from "@/lib/ghost-hold";
+import { heldValueReason } from "@/lib/contract-value-words";
 
 /**
  * Contract detail: the plain-language twin of SEAP's award notice, keyed by SICAP's own contract id
@@ -126,7 +127,7 @@ const totalsNote = (c: ContractDetail) =>
   : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
   : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`} data-only="complet">Motivul</Link></>
   : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
-  : c.aboveValueCap ? <>Peste 1 mld. lei: filtru al site-ului, în afara totalurilor. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
+  : c.aboveValueCap ? <>Peste 1 mld. lei, în afara totalurilor: {heldValueReason(c.valueHeld)}. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
   : null;
 
 export default async function ContractPage({ params, searchParams }: { params: Promise<{ nid: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {

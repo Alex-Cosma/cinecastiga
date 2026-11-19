@@ -162,7 +162,7 @@ export function sameMonthsSwitch(data: { grain?: string; months?: { from: number
 }
 
 /** Why a breakdown's channels have shares (final breakdown §3.6): of the whole selection, with every channel. */
-export const CHANNEL_SHARE_TIP = { title: "Ponderile", text: "Directe: fără licitație, cel mult 2 mil. lei pe achiziție. Proceduri: licitații și alte proceduri, cel mult 1 mld. lei pe contract. Plafoane de analiză, nu praguri legale. Procentul: partea din toate achizițiile selecției." };
+export const CHANNEL_SHARE_TIP = { title: "Ponderile", text: "Directe: fără licitație, cel mult 2 mil. lei pe achiziție. Proceduri: licitații și alte proceduri (peste 1 mld. lei, doar contractele pe care anunțul nu le contrazice). Filtre de analiză, nu praguri legale. Procentul: partea din toate achizițiile selecției." };
 
 /**
  * The breakdown's channels with their shares of the selection on every channel

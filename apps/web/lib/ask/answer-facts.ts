@@ -1,4 +1,4 @@
-import { contractAboveValueCap, contractRonValue, type DbSql } from "@seap/db";
+import { contractValueHeld, contractRonValue, type DbSql } from "@seap/db";
 import { ground } from "./ground";
 import { andAll, employeesCond, firmSeatCond, groupPredicates, procedureCond, purchaseKindCond, rowPredicates, seatCountyCond, type PredicateCtx } from "./predicates";
 import {
@@ -31,7 +31,7 @@ import { cpvCoverReady, rollupsReady } from "./rollups";
  * - `bars`, the evolution's bar facts (final timeseries §3.10): each bar's
  *   largest record (agg_months, or the live grouping of an anchored selection)
  *   and the contracts above the 1 bn lei analysis cap of each bar's period,
- *   on the source contracts (contractAboveValueCap, @seap/db), counted and the
+ *   on the source contracts (contractValueHeld, @seap/db: above 1 mld. lei and held by the last review), counted and the
  *   largest named; never summed into a bar.
  * The conditions are the answer's (predicates.ts, prepare): a row of a tab is
  * the answer after choosing it („Doar acestea ›”), to the leu.
@@ -199,7 +199,7 @@ function aboveCapWhere(sql: DbSql, ctx: PredicateCtx): Fragment | null {
   if (ctx.plafond === "strict" || ctx.population || ctx.minimumRecords || ctx.singleBidder || ctx.comparison || ctx.purchaseValueMax !== null) return null;
   // The contract's day in Romania, as the contract mart writes finalization_date (marts.ts, time zone Europe/Bucharest).
   const day = sql`to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD')`;
-  const parts: Fragment[] = [contractAboveValueCap(sql) as unknown as Fragment];
+  const parts: Fragment[] = [contractValueHeld(sql) as unknown as Fragment];
   const month = (year: number, m: number) => `${year}-${String(m).padStart(2, "0")}`;
   if (ctx.yearFrom !== null) parts.push(ctx.monthFrom !== null ? sql`substr(${day}, 1, 7) >= ${month(ctx.yearFrom, ctx.monthFrom)}` : sql`substr(${day}, 1, 4) >= ${String(ctx.yearFrom)}`);
   if (ctx.yearTo !== null) parts.push(ctx.monthTo !== null ? sql`substr(${day}, 1, 7) <= ${month(ctx.yearTo, ctx.monthTo)}` : sql`substr(${day}, 1, 4) <= ${String(ctx.yearTo)}`);

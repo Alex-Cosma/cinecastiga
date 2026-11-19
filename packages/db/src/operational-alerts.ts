@@ -54,6 +54,27 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
     subject: 'O înregistrare nouă nu a putut fi procesată — de verificat',
     body: `La ${r.seen} (ora României), înregistrarea brută ${r.raw_id} (${r.endpoint}) nu a putut fi procesată și a fost pusă în carantină. Publicarea a continuat: rămâne ultima versiune bună, iar înregistrarea se reîncearcă la fiecare rulare.\n\nDetalii în ${admin}/procesare.`,
   });
+  // A contract above 1 mld. lei seen for the first time by the last published processing run (owner, 19 November
+  // 2026; contract-value-review.ts): it is counted by default, so an administrator looks at each one. The rows of the
+  // first review are dated at the epoch and are never announced.
+  const largeValues = await q`select vr.contract_nat_id::text nat, vr.value_ron::text value, vr.admitted, vr.guard,
+      left(regexp_replace(coalesce(nullif(c.title,''),a.title,''),'\\s+',' ','g'),160) title, coalesce(e.name_display,'') authority
+    from marts.contract_value_review vr join core.contracts c on c.ca_notice_contract_id=vr.contract_nat_id
+    join core.awards a on a.ca_notice_id=c.ca_notice_id left join core.entities e on e.id=a.authority_entity_id
+    where vr.first_seen_at>now()-make_interval(hours=>${LOOKBACK_HOURS})`;
+  for (const r of largeValues) {
+    const value = `${(Number(r.value) / 1e9).toLocaleString('ro-RO', { maximumFractionDigits: 2 })} mld. lei`;
+    const held = r.guard === 'lowest_offer' ? 'valoarea e de câteva ori peste oferta din anunț'
+      : r.guard === 'notice_value_missing' ? 'anunțul nu are o valoare totală care s-o confirme'
+      : r.guard === 'notice_sum' ? 'contractele anunțului adună mult peste valoarea lui' : 'a fost scos de un administrator';
+    alerts.push({
+      key: `contract-value:${r.nat}`, kind: 'contract-value',
+      subject: r.admitted ? `Contract nou de ${value}, intrat în totaluri` : `Contract nou de ${value}, ținut în afara totalurilor`,
+      body: `${r.title || `Contractul ${r.nat}`}\n${r.authority}\n${value}\n\n${r.admitted
+        ? 'A intrat în totaluri din oficiu: anunțul lui nu îi contrazice valoarea. Dacă valoarea e greșită, scoate-l.'
+        : `Nu a intrat în totaluri: ${held}. Dacă valoarea e reală, include-l.`}\n\nContractul: ${origin}/contracte/${r.nat}\nLista și deciziile: ${admin}/procesare\n\nO decizie se aplică la următoarea procesare.`,
+    });
+  }
   alerts.push(...await idleCollectionAlerts(q, admin));
   // A global stop has no natural ID: one open incident until the block clears.
   const [control] = await q`select blocked_reason from app.collection_control where id=1`;

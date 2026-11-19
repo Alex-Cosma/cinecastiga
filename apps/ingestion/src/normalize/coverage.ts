@@ -1,4 +1,4 @@
-import { canonicalContract, contractAboveValueCap, contractDatePlausible, contractHasSupplier, contractWinnerIsAuthority, contractKind, contractKindFromTitle, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
+import { canonicalContract, contractValueAdmittedAboveCap, contractValueHeld, contractDatePlausible, contractHasSupplier, contractWinnerIsAuthority, contractKind, contractKindFromTitle, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
 /** Collector tasks at or above this priority are background backfill (`BACKGROUND_PRIORITY`). */
@@ -125,11 +125,15 @@ export async function runCoverage(sql: DbSql): Promise<void> {
         -- empty, so contract rows take the CPV of their award notice.
         || (select jsonb_build_object('missing_notice_cpv',count(*)::text)
             from core.contracts c left join core.awards a using(ca_notice_id) where a.cpv_code is null)
-        -- Otherwise-included contracts kept out of every total by the value cap.
+        -- Contracts above the value cap (owner, 19 November 2026): the otherwise-included ones this run held out of
+        -- every total (the guard or an administrator's exclusion; above_value_cap kept its name), and the ones it counts.
         || (select jsonb_build_object('above_value_cap',count(*)::text,
               'above_value_cap_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text,
               'value_cap',${String(CONTRACT_VALUE_CAP_RON)}::text)
-            from core.contracts c join core.awards a using(ca_notice_id) where ${contractAboveValueCap(q)})
+            from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueHeld(q)})
+        || (select jsonb_build_object('above_value_cap_counted',count(*)::text,
+              'above_value_cap_counted_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
+            from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueAdmittedAboveCap(q)})
         -- Otherwise-included contracts whose only recorded winner is their own
         -- authority (audit F12): no known supplier, so outside every total.
         || (select jsonb_build_object('winner_is_authority',count(*)::text,

@@ -28,7 +28,7 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 const tables = {
   app: ["collection_tasks"],
   core: ["contracts", "awards", "contract_winners", "entities", "direct_acquisitions", "ted_lot_results", "ted_notices", "scrape_runs"],
-  marts: ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "contract_transactions", "da_transactions", "data_coverage"],
+  marts: ["contract_value_review", "contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "contract_transactions", "da_transactions", "data_coverage"],
 };
 
 async function fixture(run: (q: DbSql) => Promise<void>, { withTasks = true, withRuns = true } = {}) {

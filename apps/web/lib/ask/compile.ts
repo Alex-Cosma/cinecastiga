@@ -78,13 +78,13 @@ import { blankCard, PODIUM_PLACES, podiumPlaceIds, RISK_LISTED, type LegacyTies,
 
 /** The DA plausibility bound is written with the other conditions (predicates.ts); its readers import it from here. */
 export { DA_PLAFOND_RON };
-/** Contracts above CONTRACT_VALUE_CAP_RON (@seap/db) never reach the marts, so
- * every contract answer must say so; the entity page lists them. */
+/** Contracts above CONTRACT_VALUE_CAP_RON (@seap/db) reach the marts only when the last review admitted them
+ * (19 November 2026): every contract answer says so; the entity page lists the ones held out. */
 /** Same wording as /metodologie: an analytical filter, never a claim that the record is wrong (audit F25). */
 export const DA_PLAFOND_CAVEAT =
   `Achizițiile directe peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).`;
 export const CONTRACT_CAP_CAVEAT =
-  "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.";
+  "Contractele prin proceduri peste 1 miliard lei intră în totaluri doar dacă anunțul lor nu le contrazice valoarea; cele ținute afară apar pe pagina instituției.";
 /** Historical profiles drop it with the stream caveats: their own source line replaces them. */
 const DA_ACCEPTED_CAVEAT =
   "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.";
@@ -3693,7 +3693,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};` +
         "\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);" +
         "\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure," +
-        "\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)";
+        "\n-- contractele peste 1 mld. lei ținute afară (contractValueHeld), fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)";
     case "trend": {
       const { having, order } = trendGroupText(trendGroupOf(spec), w.yearTo ?? "ultimul_an");
       return (

@@ -1,5 +1,5 @@
 import { calloffCeilingScale, scaledCalloffValue, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, buildContractValueReview, contractValueAdmitted, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
 
@@ -49,15 +49,15 @@ type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
 
 /**
  * The call-offs the contract transactions count scaled to their framework's ceiling (owner, 8 November 2026,
- * contract-reporting-5): calloffCeilingScale over the population the transactions count (runMarts requires
- * award_max_plausible to be CONTRACT_VALUE_CAP_RON). The snapshot validation recomputes it from the sources with this
- * same fragment. Run it inside withoutNestedLoops.
+ * contract-reporting-5): calloffCeilingScale over the population the transactions count (contractValueAdmitted reads
+ * the run's marts.contract_value_review, so runMarts builds that first). The snapshot validation recomputes it from the
+ * sources with this same fragment. Run it inside withoutNestedLoops.
  */
 export function countedCalloffScale(q: Parameters<typeof calloffCeilingScale>[0]) {
   return calloffCeilingScale(q, q`
     select c.id from core.contracts c join core.awards aw on aw.ca_notice_id = c.ca_notice_id
     where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
-      and ${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
+      and ${contractValueAdmitted(q)} and c.contract_date is not null
       and aw.authority_entity_id is not null and ${contractReportable(q)}`);
 }
 
@@ -105,6 +105,10 @@ export async function runMarts(
     await assertContractExclusionsQuality(q, opts.identityHashes);
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
+    // Contracts above the value cap (owner, 19 November 2026, contract-reporting-6): this run's answer for each one,
+    // from the guard and the administrators' decisions, before anything counts contracts.
+    const review = await buildContractValueReview(q);
+    log(`marts contract values above the cap: ${review.above} (${review.admitted} counted, ${review.held} held, ${review.added} new)`);
     await q`
       truncate
         marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
@@ -149,7 +153,7 @@ export async function runMarts(
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
         left join calloff_scale sc on sc.calloff_id = c.id
         where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
-          and ${contractRonValue(q)} <= ${awBound}
+          and ${contractValueAdmitted(q)}
           and c.contract_date is not null
           and aw.authority_entity_id is not null
           and ${contractReportable(q)}

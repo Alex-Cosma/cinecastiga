@@ -26,6 +26,7 @@ export * from "./contract-money.js";
 export * from "./contract-money-quality.js";
 
 export * from "./contract-identity.js";
+export * from "./contract-value-review.js";
 export * from "./contract-reporting.js";
 export * from "./calloff-ceiling.js";
 export * from "./contract-dates.js";

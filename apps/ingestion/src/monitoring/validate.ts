@@ -1,6 +1,6 @@
 import { contractReportable, scaledCalloffValue, withoutNestedLoops } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
-import { contractRonValue, canonicalContract, readContractExclusionsQuality, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
+import { contractRonValue, canonicalContract, contractValueAdmitted, readContractExclusionsQuality, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
 import { validateSignalLookup, type DbSql, type SnapshotHashCache } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
@@ -181,15 +181,19 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
 export async function validateContractPopulation(q: DbSql) {
   const scaled = (await withoutNestedLoops(q, () => q`
     select s.calloff_id::text id, s.scale::text scale from (${countedCalloffScale(q)}) s`)) as unknown as { id: string; scale: string }[];
+  // No scaled call-off at all (a test fixture; never the real data): an empty list has no element type to bind.
+  const scaledRows = scaled.length
+    ? q`select * from unnest(${q.array(scaled.map(s => s.id))}::bigint[], ${q.array(scaled.map(s => s.scale))}::numeric[]) s(contract_id, scale)`
+    : q`select null::bigint contract_id, null::numeric scale where false`;
   const [allocations] = await q`
-    with scaled as (select * from unnest(${q.array(scaled.map(s => s.id))}::bigint[], ${q.array(scaled.map(s => s.scale))}::numeric[]) s(contract_id, scale)),
+    with scaled as (${scaledRows}),
     winners as (select w.contract_id, count(distinct w.entity_id) n from core.contract_winners w
       join core.contracts c on c.id = w.contract_id left join core.awards a on a.ca_notice_id = c.ca_notice_id
       where ${winnerIsSupplier(q)} group by w.contract_id),
     source as (
       select c.id, c.ca_notice_contract_id, coalesce(${scaledCalloffValue(q, contractRonValue(q), q`sc.scale`)}, ${contractRonValue(q)}) as contract_value,
         w.n winners, sc.scale is not null scaled,
-        coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
+        coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractValueAdmitted(q)} and c.contract_date is not null
            and a.authority_entity_id is not null and w.n > 0
           and ${contractReportable(q)}, false) eligible
       from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id

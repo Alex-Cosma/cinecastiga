@@ -16,6 +16,9 @@ export function canonicalContract(q: IdentitySql) {
  * Hash inputs use epochs, not connection-dependent timestamp serialization. */
 export async function readContractIdentityMembers(q: IdentitySql, ids: string[]) {
   if (!ids.length) return [];
+  // `eligible` keeps the plain cap on purpose (19 November 2026): it is part of every member's snapshot hash and only
+  // prefers one publication of a group as the canonical one. The totals admit contracts above the cap through
+  // contractValueAdmitted (contract-value-review.ts); a group's publications are deduplicated whatever their value.
   return q`with selected as materialized (select * from core.contracts where id=any(${ids}::bigint[])),
     scope as materialized (select distinct a.notice_no from selected c join core.awards a using(ca_notice_id)),
     cohort as materialized (
@@ -213,21 +216,10 @@ export async function assertContractIdentityQuality(q: IdentitySql, cache?: Snap
   return report;
 }
 
-/** Product filter on procedure contracts (/metodologie#totaluri): a RON value
- * above it keeps the contract out of every total and partner ranking. It is
- * not proof that a larger contract is invalid; the disclosures count them. */
+/** The value above which a procedure contract is reviewed before it is counted (/metodologie#totaluri). Since 19
+ * November 2026 a contract above it enters the totals unless its notice contradicts the value or an administrator
+ * excluded it: contract-value-review.ts has the rule, marts.contract_value_review each run's answer. */
 export const CONTRACT_VALUE_CAP_RON = 1_000_000_000;
-
-/** Source contract c (award alias a) meeting every other condition of
- * marts.contract_transactions but above CONTRACT_VALUE_CAP_RON: canonical,
- * identified contract/call-off, dated, with authority and winner. Framework
- * ceilings and addenda are excluded by their own policy, not by the cap.
- * Disclosure only: these rows are counted and listed, never summed into totals. */
-export function contractAboveValueCap(q: IdentitySql, award='a') {
-  return q`(${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
-    and ${q(award)}.authority_entity_id is not null and ${contractReportable(q)} and ${canonicalContract(q)}
-    and ${contractHasSupplier(q, award)})`;
-}
 
 /** A recorded winner is a supplier only when it is not the contracting
  * authority of the same contract. SICAP sometimes carries the buyer itself in
