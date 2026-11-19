@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Term from "./Term";
 import CollectionHistory from "./CollectionHistory";
@@ -14,17 +15,42 @@ const COMPLETE_RULE: Record<Dataset, string> = {
   ted: "data celui mai nou pachet zilnic TED arhivat sau ultima zi a celui mai nou import TED încheiat",
 };
 
+/**
+ * The footer's „Date” (owner, 19 November 2026: one tidy list instead of a paragraph, a link, a grey line and another
+ * link): what the data are and how fresh, label by label, then the two ways further.
+ */
+function SummaryFrame({ rows, more }: { rows: ReactNode; more?: ReactNode }) {
+  return <div className="coverage-summary">
+    <dl>
+      <div><dt>Surse</dt><dd>e-licitatie.ro (SEAP / SICAP) · TED · bilanțuri MF · registrul ONRC</dd></div>
+      <div><dt>Hărți</dt><dd>GADM · ANCPI · INS&nbsp;SIRUTA</dd></div>
+      {rows}
+    </dl>
+    <ul>
+      <li><Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link></li>
+      {more}
+    </ul>
+  </div>;
+}
+
+/** The same list while the dates are on their way. */
+export function CoverageSummaryGhost({ line }: { line: ReactNode }) {
+  return <SummaryFrame rows={<><div><dt>Date la</dt><dd>{line}</dd></div><div><dt>Semnale la</dt><dd>{line}</dd></div></>} />;
+}
+
 export async function CoverageSummary() {
   const coverage = await getCoverage();
   const excluded=coverage?.observations.find(o=>o.dataset==='contracts')?.observation.temporarily_excluded_groups;
   const freshness=await getProcessingFreshness();
-  return <div className="coverage-summary">
-    <Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link>
-    {coverage?.observations.length
-      ? <span>Date la {coverageDate(coverage.observations[0]?.calculated_at)}{freshness?.riskAt ? ` · semnale la ${coverageDate(freshness.riskAt)}` : ""} <Term tip title="Completitudine" text="Completitudinea surselor nu este confirmată; vezi acoperirea." /></span>
-      : <span>Inventarul datelor nu a fost încă recalculat.{freshness?.riskAt ? ` Semnale la ${coverageDate(freshness.riskAt)}.` : ""}</span>}
-    {excluded && Number(excluded)>0 && <Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri · verifică sursele</Link>}
-  </div>;
+  return <SummaryFrame
+    rows={<>
+      <div><dt>Date la</dt><dd>{coverage?.observations.length
+        ? <>{coverageDate(coverage.observations[0]?.calculated_at)} <Term tip title="Completitudine" text="Completitudinea surselor nu este confirmată; vezi acoperirea." /></>
+        : "inventarul nu a fost încă recalculat"}</dd></div>
+      {freshness?.riskAt && <div><dt>Semnale la</dt><dd>{coverageDate(freshness.riskAt)}</dd></div>}
+    </>}
+    more={excluded && Number(excluded)>0 ? <li><Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri →</Link></li> : null}
+  />;
 }
 
 export default async function DataCoverage() {

@@ -115,8 +115,17 @@
 .data-context summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .data-context p{max-width:85ch;margin:12px 0}
 .entity-data-context p{max-width:none}
-.coverage-summary{display:grid;gap:8px;font-size:12px;line-height:1.6}
-.coverage-summary span{color:var(--muted)}
+/* The footer's „Date” (owner, 19 November 2026): label and value, row by row, then the links. */
+.coverage-summary{display:grid;gap:14px;line-height:1.6}
+.coverage-summary dl{display:grid;gap:5px;margin:0}
+.coverage-summary dl>div{display:grid;grid-template-columns:5.6rem minmax(0,1fr);gap:0 12px;align-items:baseline}
+.coverage-summary dt{color:var(--muted)}
+.coverage-summary dd{margin:0;color:var(--ink2)}
+.coverage-summary ul{gap:3px}
+/* The "?" stays on the line of its last word. */
+.d-footer-keep{white-space:nowrap}
+.coverage-summary dd>.term{line-height:1}
+@media(max-width:380px){.coverage-summary dl>div{grid-template-columns:minmax(0,1fr)}.coverage-summary dl{gap:8px}}
 .coverage-data>p{max-width:85ch;line-height:1.7}
 .coverage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:28px 0}
 .coverage-source{border-top:2px solid var(--line2);padding-top:16px;min-width:0}

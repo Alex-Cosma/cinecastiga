@@ -38,7 +38,7 @@ import { viewModeScript } from "@/lib/view-mode";
 import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
 import MotionKit from "@/components/motion/MotionKit";
-import { CoverageSummary } from "@/components/DataCoverage";
+import { CoverageSummary, CoverageSummaryGhost } from "@/components/DataCoverage";
 import Term from "@/components/Term";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
 
@@ -91,15 +91,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <h4 className="d-footer-brand">{SITE_NAME}</h4>
               <p className="d-footer-motto">Date publice. Surse la vedere. Curiozitatea e suficientă.</p>
+              {/* The sources are named once, in „Date” (owner, 19 November 2026). */}
               <p className="d-footer-note">
-                Sursă: e-licitatie.ro (SEAP/SICAP). Proiect deschis, necomercial. Valori înregistrate, nu plăți.
-                Consorții: cote egale <Term id="consortiu" tip />
+                Proiect deschis, necomercial.<br />Valori înregistrate, nu plăți. Consorții: cote <span className="d-footer-keep">egale <Term id="consortiu" tip /></span>
               </p>
             </div>
             <div>
               <h4>Date</h4>
-              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC · hărți GADM și ANCPI / INS&nbsp;SIRUTA</p>
-              <Suspense fallback={<div className="coverage-summary"><Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link><span><G.Line inline w="16em" /></span></div>}>
+              <Suspense fallback={<CoverageSummaryGhost line={<G.Line inline w="6em" />} />}>
                 <CoverageSummary />
               </Suspense>
             </div>
