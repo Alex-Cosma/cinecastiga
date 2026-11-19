@@ -255,18 +255,24 @@
   flex-shrink: 0;
 }
 .cq-answer-actions > .cq-source-main { grid-column: 1 / -1; justify-content: center; }
-/* „Profilul primăriei / instituției / firmei” (owner, 19 November 2026): a row of its own under the records' button. */
-.cq-answer-actions > .cq-profile-link {
-  grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px;
+/* „Profilul primăriei / instituției / firmei” (owner, 19 November 2026): on the records' button's row, at its right.
+   The row is as wide as the two need; the button takes what is left when the actions under them are wider. Beside a
+   profile the button says „983 de înregistrări”: „Vezi cele” stays for a screen reader. Two profiles (a question
+   that names an institution and a firm) share the row under the button, half each. */
+.cq-answer-lead { grid-column: 1 / -1; display: flex; gap: 10px; min-width: 0; }
+.cq-answer-lead > .cq-source-main { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+.cq-answer-lead > .cq-source-main .cq-source-verb { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cq-answer-lead > .cq-profile-link {
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px 14px;
   border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent);
   font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
   transition: border-color var(--fast), background var(--fast);
 }
-.cq-answer-actions > .cq-profile-link > svg { width: 17px; height: 17px; flex-shrink: 0; }
-.cq-answer-actions > a.cq-profile-link:hover { border-color: var(--accent); background: var(--accent-soft); text-decoration: none; }
-.cq-answer-actions > .cq-profile-link > .qb-glyph { transition: transform var(--fast) var(--ease); }
-.cq-answer-actions > a.cq-profile-link:hover > .qb-glyph { transform: translateX(3px); }
-@media (prefers-reduced-motion: reduce) { .cq-answer-actions > .cq-profile-link > .qb-glyph { transition: none; } }
+.cq-answer-lead > .cq-profile-link > svg { width: 17px; height: 17px; flex-shrink: 0; }
+.cq-answer-lead > a.cq-profile-link:hover { border-color: var(--accent); background: var(--accent-soft); text-decoration: none; }
+.cq-answer-lead > .cq-profile-link > .qb-glyph { transition: transform var(--fast) var(--ease); }
+.cq-answer-lead > a.cq-profile-link:hover > .qb-glyph { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .cq-answer-lead > .cq-profile-link > .qb-glyph { transition: none; } }
 .cq-answer-actions > .cq-share,
 .cq-answer-actions > .cq-save-wrap,
 .cq-answer-actions > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; }
@@ -1324,6 +1330,10 @@
   .cq-share-menu > .cq-share,
   .cq-answer-more > .cq-save-wrap > .cq-save-question,
   .cq-answer-more > .cq-export > summary { min-height: 46px; padding: 8px 6px; gap: 5px; }
+  /* The records' button and the profile: one row when they fit, the profile under the button when a long count
+     does not leave it room. */
+  .cq-answer-actions > .cq-answer-lead { flex: 1 1 100%; flex-wrap: wrap; gap: 8px; }
+  .cq-answer-lead > .cq-source-main, .cq-answer-lead > .cq-profile-link { padding-inline: 10px; }
   /* The export's menu and its message take the actions' width, under the row. */
   .cq-answer-more > .cq-export { position: static; }
   .cq-answer-more > .cq-export > .cq-export-options,

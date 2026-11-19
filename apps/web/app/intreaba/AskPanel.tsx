@@ -1384,29 +1384,32 @@ export default function AskPanel({
                 )}
               </div>
               <div className="cq-answer-actions">
-                {/* G2: an empty answer has no records to open; its relaxations are below. Nor has a verification's "Nu":
-                    its most useful lead takes the place (Z3-18). */}
-                {data.block === "fact_check" && factLead(data.fact, applied)?.lead && (() => {
-                  const lead = factLead(data.fact, applied)!.lead!;
-                  return lead.href
-                    ? <a className="cq-source-main" href={lead.href}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></a>
-                    : <button type="button" className="cq-source-main" onClick={() => runWider(lead.spec!)}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></button>;
+                {/* The records' button and, on its row, the profile of the institution or the firm the question names
+                    (owner, 19 November 2026; in both modes). Beside a profile the button drops „Vezi cele” to the eye, not
+                    to a screen reader. A question that names both an institution and a firm: the two profiles share the
+                    next row. G2: an empty answer has no records to open; its relaxations are below. Nor has a
+                    verification's "Nu": its most useful lead takes the place (Z3-18). */}
+                {(() => {
+                  const fact = data.block === "fact_check" ? factLead(data.fact, applied) : null;
+                  const lead = fact?.lead;
+                  const main = lead
+                    ? lead.href
+                      ? <a className="cq-source-main" href={lead.href}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></a>
+                      : <button type="button" className="cq-source-main" onClick={() => runWider(lead.spec!)}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></button>
+                    : !empty && !fact ? <button type="button" className="cq-source-main" onClick={() => openEvidence()}>
+                      <DiscoveryIcon name="database"/>
+                      {/* Z3-08: „Vezi cele N înregistrări”, N where the answer knows it; „achiziții” only for direct acquisitions. */}
+                      {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările':isProfile||applied.dataset==='da'
+                        ?count===1?'Vezi achiziția':<span><span className="cq-source-verb">Vezi cele </span>{countWords(count, 'achiziție', 'achiziții')}</span>
+                        :count===1?'Vezi înregistrarea':<span><span className="cq-source-verb">Vezi cele </span>{countWords(count, 'înregistrare', 'înregistrări')}</span>}
+                    </button> : null;
+                  const profiles = profileLinks(applied, resp.townHall).map((p) => <Link key={p.role} className="cq-profile-link" href={entityHref(p.id, p.role)} {...(p.name ? { title: cleanName(p.name) } : {})}>
+                    <DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span>
+                  </Link>);
+                  return profiles.length === 1
+                    ? <div className="cq-answer-lead">{main}{profiles}</div>
+                    : <>{main}{profiles.length > 0 && <div className="cq-answer-lead">{profiles}</div>}</>;
                 })()}
-                {!empty && !(data.block === "fact_check" && factLead(data.fact, applied)) && <button
-                  type="button"
-                  className="cq-source-main"
-                  onClick={() => openEvidence()}
-                >
-                  <DiscoveryIcon name="database"/>
-                  {/* Z3-08: „Vezi cele N înregistrări”, N where the answer knows it; „achiziții” only for direct acquisitions. */}
-                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările':isProfile||applied.dataset==='da'
-                    ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
-                    :count===1?'Vezi înregistrarea':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
-                </button>}
-                {/* The profile of the institution or the firm the question names (owner, 19 November 2026): in both modes. */}
-                {profileLinks(applied, resp.townHall).map((p) => <Link key={p.role} className="cq-profile-link" href={entityHref(p.id, p.role)} {...(p.name ? { title: cleanName(p.name) } : {})}>
-                  <DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span>
-                </Link>)}
                 {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”.
                     Esențial keeps „Păstrează” for a signed-in reader (IMPLEMENT rule 7); Trimite and Exportă are Complet's. */}
                 <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
@@ -1806,7 +1809,7 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
   const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card", "table", "compare"].includes(block);
   const source = block === "scatter" && spec?.scatter?.flag ? "Vezi înregistrările semnalului"
     : !counted ? "Vezi înregistrările"
-      : <span>Vezi cele {n} {profile || spec?.dataset === "da" ? "de achiziții" : "de înregistrări"}</span>;
+      : <span><span className="cq-source-verb">Vezi cele </span>{n} {profile || spec?.dataset === "da" ? "de achiziții" : "de înregistrări"}</span>;
   const totalWords = spec && block !== "table" && block !== "network" && block !== "entity_card" && !profile ? totalConditionWords(spec) : [];
   return <Ghost as="section" className="cq-answer" name="ask-answer" wait="client">
     <div className="cq-answer-head">
@@ -1816,8 +1819,11 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
         <div className="cq-scope" inert><G.Line inline w="44%" /></div>
       </div>
       <div className="cq-answer-actions g-quiet" inert>
-        <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
-        {profileLinks(spec, spec?.filters.uatSiruta ? { id: "" } : null).map((p) => <span key={p.role} className="cq-profile-link"><DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span></span>)}
+        {(() => {
+          const main = <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>;
+          const profiles = profileLinks(spec, spec?.filters.uatSiruta ? { id: "" } : null).map((p) => <span key={p.role} className="cq-profile-link"><DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span></span>);
+          return profiles.length === 1 ? <div className="cq-answer-lead">{main}{profiles}</div> : <>{main}{profiles.length > 0 && <div className="cq-answer-lead">{profiles}</div>}</>;
+        })()}
         {/* Esențial: marked as the answer's own (rule 8), so the ghost has its shape in each mode. */}
         <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
           <span className="qb cq-share-menu" data-only="complet"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
