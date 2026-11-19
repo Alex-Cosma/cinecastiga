@@ -18,7 +18,8 @@ import EntityCardAnswer from "./EntityCardAnswer";
  * checked in the browser (par-f6c/screens).
  */
 
-const text = (markup: string) => markup.replace(/<span[^>]*role="tooltip"[^>]*>.*?<\/span>(<\/span>)?/g, " ").replace(/<span class="term-mark"[^>]*>\?<\/span>/g, " ")
+// An explanation with points has a span for each line (components/TipText.tsx): they go first, then its box.
+const text = (markup: string) => markup.replace(/<span class="tip-(?:p|li)">[^<]*<\/span>/g, "").replace(/<span[^>]*role="tooltip"[^>]*>.*?<\/span>(<\/span>)?/g, " ").replace(/<span class="term-mark"[^>]*>\?<\/span>/g, " ")
   .replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/\s+/g, " ").replace(/ ([,.:;])/g, "$1").trim();
 const render = (data: { card: EntityCardData; podium?: Podium; ranking?: RiskRanking; ties?: LegacyTies }, spec: QuestionSpec, historical: boolean, conditions: string[] = []) =>
   renderToStaticMarkup(createElement(AnswerEvidence.Provider, { value: { open: vi.fn(), exclude: vi.fn() } },

@@ -452,7 +452,7 @@ export default async function EntityPage({
             {/* rf-2026.22 (S7): the score reads only the direct acquisitions; how much of the money that is waits in the
                 label's own explanation (owner, 17 November 2026: less small print under the bar). */}
             <span className="ent-tip">{hasRiskScore && ledger.nCt > 0
-              ? <Term tip hold="line" title={GLOSSARY["scor-risc"].title} text={`${GLOSSARY["scor-risc"].text} Scorul citește doar achizițiile directe: ${coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoarea înregistrată; contractele prin proceduri nu intră în el.`}>{riskLabel(row.score)}</Term>
+              ? <Term tip hold="line" title={GLOSSARY["scor-risc"].title} text={`${GLOSSARY["scor-risc"].text}\n– Citește doar achizițiile directe: ${coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoarea înregistrată. Contractele prin proceduri nu intră în el.`}>{riskLabel(row.score)}</Term>
               : <Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"}</Term>}
 </span>
           </p>

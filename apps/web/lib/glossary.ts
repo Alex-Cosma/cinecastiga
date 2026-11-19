@@ -7,14 +7,15 @@
 export interface GlossaryEntry {
   /** Short name, the term's title in "Pe scurt" and in <Term>. */
   title: string;
-  /** One or two sentences, shown in "Pe scurt" and in the <Term> explanation. */
+  /** One or two sentences, shown in "Pe scurt" and in the <Term> explanation. A text of several rules may have
+   *  lines: a line break starts a new one and a line that begins with „– ” is a point (lib/tip-text.ts, TipText). */
   text: string;
 }
 
 export const GLOSSARY = {
   "achizitie-directa": {
     title: "Achiziție directă",
-    text: "Cumpărare fără licitație, cu valoarea estimată fără TVA sub pragul legal, numit pe site și plafon. Pentru majoritatea instituțiilor (Legea 98/2016), din 10.09.2022 plafonul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări; înainte era mai mic, iar utilitățile pot avea alte praguri. În totaluri intră doar cele acceptate, de cel mult 2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal.",
+    text: "Cumpărare fără licitație, cu valoarea estimată fără TVA sub pragul legal, numit pe site și plafon.\n– Pentru majoritatea instituțiilor (Legea 98/2016), din 10.09.2022 plafonul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări.\n– Înainte era mai mic, iar utilitățile pot avea alte praguri.\n– În totaluri intră doar cele acceptate, de cel mult 2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal.",
   },
   "contract-procedura": {
     title: "Contract din licitație sau procedură",
@@ -26,7 +27,7 @@ export const GLOSSARY = {
   },
   semnal: {
     title: "Semnal",
-    text: "Un tipar din date care merită verificat, de exemplu „Adunate, trec de plafon”: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului. Este o pistă, nu o acuzație și nu dovedește o ilegalitate.",
+    text: "Un tipar din date care merită verificat. Este o pistă, nu o acuzație și nu dovedește o ilegalitate.\nDe exemplu, „Adunate, trec de plafon”: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului.",
   },
   cpv: {
     title: "Subiect (cod CPV)",
@@ -67,7 +68,7 @@ export const GLOSSARY = {
   },
   "aparitie-anunt": {
     title: "Apariție pe anunț",
-    text: "Un anunț se numără o singură dată, oricâte versiuni are în SEAP, cu anul primului contract; un contract republicat sub alt număr de anunț sau un acord-cadru și subsecventul lui pot apărea separat. Valoarea e a anunțului, nu a unui lot sau a fiecărei firme; când anunțul conține doar un acord-cadru, e plafonul lui, nu o cheltuială. Filtrul pe județul firmei păstrează anunțurile cu cel puțin un câștigător din județ și îi arată pe toți câștigătorii.",
+    text: "Un anunț se numără o singură dată, oricâte versiuni are în SEAP, cu anul primului contract.\n– Un contract republicat sub alt număr de anunț, sau un acord-cadru și subsecventul lui, pot apărea separat.\n– Valoarea e a anunțului, nu a unui lot sau a fiecărei firme.\n– Când anunțul conține doar un acord-cadru, valoarea e plafonul lui, nu o cheltuială.\n– Filtrul pe județul firmei păstrează anunțurile cu cel puțin un câștigător din județ și îi arată pe toți câștigătorii.",
   },
   "data-si-pragul": {
     title: "Data și pragul",
@@ -103,11 +104,11 @@ export const GLOSSARY = {
   },
   "institutiile-lor": {
     title: "Cu instituțiile lor",
-    text: "Fiecare primărie și consiliu județean, cu instituțiile publice pe care le finanțează ca ordonator principal de credite (lista Ministerului Finanțelor, 1 noiembrie 2026) și cu companiile ei (singurul acționar sau cel majoritar), verificate de mână pe sursă. Instituțiile consiliului județean se adună la județ, ale unei primării în UAT-ul ei. Școlile și spitalele nu intră: au hărțile lor; nici operatorii regionali de apă și asociațiile de UAT-uri.",
+    text: "Fiecare primărie și consiliu județean, împreună cu:\n– instituțiile publice pe care le finanțează ca ordonator principal de credite (lista Ministerului Finanțelor, 1 noiembrie 2026);\n– companiile ei (singurul acționar sau cel majoritar), verificate de mână pe sursă.\nInstituțiile consiliului județean se adună la județ, ale unei primării în UAT-ul ei.\nȘcolile și spitalele nu intră: au hărțile lor; nici operatorii regionali de apă și asociațiile de UAT-uri.",
   },
   "scolile-harta": {
     title: "Școlile și grădinițele pe hartă",
-    text: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației (2025–2026), legate prin CIF, cu școlile comasate în ele în 2025; fără universități, creșe, palate și cluburi ale copiilor sau inspectorate. Harta arată ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Elevii sunt cei din anul școlar 2024–2025, preșcolarii incluși.",
+    text: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației (2025–2026), legate prin CIF.\n– Cu școlile comasate în ele în 2025.\n– Fără universități, creșe, palate și cluburi ale copiilor sau inspectorate.\n– Harta arată ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean.\n– Elevii sunt cei din anul școlar 2024–2025, preșcolarii incluși.",
   },
   "plafoane-totaluri": {
     title: "Ce intră în totaluri",
@@ -227,7 +228,7 @@ export const GLOSSARY = {
   // The risk score (rf-2026.20, owner decisions of 3 November 2026): the (?) beside "70 din 100 · risc · puternic".
   "scor-risc": {
     title: "Riscul, din 100",
-    text: "Nu este o probabilitate de corupție. Un scor din 100, nu un procent: cât de pronunțate sunt tiparele din achizițiile directe, de la 10 achiziții. Sub 10 puncte, fără semnal în scor; 10–39 slab, 40–67 moderat, 68 și peste pronunțat; o familie singură ajunge cel mult la 80, decembrie singur la 25.",
+    text: "Nu este o probabilitate de corupție. Arată cât de pronunțate sunt tiparele din achizițiile directe.\n– Un scor din 100, nu un procent.\n– Se calculează de la 10 achiziții directe.\n– Sub 10 puncte: fără semnal în scor.\n– 10–39 slab · 40–67 moderat · 68 și peste pronunțat.\n– O familie de tipare ajunge singură cel mult la 80; decembrie singur, la 25.",
   },
   // ONRC's other names for the CUI (owner, 1 November 2026).
   "nume-registru": {

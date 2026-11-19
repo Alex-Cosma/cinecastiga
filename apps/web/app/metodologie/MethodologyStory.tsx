@@ -10,6 +10,7 @@ import { RISK_CRITERIA } from "@/lib/risk-score";
 import { ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
 import { BRIEF_TERMS, GLOSSARY } from "@/lib/glossary";
+import TipText from "@/components/TipText";
 import { EXAMPLE_TOWN, type BandCounts, type KindKey, type MethodologyFigures } from "@/lib/methodology-figures";
 import ScoreCode from "./ScoreCode";
 
@@ -377,7 +378,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               {BRIEF_TERMS.map((id) => (
                 <div key={id} id={id}>
                   <dt>{GLOSSARY[id].title}</dt>
-                  <dd>{GLOSSARY[id].text}</dd>
+                  <dd><TipText text={GLOSSARY[id].text} /></dd>
                 </div>
               ))}
             </dl>

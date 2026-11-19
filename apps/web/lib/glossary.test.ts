@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { BRIEF_TERMS, GLOSSARY, glossaryEntry, type GlossaryId } from "./glossary";
+import { tipLines } from "./tip-text";
 import Term from "../components/Term";
 
 describe("beginner glossary", () => {
@@ -73,7 +74,8 @@ describe("<Term>", () => {
     expect(html).toMatch(/^<span class="term"><button type="button" class="term-trigger" aria-expanded="false" aria-controls="([^"]+)">achiziții directe acceptate/);
     const controls = /aria-controls="([^"]+)"/.exec(html)![1];
     expect(html).toContain(`<span id="${controls}" class="term-def" role="note" hidden="">`);
-    expect(html).toContain(GLOSSARY["achizitie-directa"].text);
+    // Each line of the definition in its own span (components/TipText.tsx).
+    for (const line of tipLines(GLOSSARY["achizitie-directa"].text)) expect(html).toContain(`<span class="${line.point ? "tip-li" : "tip-p"}">${line.text}</span>`);
     expect(html).toContain("(ce înseamnă)");
     expect(html).not.toMatch(/onmouse|title=/i);
   });

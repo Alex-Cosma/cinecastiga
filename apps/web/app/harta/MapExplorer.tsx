@@ -6,6 +6,7 @@ import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
+import TipText from "@/components/TipText";
 import InfoMark from "@/components/InfoMark";
 import { GLOSSARY } from "@/lib/glossary";
 import { G, Ghost } from "@/components/ghost/Ghost";
@@ -737,7 +738,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : "")
           : schools ? `${metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița.`
           : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : `Un județ se împarte la locuitorii ${NB("UAT-urilor")} ale căror primării le identificăm.`} Valori contractate, nu plăți, în plafoanele totalurilor.
-          {schools && <span className="mx-about-more"><b>{GLOSSARY["scolile-harta"].title}.</b> {GLOSSARY["scolile-harta"].text}</span>}
+          {schools && <span className="mx-about-more"><b>{GLOSSARY["scolile-harta"].title}.</b> <TipText text={GLOSSARY["scolile-harta"].text} /></span>}
           <span className="mx-about-more"><b>{GLOSSARY["plafoane-totaluri"].title}.</b> {GLOSSARY["plafoane-totaluri"].text}</span></>} /></p>
       </aside>
       {(panelOpen || sheetLeaving) && panelUat && <UatPanel siruta={panelUat} query={selection} hint={byKey.get(panelUat) && { name: byKey.get(panelUat)!.name, county: countyArea?.name, gap: byKey.get(panelUat)!.perCapita === null }}
