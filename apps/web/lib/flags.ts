@@ -222,7 +222,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale:
       "Merită verificat cum au fost îndeplinite contractele: personal propriu, subcontractori, echipamente sau revânzare de produse.",
     caveat:
-      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile sunt contractate, nu plăți efective; plafoanele acordurilor-cadru sunt excluse.",
+      "Firma poate lucra cu subcontractori sau colaboratori, care nu apar ca salariați ai ei. Dealerii și importatorii pot avea legitim puțini salariați. Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Valorile sunt contractate, nu plăți efective; plafoanele acordurilor-cadru sunt excluse.",
   },
   fin_public_reliance: {
     code: "fin_public_reliance",
