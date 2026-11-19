@@ -349,10 +349,8 @@ export default function TxTable({
                   {t.singleBidder === true && <span className="flag-badge sm neutral" title="O singură ofertă raportată în sursă">1 ofertant</span>}
                 </td>
                 <td className="c-links">
-                  {t.src === "contract" && t.daCode?.trim() ? (
-                    // The contract's number is an identifier for whoever checks: Complet's (owner, 18 November 2026).
-                    <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`} data-only="complet">nr. {t.daCode.trim()}</span>
-                  ) : null}
+                  {/* The contract's number in the source is not shown here (owner, 19 November 2026; it was Complet's from 18
+                      November): the row leads to the contract's page, which has it. */}
                   {group.some((m) => republished.has(txRowKey(m, rows.indexOf(m)))) ? (
                     <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
                       apare și sub alt anunț
