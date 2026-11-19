@@ -9,6 +9,7 @@ import { shortName } from "@/lib/radiografie-fmt";
 import { formatRon, formatInt } from "@/lib/format";
 import { INITIAL_ZOOM, boundZoom, zoomAt, percent, yearRange, type Zoom } from "@/lib/radiografie-view";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
+import { useTip, type TipBind } from "../../../intreaba/use-tip";
 import { pairSpec } from "@/lib/ask/site-links";
 import SupplierTable from "./SupplierTable";
 import { G } from "@/components/ghost/Ghost";
@@ -58,15 +59,17 @@ const GLIDE_MS = 260;
  * drawing fades the dots in place in the table's order, largest first ("cm-pt", staggered); the dots the 25-supplier
  * view adds fade in alone ("cm-in"); a dot that comes back into view while zooming or panning appears at once.
  */
-function SupplierDot({ born, i, selected, ring = false, cx, cy, r, label, onSelect, aria, title }: {
+function SupplierDot({ born, i, selected, ring = false, cx, cy, r, label, onSelect, aria, tip }: {
     born: "cm-pt" | "cm-in" | ""; i: number; selected: boolean; ring?: boolean; cx: number; cy: number; r: number; label: ReactNode;
-    onSelect: () => void; aria: string; title: string;
+    onSelect: () => void; aria: string;
+    /** The site's cursor tip (intreaba/use-tip.tsx; docs/PRINCIPLES.md: never the slow native <title>). */
+    tip: TipBind;
 }) {
     const [enter] = useState(born);
-    return <g className={`rv-point ${selected ? "selected" : ""}`} role="button" tabIndex={0} aria-pressed={selected} aria-label={aria} onClick={onSelect} onKeyDown={(e: KeyboardEvent) => { if (["Enter", " "].includes(e.key)) {
+    return <g className={`rv-point ${selected ? "selected" : ""}`} role="button" tabIndex={0} aria-pressed={selected} aria-label={aria} {...tip} onClick={onSelect} onKeyDown={(e: KeyboardEvent) => { if (["Enter", " "].includes(e.key)) {
             e.preventDefault();
             onSelect();
-        } }}><circle className={enter || undefined} style={enter === "cm-pt" ? { "--i": i } as CSSProperties : undefined} cx={cx} cy={cy} r={r}/>{ring && <SelectRing cx={cx} cy={cy} r={r + 4} className="rv-ring"/>}<title>{title}</title>{label}</g>;
+        } }}><circle className={enter || undefined} style={enter === "cm-pt" ? { "--i": i } as CSSProperties : undefined} cx={cx} cy={cy} r={r}/>{ring && <SelectRing cx={cx} cy={cy} r={r + 4} className="rv-ring"/>}{label}</g>;
 }
 /** The chosen supplier's name: at the first drawing it comes last, after the dots; a later choice shows it at once. */
 function DotLabel({ first, x, y, children }: { first: boolean; x: number; y: number; children: ReactNode }) {
@@ -90,6 +93,8 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
     /** every supplier of the authority */
     suppliers: number;
 }) {
+    // Each dot answers on hover with the site's cursor tip (owner, 19 November 2026: the chart used the browser's own).
+    const tip = useTip();
     const [limit, setLimit] = useState(12), [selected, setSelected] = useState(rows[0]?.id ?? ""), [picked, setPicked] = useState<DepRow | null>(null), [sources, setSources] = useState(false);
     // The reader's own choice (not the first supplier shown at load): its dot's ring draws once (M-03).
     const [chose, setChose] = useState(false);
@@ -177,11 +182,11 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
         } }} onPointerDown={e => { if (e.button !== 0)
             return; const b = e.currentTarget.getBoundingClientRect(); drag.current = { id: e.pointerId, cx: e.clientX, cy: e.clientY, x: viewRef.current.x, y: viewRef.current.y, w: b.width * 613 / 700, h: b.width * 250 / 700, moved: false }; }} onPointerMove={e => { const d = drag.current; if (!d || d.id !== e.pointerId)
             return; const dx = e.clientX - d.cx, dy = e.clientY - d.cy; if (!d.moved && Math.hypot(dx, dy) < 5)
-            return; d.moved = true; e.currentTarget.setPointerCapture(e.pointerId); const v = viewRef.current; jump(boundZoom({ ...v, x: d.x - dx / d.w / v.k, y: d.y - dy / d.h / v.k })); }} onPointerUp={endDrag} onPointerCancel={endDrag}>
+            return; d.moved = true; tip.hide(); e.currentTarget.setPointerCapture(e.pointerId); const v = viewRef.current; jump(boundZoom({ ...v, x: d.x - dx / d.w / v.k, y: d.y - dy / d.h / v.k })); }} onPointerUp={endDrag} onPointerCancel={endDrag}>
  <svg viewBox="0 0 700 370" role="group" aria-label={`Furnizorii ${authorityName}`}><defs><clipPath id="rv-supplier-clip"><rect x="37" y="43" width="663" height="300"/></clipPath></defs>
  {[0, .25, .5, .75, 1].map(t => <g key={t}><line className="rv-grid" x1={62} x2={675} y1={68 + t * 250} y2={68 + t * 250}/><text className="rv-axis" x={50} y={72 + t * 250} textAnchor="end">{percent(Math.max(0, 1 - zoom.y - t / zoom.k))}</text><text className="rv-axis" x={62 + t * 613} y={342} textAnchor="middle">{percent((zoom.x + t / zoom.k) * maxX)}</text></g>)}
  <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <SupplierDot key={s.id} born={!drawn ? "cm-pt" : fresh?.has(s.id) ? "cm-in" : ""} i={shown.indexOf(s)} selected={p.id === s.id} ring={chose && p.id === s.id} cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.all)}
-            aria={`${s.name}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} title={`${s.name} · ${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} onSelect={() => select(s)}
+            aria={`${s.name}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} tip={tip.bind(shortName(s.name), formatRon(s.all), `${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile firmei`)} onSelect={() => select(s)}
             label={p.id === s.id && <DotLabel first={!drawn} x={Math.min(470, Math.max(62, X(s.shareHere) - 60))} y={Y(s.shareLife) > 258 ? Y(s.shareLife) - R(s.all) - 10 : Y(s.shareLife) + R(s.all) + 20}>{shortName(s.name).slice(0, 30)}</DotLabel>}/>)}</g></svg></div>
  {visible < shown.length && <p className="rv-small">{visible} din {shown.length} furnizori în zona vizibilă</p>}</div></div>
  <aside ref={detail} tabIndex={-1} className="rv-selection" aria-live="polite"><p className="rv-small">Relația · {yearRange(p.y0, p.y1)}{inChart ? "" : " · în afara graficului"}</p><h3><Link prefetch={false} href={`/entitati/${p.id}`}>{shortName(p.name)}</Link></h3><dl>
@@ -197,5 +202,6 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
    <span className="rv-fin-p">Contractele simple sunt comparate cu anul semnării; acordurile-cadru ({formatRon(p.cFrame)}) cu până la patru ani. Execuția și recunoașterea veniturilor pot avea alte perioade.</span>
    <span className="rv-fin-p">Ofertant unic: {p.ns} din {p.nk} contracte cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. Câștiguri publice de la {p.nAuth} autorități.</span></>}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11.5v5M12 7.8h.01" /></svg>Context financiar și concurență</Term></p>}</aside></div></section>
  <SupplierTable authorityId={authorityId} suppliers={suppliers} maxValue={rows[0]?.all ?? 0} selectedId={p.id} onSelect={select}/></>}
+ {tip.el}
  {sources && p && <EvidenceDrawer title={`Relația · ${p.name}`} spec={pairSpec({ id: authorityId, name: authorityName }, { id: p.id, name: p.name })} onClose={() => setSources(false)}/>}</>;
 }
