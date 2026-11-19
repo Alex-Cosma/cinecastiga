@@ -114,7 +114,6 @@
 .data-context summary{cursor:pointer;color:var(--ink);font-weight:500;min-height:24px}
 .data-context summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .data-context p{max-width:85ch;margin:12px 0}
-.entity-data-context p{max-width:none}
 /* The footer's „Date” (owner, 19 November 2026): label and value, row by row, then the links. */
 .coverage-summary{display:grid;gap:14px;line-height:1.6}
 .coverage-summary dl{display:grid;gap:5px;margin:0}

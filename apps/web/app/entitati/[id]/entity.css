@@ -42,10 +42,23 @@
 /* risk: the score, its band and the bands it falls in */
 .ent-risk{gap:10px}
 .ent-risk-read{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0}
-.ent-risk-read>b{font:700 30px/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--muted)}
-.ent-risk-read>b[data-band="puternic"]{color:var(--risk)}
-.ent-risk-read>b[data-band="moderat"]{color:var(--amber-ink,var(--amber))}
-.ent-risk-read>b[data-band="slab"]{color:var(--ink2)}
+.ent-risk-read b[data-band]{font:700 30px/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ent-risk-read b[data-band="puternic"]{color:var(--risk)}
+.ent-risk-read b[data-band="moderat"]{color:var(--amber-ink,var(--amber))}
+.ent-risk-read b[data-band="slab"]{color:var(--ink2)}
+/* From what the score is formed (owner, 19 November 2026): the number carries the dotted line of a word that explains
+   itself and its box floats over the page; the "?" beside it is the label's. */
+.ent-risk-read>.ent-score-how>.term-trigger>.term-mark{display:none}
+.ent-risk-read>.ent-score-how .term-words{padding-bottom:3px}
+.ent-how-n{display:block;margin-top:7px}
+.ent-how-n:first-of-type{display:inline;margin-top:0}
+.ent-how-n a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.ent-how-n>b{font-variant-numeric:tabular-nums}
+/* „Ce includ cifrele”: quiet words before the footer, not a fold that opens in the page. */
+.ent-how{margin:26px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
+.ent-how>.term>.term-trigger{min-height:32px;padding:4px 0;color:var(--muted);font:inherit;cursor:help}
+.ent-how>.term>.term-trigger:hover,.ent-how>.term.term-shown>.term-trigger{color:var(--ink2)}
+@media (max-width:640px){.ent-how>.term>.term-trigger{min-height:44px}}
 .ent-risk-read>span{font-size:14px;font-weight:500;color:var(--ink2)}
 .ent-risk-scale{position:relative;margin:2px 0 20px}
 .ent-risk-track{display:grid;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk)}

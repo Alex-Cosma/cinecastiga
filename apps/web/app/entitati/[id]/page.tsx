@@ -219,6 +219,9 @@ export default async function EntityPage({
   const criteria = RISK_CRITERIA[role];
   const band = riskBand(row.score);
   const points = riskPoints(row.scoreParts, row.score);
+  // The score's parts for its explanation: the patterns found, strongest first, and how many of the role's are not.
+  const scoreFound = criteria.filter((code) => row.scoreParts[code]).sort((a, b) => (points[b] ?? 0) - (points[a] ?? 0));
+  const scoreMissing = criteria.length - scoreFound.length;
   // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
   const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
   // rf-2026.22 (S8): no record in this role for 24 months reads "Inactiv"; the score and its evidence stay.
@@ -433,7 +436,19 @@ export default async function EntityPage({
         {/* The score, its bar and bands, the peers and the method: Complet's (owner, 18 November 2026). */}
         <div className="ent-risk" data-only="complet">
           <p className="ent-risk-read">
-            <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
+            {/* From what the score is formed (owner, 19 November 2026): on the number itself, in a box over the page; the
+                fold „Cum se formează riscul?” at the page's end is gone and its rules are the guide's (#indice). Only
+                where a score can be (UX audit Z5-14). */}
+            {hasRiskScore && row.nDas >= RISK_MIN_DAS
+              ? <Term tip hold="line" className="ent-score-how" title="Din ce e format scorul" text={scoreFound.length > 0 ? <>
+                {scoreFound.map((code) => <span key={code} className="ent-how-n">
+                  <b>+{formatInt(points[code] ?? 0)}</b> · <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link> · {riskFact(code, row.scoreParts[code]!, role)}
+                </span>)}
+                {scoreMissing > 0 && <span className="ent-how-n">{scoreMissing === 1 ? "Un alt tipar din scor nu apare" : `Alte ${formatInt(scoreMissing)} tipare din scor nu apar`} la {role === "authority" ? "această instituție" : "această firmă"}.</span>}
+              </> : <span className="ent-how-n">Niciun tipar din scor nu apare la {role === "authority" ? "această instituție" : "această firmă"}.</span>}>
+                <b data-band={band}>{riskScoreText(row.score)}</b>
+              </Term>
+              : <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>}
             {/* rf-2026.22 (S7): the score reads only the direct acquisitions; how much of the money that is waits in the
                 label's own explanation (owner, 17 November 2026: less small print under the bar). */}
             <span className="ent-tip">{hasRiskScore && ledger.nCt > 0
@@ -661,49 +676,22 @@ export default async function EntityPage({
         </section>
       )}
 
-      {/* What the numbers include and how the risk is formed: the last blocks before the footer (owner, 1 November 2026). */}
-      {/* Both folds are context and method: Complet's (owner, 18 November 2026); „valoare înregistrată” stays at the
-          total's (?) and in the footer. */}
-      <details className="data-context entity-data-context" data-only="complet">
-        <summary>Ce includ aceste cifre?</summary>
-        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
-          cu valoare pozitivă. {VALUE_REVIEW_RULE}
-          Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
-        {cuiUncorroborated && (registryCollision
-          ? <p>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual
-            diferența: firmă străină, sediu în afara României sau o formă juridică ce nu poate avea acest număr. Nu afișăm
-            pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>
-          : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
-            iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
-            reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
-        {/* Said once, plainly (UX audit Z5-04): the line under the top and the list under the table say the rest. */}
-        {aboveCap.count > 0 && <p>Contractele de peste 1 mld. lei ținute afară nu intră în totaluri și nici în lista partenerilor; sunt listate sub tabel, fiecare cu motivul.</p>}
-        <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
-          Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
-          Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
-        <p>Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.
-          {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
-          {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
-
-      </details>
-
-      {/* Only where a score can be (UX audit Z5-14): under the minimum of direct acquisitions there is none to explain. */}
-      {hasRiskScore && row.nDas >= RISK_MIN_DAS && <details className="data-context entity-data-context" id="calcul-scor" data-only="complet">
-        <summary>Cum se formează riscul?</summary>
-        <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
-          pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea
-          firmei): o familie singură ajunge cel mult la 80, decembrie singur la 25, capacitatea singură la 30.
-          Scorul pornește de la {formatInt(RISK_MIN_DAS)} achiziții directe; sub 10 puncte, fără semnal în scor.
-          Filtrul de an din tabel nu schimbă scorul.</p>
-        <ul>{criteria.map(code => <li key={code}>
-          <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}
-          <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
-          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!, role)}</>}
-        </li>)}</ul>
-        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt pe{" "}
-          {firstSignal ? <Link href={entitySignalsUrl(firstSignal)}>pagina semnalelor</Link> : "pagina semnalelor"}. Lipsa unui tipar nu certifică absența neregulilor.{" "}
-          <Link href="/metodologie#indice">Formula și limitele →</Link></p>
-      </details>}
+      {/* What this page's numbers include (owner, 19 November 2026): quiet words whose box floats over the page, in
+          place of the fold „Ce includ aceste cifre?” that opened in it. Only what is this entity's: the rules of every
+          total are the guide's (#totaluri). Complet's (owner, 18 November 2026); „valoare înregistrată” stays at the
+          total's (?) and in the footer. The score's parts are on the score, at the top. */}
+      <p className="ent-how" data-only="complet">
+        <Term tip hold="line" title="Ce includ cifrele" text={<>
+          {txCounts.nCt > 0 && <span className="ent-how-n">{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.</span>}
+          <span className="ent-how-n">Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.</span>
+          {txCounts.excludedDa > 0 && <span className="ent-how-n">{formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.</span>}
+          {aboveCap.count > 0 && <span className="ent-how-n">Contractele de peste 1 mld. lei ținute afară nu intră în totaluri și nici în lista partenerilor; sunt listate sub tabel, fiecare cu motivul.</span>}
+          {cuiUncorroborated && <span className="ent-how-n">{registryCollision
+            ? <>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual diferența. Nu afișăm pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</>
+            : <>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</>}</span>}
+          <span className="ent-how-n">Ce intră în orice total e în <Link href="/metodologie#totaluri">Ghid</Link>.</span>
+        </>}>Ce includ cifrele</Term>
+      </p>
     </>
   );
 }
