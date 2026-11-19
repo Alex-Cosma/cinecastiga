@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cancelNavPending } from "../../components/ghost/client";
 import Link from "next/link";
+import { profileLinks } from "@/lib/ask/profile-links";
+import { entityHref } from "@/lib/entity-href";
 import { CompletLine } from "@/components/mode/CompletOnly";
 import ClipButton from "@/components/ClipButton";
 import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
@@ -1401,6 +1403,10 @@ export default function AskPanel({
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
+                {/* The profile of the institution or the firm the question names (owner, 19 November 2026): in both modes. */}
+                {profileLinks(applied, resp.townHall).map((p) => <Link key={p.role} className="cq-profile-link" href={entityHref(p.id, p.role)} {...(p.name ? { title: cleanName(p.name) } : {})}>
+                  <DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span>
+                </Link>)}
                 {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”.
                     Esențial keeps „Păstrează” for a signed-in reader (IMPLEMENT rule 7); Trimite and Exportă are Complet's. */}
                 <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
@@ -1811,6 +1817,7 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
       </div>
       <div className="cq-answer-actions g-quiet" inert>
         <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
+        {profileLinks(spec, spec?.filters.uatSiruta ? { id: "" } : null).map((p) => <span key={p.role} className="cq-profile-link"><DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span></span>)}
         {/* Esențial: marked as the answer's own (rule 8), so the ghost has its shape in each mode. */}
         <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
           <span className="qb cq-share-menu" data-only="complet"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>

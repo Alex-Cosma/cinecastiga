@@ -255,6 +255,18 @@
   flex-shrink: 0;
 }
 .cq-answer-actions > .cq-source-main { grid-column: 1 / -1; justify-content: center; }
+/* „Profilul primăriei / instituției / firmei” (owner, 19 November 2026): a row of its own under the records' button. */
+.cq-answer-actions > .cq-profile-link {
+  grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 12px;
+  border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent);
+  font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  transition: border-color var(--fast), background var(--fast);
+}
+.cq-answer-actions > .cq-profile-link > svg { width: 17px; height: 17px; flex-shrink: 0; }
+.cq-answer-actions > a.cq-profile-link:hover { border-color: var(--accent); background: var(--accent-soft); text-decoration: none; }
+.cq-answer-actions > .cq-profile-link > .qb-glyph { transition: transform var(--fast) var(--ease); }
+.cq-answer-actions > a.cq-profile-link:hover > .qb-glyph { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .cq-answer-actions > .cq-profile-link > .qb-glyph { transition: none; } }
 .cq-answer-actions > .cq-share,
 .cq-answer-actions > .cq-save-wrap,
 .cq-answer-actions > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; }
