@@ -35,11 +35,11 @@ export function DependencyScatterGhost() {
  {GHOST_POINTS.map(([x, y, r], i) => <circle key={i} className="g-svg" cx={62 + x * 613} cy={68 + (1 - y) * 250} r={r}/>)}</svg></div></div></div>
  <aside className="rv-selection"><p className="rv-small"><G.Line w="42%"/></p><h3><G.Line w="76%"/></h3><dl>
  <div><dt>Valoare alocată <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></dt><dd><G.Line w="7ch"/><small><G.Line w="70%"/><G.Line w="40%" only="phone"/></small></dd></div>
- <div><dt>Din valoarea atribuită de autoritate</dt><dd><G.Line w="4ch"/></dd></div>
  <div><dt>Cât din câștigurile publice ale firmei vin de aici</dt><dd><G.Line w="4ch"/><small><G.Line w="84%"/><G.Line w="44%" only="phone"/></small></dd></div>
+ <div><dt>Din valoarea atribuită de autoritate</dt><dd><G.Line w="4ch"/></dd></div>
  <div><dt>Înregistrări în relație</dt><dd><G.Line w="3ch"/><small><G.Line w="36%"/></small></dd></div></dl>
  <button type="button" className="rv-primary g-quiet" tabIndex={-1} inert>Verifică relația în înregistrări</button>
- <div className="rv-details"><span className="rv-details-g">Context financiar și concurență</span></div></aside></div>
+ <p className="rv-details"><span className="rv-fin-g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11.5v5M12 7.8h.01" /></svg>Context financiar și concurență</span></p></aside></div>
  </section>;
 }
 
@@ -186,10 +186,16 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
  {visible < shown.length && <p className="rv-small">{visible} din {shown.length} furnizori în zona vizibilă</p>}</div></div>
  <aside ref={detail} tabIndex={-1} className="rv-selection" aria-live="polite"><p className="rv-small">Relația · {yearRange(p.y0, p.y1)}{inChart ? "" : " · în afara graficului"}</p><h3><Link prefetch={false} href={`/entitati/${p.id}`}>{shortName(p.name)}</Link></h3><dl>
  <div><dt>Valoare alocată <Term tip id="consortiu" /></dt><dd>{formatRon(p.all)}<small>{p.here > 0 && p.daHere > 0 ? `${formatRon(p.here)} contracte · ${formatRon(p.daHere)} achiziții directe` : p.here > 0 ? "doar contracte prin proceduri" : "doar achiziții directe"}</small></dd></div>
- <div><dt>Din valoarea atribuită de autoritate</dt><dd>{sharePct(p.shareHere)}</dd></div>
+{/* The firm's dependence first, then its weight for the authority (owner, 19 November 2026). */}
  <div><dt>Cât din câștigurile publice ale firmei vin de aici</dt><dd>{sharePct(p.shareLife)}{p.daTotal != null && <small>din {formatRon(p.total)}, cu achizițiile directe ({formatRon(p.daTotal)})</small>}</dd></div>
+ <div><dt>Din valoarea atribuită de autoritate</dt><dd>{sharePct(p.shareHere)}</dd></div>
  <div><dt>Înregistrări în relație</dt><dd>{formatInt(p.n + p.nDa)}<small>{recordWords(p)}</small></dd></div></dl><button className="rv-primary" onClick={() => setSources(true)}>Verifică relația în înregistrări</button>
- {p.n > 0 && <details className="rv-details"><summary>Context financiar și concurență</summary><p>În {win.from}–{win.to}: {formatRon(p.cFrame + p.cPlain)} valoare alocată din contracte. Cifra de afaceri cumulată pentru anii acoperiți: {p.turnWin == null ? "necunoscută" : formatRon(p.turnWin)}; bilanț disponibil în {p.nyWin} din {p.yrs.length} ani.</p><p>Contractele simple sunt comparate cu anul semnării; acordurile-cadru ({formatRon(p.cFrame)}) cu până la patru ani. Execuția și recunoașterea veniturilor pot avea alte perioade.</p><p>Ofertant unic: {p.ns} din {p.nk} contracte cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. Câștiguri publice de la {p.nAuth} autorități.</p></details>}</aside></div></section>
+ {/* A tag whose explanation opens over the page after a resting mouse, at once on a tap or from the keyboard
+     (owner, 19 November 2026): it no longer pushes the panel down. */}
+ {p.n > 0 && <p className="rv-details"><Term tip hold="box" className="rv-fin" title="Context financiar și concurență" text={<>
+   <span className="rv-fin-p">În {win.from}–{win.to}: {formatRon(p.cFrame + p.cPlain)} valoare alocată din contracte. Cifra de afaceri cumulată pentru anii acoperiți: {p.turnWin == null ? "necunoscută" : formatRon(p.turnWin)}; bilanț disponibil în {p.nyWin} din {p.yrs.length} ani.</span>
+   <span className="rv-fin-p">Contractele simple sunt comparate cu anul semnării; acordurile-cadru ({formatRon(p.cFrame)}) cu până la patru ani. Execuția și recunoașterea veniturilor pot avea alte perioade.</span>
+   <span className="rv-fin-p">Ofertant unic: {p.ns} din {p.nk} contracte cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. Câștiguri publice de la {p.nAuth} autorități.</span></>}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11.5v5M12 7.8h.01" /></svg>Context financiar și concurență</Term></p>}</aside></div></section>
  <SupplierTable authorityId={authorityId} suppliers={suppliers} maxValue={rows[0]?.all ?? 0} selectedId={p.id} onSelect={select}/></>}
  {sources && p && <EvidenceDrawer title={`Relația · ${p.name}`} spec={pairSpec({ id: authorityId, name: authorityName }, { id: p.id, name: p.name })} onClose={() => setSources(false)}/>}</>;
 }

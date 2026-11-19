@@ -48,7 +48,7 @@ type Criteria = { dataset: string; year: string; cpv: string; county: string };
 type Request = Criteria & { page: number; identity?: string | undefined; checkpointId?: string | undefined; method?: PeerMethod | undefined; populationVersion?: string | undefined; members?: PeerSelectionMember[] | undefined };
 type Source = { receipt: PeerEvidenceSelection; title: string };
 type Metric = "total" | "mean";
-type Row = { id: string; name: string; value: number; exact: string; records: number; focal: boolean; rank: number | null; extra?: string | undefined };
+type Row = { id: string; name: string; value: number; exact: string; records: number; focal: boolean; rank: number | null; /** The population beside the records, „237.589 loc.” (owner, 19 November 2026: the words in full took a second line). */ people?: number | undefined };
 type Axis = { lo: number; hi: number };
 
 const LIST_PAGE = 20;
@@ -171,7 +171,7 @@ function RankRow({ row, place = null, axis, median, role, busy, opening, onSourc
     {/* A town hall by its place, as on the map, with its county (UX audit Z4-34); the link still opens its page. */}
     <span className="pxs-name">{row.focal ? <b>{place ? <>{place.name}{place.county && <span className="pxs-county"> · {place.county}</span>}</> : row.name}</b>
       : <EntityName id={row.id} role={role}>{place ? <>{place.name}{place.county && <span className="pxs-county"> · {place.county}</span>}</> : cleanName(row.name) || "—"}</EntityName>}
-      <small>{row.records > 0 ? recordsWords(row.records) : "fără înregistrări în selecție"}{row.extra ? ` · ${row.extra}` : ""}</small></span>
+      <small>{row.records > 0 ? recordsWords(row.records) : "fără înregistrări în selecție"}{row.people ? <> · <span className="pxs-people">{count(row.people)} <abbr title="locuitori">loc.</abbr></span></> : null}</small></span>
     <span className="pxs-track" aria-hidden="true">{median !== null && median > 0 && <b className="cm-tw" style={{ left: `${along(axis, median) * 100}%` }} />}{row.records > 0 && <i className={played ? "cm-tw" : born >= 0 ? "cm-tw cm-pt" : "cm-tw cm-in"} onAnimationEnd={() => setBorn(-2)} style={{ left: `${along(axis, row.value) * 100}%`, ...(born >= 0 ? { "--i": born } as CSSProperties : {}) }} />}</span>
     <span className="pxs-v" title={row.records > 0 ? formatEvidenceAmount(row.exact, true) : undefined}>{row.records > 0 ? `${short(row.value)} lei` : "—"}</span>
     <button type="button" className="pxs-src" disabled={busy || opening !== null || row.records === 0} aria-label={`Vezi sursele: ${row.focal ? row.name : cleanName(row.name)}`}
@@ -209,7 +209,7 @@ function PeersGhost({ name }: { name: string }) {
       </div>
     </section>
     <div className="pxs-cols">
-      <section className="pxs-near" aria-hidden="true"><h2>În jurul ei</h2>
+      <section className="pxs-near" aria-hidden="true"><h2>În jurul ei <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></h2>
         <ol className="pxs-rows"><G.Rows n={6} className="pxs-row" cells={(i) => <>
           <span className="pxs-n"><G.Line inline w="2ch" /></span>
           <span className="pxs-name"><b><G.Line w={rankWidth(i, 78, 9, 40)} />{i === 4 ? <G.Line w="44%" /> : i % 3 !== 2 && <G.Line w="34%" only="phone" />}</b><small><G.Line w="46%" /></small></span>
@@ -218,9 +218,7 @@ function PeersGhost({ name }: { name: string }) {
           <span className="pxs-src g-quiet">Surse</span>
         </>} /></ol>
         <span className="pxs-more"><G.Line inline w="24ch" /></span>
-      </section>
-      <section className="pxs-who" aria-hidden="true"><h2>Cine e în grup <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></h2>
-        <div className="pxs-acts"><G.Block w="7.8em" h="36px" /><G.Block w="10.2em" h="36px" /><G.Block w="7.75em" h="36px" /></div>
+        <div className="pxs-acts pxs-acts--foot"><G.Block w="10.2em" h="36px" /><G.Block w="7.75em" h="36px" /><G.Block w="9.4em" h="36px" /></div>
       </section>
     </div>
     <div className="pxs-method g-quiet" aria-hidden="true"><span className="pxs-method-s"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</span></div>
@@ -510,15 +508,15 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
       const p = m?.population;
       if (!p || method === "activity") return undefined;
       // The population alone: hers is on her own row (owner, 17 November 2026; before: „(+4%)” after each).
-      return countWords(p.value, "locuitor", "locuitori");
+      return p.value;
     };
-    const rows: Row[] = points.map((p) => ({ id: p.id, name: p.name, value: metric === "total" ? p.total : p.mean, exact: metric === "total" ? p.totalExact : p.meanExact, records: p.records, focal: false, rank: null, extra: populationWords(byId.get(p.id)) }));
+    const rows: Row[] = points.map((p) => ({ id: p.id, name: p.name, value: metric === "total" ? p.total : p.mean, exact: metric === "total" ? p.totalExact : p.meanExact, records: p.records, focal: false, rank: null, people: populationWords(byId.get(p.id)) }));
     rows.push({ id: entityId, name: currentName, value: focalValue, exact: metric === "total" ? focal.totalExact : focal.meanRounded, records: focal.recordCount, focal: true, rank: null,
-      extra: focal.population && method !== "activity" ? countWords(focal.population.value, "locuitor", "locuitori") : undefined });
+      people: focal.population && method !== "activity" ? focal.population.value : undefined });
     rows.sort((a, b) => b.value - a.value || (a.focal ? -1 : b.focal ? 1 : 0));
     rows.forEach((r, i) => { r.rank = i + 1; });
     const silent = (data?.members ?? []).filter((m) => m.recordCount === 0 && !points.some((p) => p.id === m.entity.id));
-    return [...rows, ...silent.map((m) => ({ id: m.entity.id, name: m.entity.name, value: 0, exact: "0", records: 0, focal: false, rank: null, extra: populationWords(m) }))];
+    return [...rows, ...silent.map((m) => ({ id: m.entity.id, name: m.entity.name, value: 0, exact: "0", records: 0, focal: false, rank: null, people: populationWords(m) }))];
   }, [points, metric, focal, focalValue, entityId, currentName, data?.members, method]);
   const at = ranked.findIndex((r) => r.focal);
   const rank = data?.rank ? data.rank[metric] : Math.max(1, at + 1);
@@ -603,6 +601,12 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   // „Cine e în grup”: the group's rule and its source, said in the title's (?) (owner, 17 November 2026: a paragraph before).
   const populationRule = data && focal?.population ? <>Cele {count(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : null;
   const activityRule = data && focal ? `${role === "supplier" ? "Firmele" : KIND_PLURAL[data.cohort.authorityKind ?? ""] ?? "Instituțiile de același tip"} cu activitate asemănătoare ${cpvCode === "all" ? (yearValue === "all" ? "în toți anii" : "în același an") : yearValue === "all" ? "în același domeniu, în toți anii" : "în același domeniu și an"}: între jumătate și dublul celor ${recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.` : "";
+  // The group's rule and its source, in a (?) beside the ranking's title (owner, 19 November 2026: „Cine e în grup” was a
+  // panel of its own, with nothing left under its title but buttons).
+  const groupTip = method === "activity" ? <> <Term tip title={glossaryEntry("grup-activitate").title} text={`${activityRule} ${glossaryEntry("grup-activitate").text}`} /></>
+    : method === "population" ? <> <Term tip title={glossaryEntry("grup-populatie").title} text={populationRule ? <>{populationRule} {glossaryEntry("grup-populatie").text}</> : glossaryEntry("grup-populatie").text} /></> : null;
+  const groupNote = !focal ? null : method === "population" ? !focal.population && <p className="pxs-group-note">Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație.</p>
+    : method === "manual" && data ? <p className="pxs-group-note">Grupul ales de tine: {countWords(data.cohort.count, noun[0], noun[1])} <InfoMark title="Grupul ales" text="Din orice județ (cel mult 50). Rămâne când schimbi anul sau domeniul." /></p> : null;
 
   return <div className="pxs" onClickCapture={(e) => {
     // A member's page opened from a row: Back brings its row into view (UX audit Z4-33).
@@ -667,34 +671,15 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
           <div className="pxs-cols">
             {ranking && (small
               // A small group (UX audit Z4-31): its whole ranking once, with her row marked, in place of „În jurul ei”.
-              ? <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">Clasamentul</h2>
+              ? <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">Clasamentul{groupTip}</h2>
+                {groupNote}
                 <ol className="pxs-rows" data-chart="">{shownRows.map((r, i) => <RankRow key={r.id} row={r} place={placeOf(r.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol></section>
-              : <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">În jurul ei</h2>
+              : <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">În jurul ei{groupTip}</h2>
+                {groupNote}
                 <ol className="pxs-rows" data-chart="">{neighbours.map((r, i) => <RankRow key={r.id} row={r} place={placeOf(r.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
                 {data.cohort.count > 5 && <button type="button" className="pxs-more" aria-expanded={listOpen} aria-controls="peer-members" onClick={openList}>Tot clasamentul · {countWords(total, noun[0], noun[1])}
                   <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
               </section>)}
-            <section className="pxs-who" aria-labelledby="pxs-who-h"><h2 id="pxs-who-h">Cine e în grup{method === "activity" ? <> <Term tip title={glossaryEntry("grup-activitate").title} text={`${activityRule} ${glossaryEntry("grup-activitate").text}`} /></>
-                : method === "population" ? <> <Term tip title={glossaryEntry("grup-populatie").title} text={populationRule ? <>{populationRule} {glossaryEntry("grup-populatie").text}</> : glossaryEntry("grup-populatie").text} /></> : null}</h2>
-              {/* Said once (UX audit Z4-35): the rule and its source, in the title's (?) (owner, 17 November 2026: it was a
-                  paragraph here); the number is in the lede, the median on the drawing. */}
-              {method === "population" ? !focal.population && <p>Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație.</p>
-                : method === "manual" && <p>Grupul ales de tine: {countWords(data.cohort.count, noun[0], noun[1])} <InfoMark title="Grupul ales" text="Din orice județ (cel mult 50). Rămâne când schimbi anul sau domeniul." /></p>}
-              {/* One row, one size (owner, 6 November 2026: the buttons looked thrown at random): her sources first, the
-                  whole comparison's sources, then keeping it (investigation, link); a copied hand-picked group adds the way back. */}
-              <div className="pxs-acts">
-                <button type="button" className="pxs-btn p" disabled={busy || focal.recordCount === 0} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>
-                {canCapture && <button type="button" className="pxs-btn" disabled={busy} onClick={() => showSources()}>Sursele comparației</button>}
-                {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
-                <button type="button" className="pxs-btn" onClick={() => void copyLink()}>{linkCopied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
-                <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
-                {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
-                {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
-                {/* Why „Sursele comparației” is missing: an "i" (owner, 17 November 2026; before: a note under the buttons). */}
-                {!canCapture && comparisonAvailable && <InfoMark title="Sursele comparației" label="De ce lipsesc sursele comparației" text="Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație." />}
-              </div>
-              {copied && <p className="pxs-note" role="status">{copied}</p>}
-            </section>
           </div>
 
           {listOpen && !small && data.cohort.count > 0 && <section id="peer-members" className="pxs-list">
@@ -710,6 +695,19 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
                 <button type="button" className="pxs-btn" disabled={listPage >= pages - 1} onClick={() => { setListPage((p) => p + 1); requestAnimationFrame(() => listHeading.current?.focus()); }}>Înainte →</button></nav>}
             </>}
           </section>}
+          {/* The comparison's own actions, one quiet row under the ranking (owner, 19 November 2026; before: a panel beside
+              it, where „Sursele ei” repeated her row's „Surse”). Without a ranking her sources have no row: the button stays. */}
+          <div className="pxs-acts pxs-acts--foot">
+            {!ranking && <button type="button" className="pxs-btn" disabled={busy || focal.recordCount === 0} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>}
+            {canCapture && <button type="button" className="pxs-btn" disabled={busy} onClick={() => showSources()}>Sursele comparației</button>}
+            {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
+            <button type="button" className="pxs-btn" onClick={() => void copyLink()}>{linkCopied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
+            <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
+            {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
+            {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
+            {!canCapture && comparisonAvailable && <InfoMark title="Sursele comparației" label="De ce lipsesc sursele comparației" text="Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație." />}
+          </div>
+          {copied && <p className="pxs-note" role="status">{copied}</p>}
         </>}
         </div>
         <details className="pxs-method"><summary><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</summary>

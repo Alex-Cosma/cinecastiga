@@ -69,14 +69,18 @@
 .pxs-tip.l{transform:translate(-12px,calc(-100% - 12px))}
 .pxs-tip.r{transform:translate(calc(-100% + 12px),calc(-100% - 12px))}
 /* Under the stage: the neighbours and who the group is */
-.pxs-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;margin-top:22px}
+/* One column (owner, 19 November 2026): the ranking takes the width; „Cine e în grup” is a (?) beside its title. */
+.pxs-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;margin-top:22px}
 .pxs h2{margin:0 0 8px;font:600 15px/1.3 var(--body)}
 .pxs-rows{margin:0;padding:0;list-style:none}
-.pxs-row{display:grid;grid-template-columns:40px minmax(0,1fr) minmax(60px,120px) 104px auto;align-items:center;gap:10px;min-height:48px;padding:4px 0;border-bottom:1px solid var(--line)}
+/* The ranking takes the page's width (owner, 19 November 2026): the name, then a track wide enough to read places on. */
+.pxs-row{display:grid;grid-template-columns:40px minmax(200px,1fr) minmax(60px,1.5fr) 104px auto;align-items:center;gap:10px;min-height:48px;padding:4px 0;border-bottom:1px solid var(--line)}
 .pxs-n{font:500 12.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .pxs-name{min-width:0;display:grid;font-weight:600;line-height:1.3}
 .pxs-name>a,.pxs-name>b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 .pxs-name small{font-size:12.5px;font-weight:400;color:var(--muted);line-height:1.35}
+.pxs-name small abbr{text-decoration:none;cursor:inherit}
+.pxs-people{white-space:nowrap}
 .pxs-name a{color:var(--ink);text-decoration:none}
 .pxs-name a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 /* A row's place on the swarm's own axis: a thin track, the median's tick, the member's dot (a position, not a ratio). */
@@ -92,8 +96,8 @@
 .pxs-more:hover{text-decoration:underline;text-underline-offset:3px}
 .pxs-src{min-height:30px;padding:3px 9px;border:1px solid var(--line2);border-radius:6px;background:var(--surface);color:var(--accent);font-size:12.5px;font-weight:600}
 .pxs-src:hover:not(:disabled){border-color:var(--accent-line);background:var(--accent-soft)}
-.pxs-who p{margin:0;max-width:none;font-size:14px;color:var(--ink2)}
-.pxs-who p a{color:var(--accent)}
+.pxs-group-note{margin:0 0 8px;max-width:none;font-size:14px;color:var(--ink2)}
+.pxs-acts.pxs-acts--foot{margin-top:22px}
 .pxs-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 0}
 .pxs-facts div{padding:9px 12px;border-radius:10px;background:var(--sunk)}
 .pxs-facts dt{order:2;font-size:12.5px;color:var(--muted)}

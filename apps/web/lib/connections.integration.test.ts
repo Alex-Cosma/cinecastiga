@@ -59,11 +59,13 @@ describe.skipIf(!url)("procurement relationships (isolated PostgreSQL)", () => {
     expect(others.items[0]?.spec.filters).toMatchObject({ authorityId: Number(b), supplierId: Number(s) });
   });
   it("paginates deterministically with full filtered totals, no missing or duplicated partners", async () => {
-    const first = await getConnections(input(), sql), second = await getConnections(input("&page=2"), sql), beyond = await getConnections(input("&page=3"), sql);
-    expect(first.items).toHaveLength(20); expect(second.items).toHaveLength(4); expect(beyond.items).toHaveLength(0);
-    expect(new Set([...first.items, ...second.items].map(row => row.entity.id)).size).toBe(24);
+    // Ten a page (owner, 19 November 2026): 24 partners are 10, 10 and 4.
+    const first = await getConnections(input(), sql), second = await getConnections(input("&page=2"), sql), third = await getConnections(input("&page=3"), sql), beyond = await getConnections(input("&page=4"), sql);
+    expect(first.items).toHaveLength(10); expect(second.items).toHaveLength(10); expect(third.items).toHaveLength(4); expect(beyond.items).toHaveLength(0);
+    expect(new Set([...first.items, ...second.items, ...third.items].map(row => row.entity.id)).size).toBe(24);
     expect(second.summary).toEqual(first.summary);
-    expect(second.pagination).toEqual({ page: 2, pageSize: 20, totalPages: 2, totalPartners: 24, hasNext: false });
+    expect(second.pagination).toEqual({ page: 2, pageSize: 10, totalPages: 3, totalPartners: 24, hasNext: true });
+    expect(third.pagination).toEqual({ page: 3, pageSize: 10, totalPages: 3, totalPartners: 24, hasNext: false });
   });
   it("restores an exact pair beyond page one without relying on ambiguous name matching", async () => {
     const broad = await getConnections(input("&search=Furnizor"), sql);

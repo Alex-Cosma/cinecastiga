@@ -9,7 +9,8 @@ export class ConnectionError extends Error {
 }
 const database = globalThis as typeof globalThis & { __connectionSql?: DbSql };
 const connectionDatabase = () => database.__connectionSql ??= createDb().sql;
-export const CONNECTION_PAGE_SIZE = 20;
+/** Ten partners a page (owner, 19 November 2026; twenty before). The drawing above the lists reads the first page: it names at most six. */
+export const CONNECTION_PAGE_SIZE = 10;
 const idIsValid = (value: string) => /^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value));
 export function parseConnectionInput(params: URLSearchParams): ConnectionInput {
   const allowed = new Set(["entityId", "role", "dataset", "yearFrom", "yearTo", "search", "page", "identity", "checkpointId", "excludeEntityId", "partnerId"]);

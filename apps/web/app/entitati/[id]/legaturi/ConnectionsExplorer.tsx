@@ -319,7 +319,7 @@ const GHOST_MID = [0.31, 0.17, 0.12, 0.08, 0.32];
 const GHOST_RIGHT = [0.11, 0.07, 0.05, 0.04, 0.03, 0.1, 0.6];
 const GHOST_NAME: readonly string[] = ["22ch", "17ch", "25ch", "14ch", "12ch", "19ch", "11ch"];
 /** The lists' page size (lib/connections.ts, CONNECTION_PAGE_SIZE). */
-const LIST_PAGE = 20;
+const LIST_PAGE = 10;
 
 function StripGhost({ name, profile }: { name: string; profile: readonly number[] }) {
   return <Ghost as="div" className="cx-strip" name={name} wait="client">
