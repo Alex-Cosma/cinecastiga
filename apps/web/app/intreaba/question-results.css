@@ -295,32 +295,32 @@
   font-size: 13px;
 }
 
-.cq-caveats {
-  margin: 24px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-.cq-caveats summary {
-  cursor: pointer;
-  padding: 8px 0;
-  font-weight: 500;
-}
-/* The notes run the answer's whole width (owner, 2 November 2026). */
-.cq-caveats p {
-  padding-left: 18px;
-  line-height: 1.7;
-}
-/* A note the reader must check („Am ales …”), kept on the page above the closed fold. */
+/* A note the reader must not miss („Am ales …”, a year only partly in the data): a line on the page, in both modes. */
 .cq-caveat-shown {
   margin: 24px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.7;
 }
-.cq-caveat-shown + .cq-caveat-shown,
-.cq-caveat-shown + .cq-caveats {
-  margin-top: 4px;
+.cq-caveat-shown + .cq-caveat-shown { margin-top: 4px; }
+/* „Cum am calculat” (owner, 19 November 2026; answer/HowComputed.tsx): quiet words under the answer, with the dotted
+   line and the "?" of a word that explains itself (not a button's box); their box floats over the page. They took the
+   place of „Limite · N” and „Surse și date”, which opened in the page and pushed it down. */
+.cq-how { margin: 22px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.cq-caveat-shown + .cq-how { margin-top: 12px; }
+.cq-how .cq-how-tag > .term-trigger { min-height: 32px; padding: 4px 0; color: var(--muted); font: inherit; cursor: help; }
+.cq-how .cq-how-tag > .term-trigger:hover, .cq-how .cq-how-tag.term-shown > .term-trigger { color: var(--ink2); }
+.cq-how-ghost { display: inline-block; padding: 4px 0; }
+.cq-how-n { display: block; margin-top: 8px; }
+.cq-how-n:first-of-type { display: inline; margin-top: 0; }
+.cq-how-n a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.cq-how-act { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
+.cq-how-copy {
+  min-height: 36px; padding: 6px 0; border: 0; background: none; color: var(--accent); font: 600 13px/1.4 var(--body);
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
 }
+.cq-how-copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+@media (max-width: 640px) { .cq-how .cq-how-tag > .term-trigger, .cq-how-copy { min-height: 44px; } }
 .cq-ranking > .cq-rank-main,
 .cq-rank-row > .cq-rank-main {
   display: flex;

@@ -112,7 +112,8 @@ import { useFlag } from "../../components/motion/Done";
 import WorkLine from "../../components/motion/WorkLine";
 import { useChangedMark } from "../../components/motion/changed";
 import ShareMenu from "./answer/ShareMenu";
-import CoverageDisclosure from "@/components/CoverageDisclosure";
+import { splitCaveats } from "@/lib/ask/caveat-kinds";
+import HowComputed from "./answer/HowComputed";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import { understoodLine } from "./intent-line";
@@ -1719,37 +1720,18 @@ export default function AskPanel({
             {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
               <div className="qb cq-total"><TotalLine conditions={totalWords} {...(data.block === "stat" ? { note: false as const } : {})}>{totalLead(data)}</TotalLine></div>
             )}
-            {/* How the number was built reads after the answer, not before it. A note the reader must check („Am ales
-                „URBAN SCOPE”. Alte potriviri: …”) stays on the page; the others wait in the closed fold, which no longer
-                opens by itself to show them all (owner, 17 November 2026: less small print). */}
-            {(resp.caveats?.length ?? 0) > 0 && (() => {
-              const shownCaveats = resp.caveats!.filter((c) => /am ales|Am restrâns|nu există|ignor|în afara/i.test(c));
-              const folded = resp.caveats!.filter((c) => !shownCaveats.includes(c));
+            {/* How the number was built reads after the answer, not before it (owner, 19 November 2026). A note the
+                reader must not miss („Am ales „URBAN SCOPE”. Alte potriviri: …”, a year only partly in the data) is a
+                line on the page, in both modes; how the question was read waits in „Cum am calculat”, a box over the
+                page (Complet). The rules of every answer are the guide's and are not repeated here: „Limite · N” and
+                „Surse și date” are gone (lib/ask/caveat-kinds.ts). */}
+            {(() => {
+              const notes = splitCaveats(resp.caveats ?? []);
               return <>
-                {shownCaveats.map((c) => <p key={c} className="cq-caveat-shown">{c}</p>)}
-                {folded.length > 0 && (
-                  <details className="cq-caveats">
-                    {/* Z3-16: two disclosures with two names: what the number leaves in and out, and where the data come from. */}
-                    <summary>
-                      Limite · {folded.length}
-                    </summary>
-                    {folded.map((c) => (
-                      <p key={c}>{c}</p>
-                    ))}
-                  </details>
-                )}
+                {notes.shown.map((c) => <p key={c} className="cq-caveat-shown">{c}</p>)}
+                <HowComputed key={JSON.stringify(applied)} notes={notes.calc} sql={shown.displaySql ?? resp.displaySql} />
               </>;
             })()}
-            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied} summary="Surse și date">
-              {resp.displaySql && (
-                <details>
-                  <summary>Interogarea SQL · avansat</summary>
-                  <pre>
-                    <code>{shown.displaySql ?? resp.displaySql}</code>
-                  </pre>
-                </details>
-              )}
-            </CoverageDisclosure>
             {/* Z3-15: „Copiază linkul” is in „Trimite ▾”, „Exportă” in the head; the row stays for the AI mode's „Ajustează”. */}
             {mode === "ask" && <div className="cq-answer-tools">
               {(
@@ -1850,8 +1832,7 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
     </div>
     {totalWords.length > 0 && <div className="qb cq-total" inert><TotalLine conditions={totalWords}><G.Line inline w="40%" /></TotalLine></div>}
     <div inert className="g-quiet">
-      <details className="cq-caveats"><summary>Limite · <G.Line inline w="1ch" /></summary></details>
-      {spec && <CoverageDisclosure spec={spec} summary="Surse și date" />}
+      <p className="cq-how" data-only="complet"><span className="cq-how-ghost"><G.Line inline w="15ch" /></span></p>
     </div>
   </Ghost>;
 }

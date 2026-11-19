@@ -14,10 +14,6 @@ html[data-mode="esential"] .qb-live.is-expanded > .qb-invites:not([data-whole] *
 html[data-mode="esential"] .qb-live.is-expanded > .qb-row > :is(.qb-invite, .qb-chip:not(.is-active), .qb-toggle:not([aria-pressed="true"]), .qb-pair:not(:has(.qb-chip.is-active, .qb-toggle[aria-pressed="true"]))):not([data-whole] *),
 html[data-mode="esential"] .qb-live.is-expanded > .qb-row:not(:has(.qb-chip.is-active, .qb-toggle[aria-pressed="true"])):not([data-whole] *) { display: none !important; }
 
-/* „Surse și date” under every answer: the archive's periods, the SQL and the method (CoverageDisclosure takes no mark);
-   the footer keeps „Surse, acoperire și actualizare”. */
-html[data-mode="esential"] details.coverage-disclosure-answer:not([data-whole] *) { display: none !important; }
-
 /* „Din care” on its way (a Ghost, which takes no mark; StatMix marks the box itself). */
 html[data-mode="esential"] .qb-mix[data-ghost]:not([data-whole] *) { display: none !important; }
 
