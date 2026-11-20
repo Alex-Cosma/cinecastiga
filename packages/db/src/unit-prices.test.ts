@@ -260,3 +260,28 @@ describe("unit prices: reading the measure", () => {
     expect(Array.isArray(kg) && measureNote(paine, kg[0]!)).toBe("");
   });
 });
+
+describe("the families added on 20 November 2026", () => {
+  const read = (name: string, unit: string, price: number) => { const c = classifyPriceLine(name, null, unit, price); return c ? [c.family, c.status, c.pricePerUnit == null ? null : Math.round(c.pricePerUnit * 100) / 100] : null; };
+
+  it("takes one kind of each product, at the piece, and reads a set's count from the name", () => {
+    expect(read("Biblioraft plastifiat 7.5cm", "bucata", 5.9)).toEqual(["biblioraft", "ok", 5.9]);
+    expect(read("Biblioraft plastifiat set 10 buc", "set", 52)).toEqual(["biblioraft", "ok", 5.2]);
+    expect(read("Dosar plastic cu sina si gauri", "bucata", 0.5)).toEqual(["dosar-plastic", "ok", 0.5]);
+    expect(read("Dosar plastic cu sina 50 buc/set", "set", 21)).toEqual(["dosar-plastic", "ok", 0.42]);
+    expect(read("Stingator tip P6", "bucata", 75)).toEqual(["stingator-p6", "ok", 75]);
+  });
+
+  it("leaves out the look-alikes: labels, cardboard folders, a refill, another extinguisher", () => {
+    for (const [name, unit, price] of [
+      ["Etichete biblioraft", "buc", 0.2], ["Dosar sina carton", "buc", 0.3], ["Stingator tip P6 - verificare, reparare, reincarcare", "bucata", 10],
+      ["Stingator cu CO2 tip G2", "bucata", 130],
+    ] as const) expect(read(name, unit, price), name).toBeNull();
+  });
+
+  it("compares no household bags, digital certificates or car inspections (owner, the same day)", () => {
+    for (const [name, unit, price] of [
+      ["Saci menaj 35l 15buc/rola", "rola", 3.4], ["Certificat digital calificat cu valabilitate 1 an", "bucata", 95], ["ITP autoturism", "bucata", 84],
+    ] as const) expect(read(name, unit, price), name).toBeNull();
+  });
+});

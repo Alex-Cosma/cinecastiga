@@ -20,7 +20,7 @@
 export const LEAD_MIN_RATIO = 2, LEAD_MIN_AWARDS = 2, LEAD_MIN_EXCESS = 500, LEAD_MIN_BUYERS = 20;
 
 export type PriceUnit = "kg" | "l" | "buc" | "top" | "mc" | "ster";
-export type PriceGroup = "legume" | "fructe" | "lactate" | "carne" | "panificatie" | "bacanie" | "curatenie" | "birou" | "medicale" | "combustibil" | "incalzire";
+export type PriceGroup = "legume" | "fructe" | "lactate" | "carne" | "panificatie" | "bacanie" | "curatenie" | "birou" | "medicale" | "combustibil" | "incalzire" | "dotari";
 
 export interface PriceFamily {
   slug: string;
@@ -77,6 +77,7 @@ export const PRICE_GROUP_LABEL: Record<PriceGroup, string> = {
   medicale: "Materiale sanitare",
   combustibil: "Carburanți",
   incalzire: "Încălzire",
+  dotari: "Dotări",
 };
 
 export const PRICE_UNIT_LABEL: Record<PriceUnit, { per: string; one: string }> = {
@@ -234,6 +235,20 @@ export const PRICE_FAMILIES: readonly PriceFamily[] = [
     include: /^motorina\b/, exclude: /\b(bon|card|tichet|valoric|aditiv|incalzire)/, holds: "Motorină la pompă, la litru; fără bonuri valorice." },
   { slug: "benzina", label: "Benzină", group: "combustibil", unit: "l", cpv: ["09"], range: [3.5, 12],
     include: /^benzina\b/, exclude: /\b(bon|card|tichet|valoric|aditiv|extractie|avgas|aviat|100 ?ll)/, holds: "Benzină la pompă, la litru; fără bonuri valorice." },
+  // ── added on 20 November 2026 (owner: beyond food and cleaning, now that every year's lines are in) ──
+  // Each was chosen from the most widely bought names no family held, and is narrow on purpose: one kind, one unit.
+  // Written, measured and left out the same day (owner): household bags (the bag's thickness is rarely written, so a
+  // thick one reads as a lead), the qualified digital certificate and a car's periodic inspection (nearly fixed prices:
+  // nothing to find on a page about who pays more).
+  { slug: "biblioraft", label: "Biblioraft", group: "birou", unit: "buc", cpv: ["22", "30", "39"], range: [1.5, 20],
+    include: /^biblioraft(?:uri)?\b/, exclude: /\b(etichet|cotor|index|separator|suport|a5|a3|inele|panoramic|arc ?lever plastic|pp rigid|cutie|container|box|dulap|raft)/,
+    holds: "Bibliorafturi A4 din carton plastifiat sau marmorat, la bucată; fără etichete și fără caiete mecanice cu inele." },
+  { slug: "dosar-plastic", label: "Dosar din plastic", group: "birou", unit: "buc", cpv: ["22", "30", "39"], range: [0.1, 3],
+    include: /^dosare?\b(?=.*\b(?:plastic|pvc)\b)/, exclude: /\b(carton|incopciat|plic|suspendabil|elastic|clip|clema|buton|inele|arhivare|a5|a3|sedinta|prezentare|pliant|fermoar|capsa|burduf|mapa|lux|piele)/,
+    holds: "Dosare din plastic, A4, cu șină sau cu găuri, la bucată; fără dosarele din carton." },
+  { slug: "stingator-p6", label: "Stingător cu pulbere P6", group: "dotari", unit: "buc", range: [30, 250],
+    include: /^stingator\b(?=.*\bp ?6\b)/, exclude: /\b(verific|reincarc|incarc|repar|vops|service|intretin|revizi|recondition|suport|cutie|etichet|co2|spuma|g ?[25]\b|p ?(?:1|2|3|9|12|50|100)\b)/,
+    holds: "Stingătoare noi cu pulbere, tip P6, la bucată; fără verificarea și reîncărcarea celor vechi." },
 ];
 
 /**

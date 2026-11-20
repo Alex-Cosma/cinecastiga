@@ -31,7 +31,7 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
     {/* „Valori contractate, fără TVA” is the legend's "i" by the median (owner, 17 November 2026). */}
     <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>
     {/* What the page is not (owner, 20 November 2026): a hand-made selection of ordinary products, not everything bought. */}
-    <p className="pr-scope">Comparăm {countWord(PRICE_PRODUCTS, "un produs", "produse")} obișnuite, alese de mână: alimente, curățenie, hârtie, mănuși, carburant. Nu e tot ce cumpără instituțiile. <Link href="/metodologie#preturi-pe-unitate" prefetch={false}>Cum le-am ales</Link></p>
+    <p className="pr-scope">Comparăm {countWord(PRICE_PRODUCTS, "un produs", "produse")} obișnuite, alese de mână: alimente, curățenie, birotică, carburant. Nu e tot ce cumpără instituțiile. <Link href="/metodologie#preturi-pe-unitate" prefetch={false}>Cum le-am ales</Link></p>
     <PendingRegion label="Se actualizează prețurile…" className="pr-region">
       <div className="pr-bar">
         <PriceFilters state={{ ...state, year: data.year }} years={data.years} yearLeads={data.yearLeads} counties={data.counties} options={priceOptions()} />
