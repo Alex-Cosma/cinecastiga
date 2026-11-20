@@ -120,18 +120,11 @@
 .discovery-page .d-map-current-row>.d-map-current{margin:0}
 /* A narrow card wraps the readout between its figures, never inside "414.522 de înregistrări". */
 .d-map-current>span{white-space:nowrap}
-/* Home strip: "Ce include? ›" sits under the figures (beside the label's text on
-   desktop) and opens what they include in place; closed, it is one short line.
-   The chevron is an inline-block, so the hover underline stays on the words. */
-.d-national-strip>.coverage-disclosure{grid-column:1/-1;min-width:0;margin:-8px 0 0}
-.d-national-strip>.coverage-disclosure>summary{display:block;min-height:0;padding:0;line-height:24px;list-style:none;font-size:13px}
-.d-national-strip>.coverage-disclosure>summary::-webkit-details-marker{display:none}
-.d-national-strip>.coverage-disclosure>summary>span{display:inline-block;margin-left:2px;transition:transform .15s ease-out}
-.d-national-strip>.coverage-disclosure[open]>summary>span{transform:rotate(90deg)}
-.d-national-strip>.coverage-disclosure>.coverage-disclosure-body{max-width:75ch;padding:8px 0 2px}
-@media(min-width:901px){.d-national-strip>.coverage-disclosure{margin-top:-16px;padding-left:49px}}
-@media(max-width:700px){.d-national-strip>.coverage-disclosure{margin-top:-14px}.d-national-strip>.coverage-disclosure>summary{padding:10px 0}}
-@media(prefers-reduced-motion:reduce){.d-national-strip>.coverage-disclosure>summary>span{transition:none}}
+/* Home strip: „Ce includ cifrele” sits under the figures (beside the label's text on desktop) as quiet dotted words; what
+   they include floats over the page (components/HowNote.tsx; owner, 20 November 2026). */
+.d-national-strip>.d-national-how{grid-column:1/-1;min-width:0;margin:-8px 0 0}
+@media(min-width:901px){.d-national-strip>.d-national-how{margin-top:-16px;padding-left:49px}}
+@media(max-width:700px){.d-national-strip>.d-national-how{margin-top:-14px}}
 .d-footer-motto{font-weight:600;color:var(--ink2);margin:0 0 8px}
 .d-footer-note,.coverage-summary{position:relative}
 /* A (?) on a word (the home number strip): the label keeps its dotted "?" word. */
@@ -233,10 +226,6 @@
 @keyframes d-arrive-ring{0%{box-shadow:0 0 0 0 var(--orange)}30%{box-shadow:0 0 0 4px var(--orange)}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.d-search-arrive>form{animation:none}}
 
-/* UX audit M-13 (16 November 2026): the home strip's „Ce include?” arrow turns over --fast with --ease, like every
-   section's arrow. */
-.d-national-strip>.coverage-disclosure>summary>span{transition:transform var(--fast) var(--ease)}
-@media(prefers-reduced-motion:reduce){.d-national-strip>.coverage-disclosure>summary>span{transition:none}}
 
 /* UX audit M-12: the methodology's path cards no longer rise under the mouse; shadow and border still answer. */
 .d-path-card:hover{transform:none}

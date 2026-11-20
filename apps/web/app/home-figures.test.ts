@@ -41,18 +41,13 @@ describe("home counts", () => {
 });
 
 describe("what the figures include", () => {
-  it("opens from the strip, once on the page", () => {
+  it("floats over the page from quiet words under the strip, once on the page (owner, 20 November 2026)", () => {
     const strip = page.slice(page.indexOf('<section className="d-national-strip"'), page.indexOf("</section>", page.indexOf('<section className="d-national-strip"')));
-    expect(strip).toContain('<CoverageDisclosure summary={<>Ce include? <span aria-hidden="true">›</span></>}>');
-    expect(page.match(/<CoverageDisclosure/g)).toHaveLength(1);
-    expect(read("../components/CoverageDisclosure.tsx")).toContain('<summary>{summary ?? (spec ? "Datele și calculul" : "Ce date includ aceste cifre?")}</summary>');
-  });
-
-  it("is a one-line trigger under the strip items, its chevron outside the underline", () => {
-    expect(guide).toContain(".d-national-strip>.coverage-disclosure{grid-column:1/-1;");
-    expect(guide).toContain(".d-national-strip>.coverage-disclosure>summary::-webkit-details-marker{display:none}");
-    expect(guide).toContain(".d-national-strip>.coverage-disclosure>summary>span{display:inline-block;");
-    // The details is now the strip's last child: the third item is found by type.
+    expect(strip).toContain('<HowNote title="Ce includ cifrele" className="d-national-how">');
+    expect(page.match(/<HowNote/g)).toHaveLength(1);
+    expect(page).not.toContain("<CoverageDisclosure");
+    expect(guide).toContain(".d-national-strip>.d-national-how{grid-column:1/-1;");
+    // The note is now the strip's last child: the third item is found by type.
     expect(guide).not.toMatch(/\.d-national-item:last-child/);
   });
 });

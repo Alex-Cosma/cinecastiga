@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
-import { countWords } from "@/lib/ask/answer-text";
 import type { AskSpec } from "@/lib/ask/spec";
 import { askHref } from "@/lib/discovery-links";
 import { AUTHORITY_CLOUD_SPEC, COMMUNES_BREAKDOWN_SPEC, CONTRACT_WINNERS_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_VALUE_SPEC } from "@/lib/ask/site-links";
@@ -13,7 +12,9 @@ import DiscoverySearch from "./DiscoverySearch";
 import DiscoveryMap from "./DiscoveryMap";
 import DiscoveryIcon from "./DiscoveryIcon";
 import TownHallTile from "./TownHallTile";
-import CoverageDisclosure from "@/components/CoverageDisclosure";
+import HowNote from "@/components/HowNote";
+import { publicationDay, sourceDay } from "@/lib/coverage-summary";
+import { getProcessingFreshness } from "@/lib/processing-freshness";
 import { getCoverage } from "@/lib/coverage";
 
 // Rendered per request (runtime data and the viewer's session); never cached.
@@ -86,7 +87,16 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   }
   // Only a yes/no reaches the page: investigations are invitation-only, so an
   // anonymous visitor gets a neutral line instead of a login dead end.
-  const [headline, inventory, signedIn] = await Promise.all([getDiscoverySummary(), getCoverage(), sessionUserId().then(id => id !== null, () => false)]);
+  const [headline, inventory, signedIn, freshness] = await Promise.all([getDiscoverySummary(), getCoverage(), sessionUserId().then(id => id !== null, () => false), getProcessingFreshness().catch(() => null)]);
+  const dataAt = freshness?.dataAt ?? null;
+  // The archive's periods, one line each; „complete până la” only where the source is complete short of its last day.
+  const periods = (["da", "contracts", "ted"] as const).flatMap((dataset) => {
+    const o = inventory?.observations.find(row => row.dataset === dataset)?.observation;
+    if (!o?.date_from || !o.date_to) return [];
+    const label = dataset === "da" ? "Achiziții directe" : dataset === "contracts" ? "Contracte din proceduri" : "TED (separat, nu se adună)";
+    const note = o.complete_until && o.complete_until.slice(0, 10) < o.date_to.slice(0, 10) ? `complete până la ${sourceDay(o.complete_until)}, apoi provizorii` : null;
+    return [{ label, range: `${sourceDay(o.date_from)}–${sourceDay(o.date_to)}`, note }];
+  });
   const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
   const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
@@ -110,11 +120,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term hold="line" id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term hold="line" id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term hold="line" id="valoare-inregistrata" tip>valoare înregistrată</Term></small></div>
-      {/* What the figures include opens under them, in the strip; closed it is one line. */}
-      <CoverageDisclosure summary={<>Ce include? <span aria-hidden="true">›</span></>}>
-        <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă. Un contract de peste 1 miliard lei intră doar dacă anunțul lui nu-i contrazice valoarea.{aboveCap ? ` ${countWords(aboveCap, "contract", "contracte")} de peste 1 miliard, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt ținute în afara totalurilor și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
-        <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
-      </CoverageDisclosure>
+      {/* What the figures include floats over the page from one quiet line under the strip (owner, 20 November 2026: the
+          fold that opened a wall of text in the home page became the site's floating card, „Fișă”). */}
+      <HowNote title="Ce includ cifrele" className="d-national-how">
+        <span className="how-n">Achiziții directe acceptate (până la 2 mil. lei) și contracte din proceduri. Valori înregistrate, nu plăți.</span>
+        <span className="how-n">Peste 1 mld. lei, un contract intră doar dacă anunțul nu-i contrazice valoarea{aboveCap ? `; ${aboveCap === 1 ? "unul a rămas afară" : `${formatInt(aboveCap)} au rămas afară`} (${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))})` : ""}. Consorțiu: un rând pe furnizor, valoarea împărțită.</span>
+        {periods.map((row) => <span className="tip-li" key={row.label}>{row.label}: {row.range}{row.note ? <> · {row.note}</> : null}</span>)}
+        <span className="how-n">{dataAt ? `Date publicate la ${publicationDay(dataAt)} · ` : ""}<Link href="/metodologie#acoperire">Surse și limite →</Link></span>
+      </HowNote>
     </section>
 
     <section className="d-starts" aria-labelledby="d-starts-title">
