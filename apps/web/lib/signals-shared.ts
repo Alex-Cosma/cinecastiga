@@ -3,6 +3,10 @@ import { COUNTIES } from "./counties";
 import type { RiskGroupSort, Role } from "./marts";
 import { formatInt } from "./format";
 import { parseRoleParam } from "./role-param";
+import { RISK_CRITERIA } from "./risk-score";
+import { signalCaseColumns, signalRiskColumns } from "./signal-columns";
+import { filterParams, isActive, readFilters } from "./table-filters/codec";
+import type { FilterState, TableColumns } from "./table-filters/types";
 
 /** Badge text for the number of distinct signal types on an entity page ("1 tip", "2 tipuri"). */
 export function signalTypeCountLabel(n: number): string {
@@ -34,7 +38,18 @@ export interface SignalState {
   under: boolean;
   /** Signals of one entity, in the role it is viewed in: its page /entitati/{id}/semnale. Signals view only. */
   entity: string | null;
+  /**
+   * The list's column filters (owner, 20 November 2026), in the address beside the rest: the columns of its view and
+   * pattern (signal-columns.ts). A new pattern, role or view starts without them; a page, the sort or the county keeps them.
+   */
+  filters: FilterState;
 }
+
+/** The columns of the list a state shows: its pattern's cases, or the ranking by risk. */
+export function signalColumns(state: Pick<SignalState, "view" | "code" | "role">): TableColumns {
+  return state.view === "cri" ? signalRiskColumns(state.role, RISK_CRITERIA[state.role]) : signalCaseColumns(state.code, state.role);
+}
+export const signalFiltered = (state: Pick<SignalState, "filters">): boolean => Object.values(state.filters).some(isActive);
 const ENTITY_ID = /^[1-9]\d{0,17}$/;
 const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function parseSignalState(params: Record<string, string | undefined>): SignalState {
@@ -56,7 +71,9 @@ export function parseSignalState(params: Record<string, string | undefined>): Si
     dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc",
     inactive: view === "cri" && params.inactive === "1",
     under: view === "signals" && code === "da_split" && params.sub === "1",
-    entity: view === "signals" && params.ent && ENTITY_ID.test(params.ent) ? params.ent : null };
+    entity: view === "signals" && params.ent && ENTITY_ID.test(params.ent) ? params.ent : null,
+    // An entity's own page has no column filters (its case pages keep theirs, case/CaseTable.tsx).
+    filters: view === "signals" && params.ent ? {} : readFilters(signalColumns({ view, code, role }), (key) => params[key] ?? null) };
 }
 
 /** Every navigation keeps the applied role/county; changing a condition resets paging. */
@@ -84,9 +101,11 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
       next.code = next.role === "authority" ? "da_concentration" : "da_dependence";
   }
   if (Object.hasOwn(patch, "role")) { next.criteria = null; next.band = null; }
+  // Another list (a pattern, a role, the other tab) has other columns: its filters start empty.
+  if (!Object.hasOwn(patch, "filters") && ["view", "code", "role"].some((key) => Object.hasOwn(patch, key) && (patch as Record<string, unknown>)[key] !== (state as unknown as Record<string, unknown>)[key])) next.filters = {};
   if (next.view === "signals") { next.band = null; next.criteria = null; next.inactive = false; } else { next.entity = null; next.under = false; }
   if (next.code !== "da_split") next.under = false;
-  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity", "inactive", "under"].some((key) => Object.hasOwn(patch, key));
+  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity", "inactive", "under", "filters"].some((key) => Object.hasOwn(patch, key));
   const page = patch.page ?? (changedFilter ? 0 : state.page);
   // One entity's signals are one of its pages, as its other analyses (owner, 6 November 2026): /entitati/{id}/semnale,
   // the role in the entity pages' spelling (the page drops it for an entity with a single role).
@@ -105,6 +124,7 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
   if (next.view === "cri" && (next.sort !== "cri" || next.dir !== "desc")) { q.set("sort", next.sort); q.set("dir", next.dir); }
   if (next.view === "cri" && next.inactive) q.set("inactive", "1");
   if (next.under) q.set("sub", "1");
+  filterParams(signalColumns(next), next.filters ?? {}, q);
   if (page > 0) q.set("p", String(page));
   return `/semnale?${q.toString()}`;
 }

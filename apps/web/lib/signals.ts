@@ -4,7 +4,10 @@ import type { ScoreParts } from "./risk-score";
 import { riskActive } from "./ask/entity-card";
 import { SPLIT_COUNTS_ABOVE } from "./signal-mirror";
 
-import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, type SignalState } from "./signals-shared";
+import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, signalColumns, signalFiltered, type SignalState } from "./signals-shared";
+import { RISK_CRITERIA } from "./risk-score";
+import { channelWhere, facetOf, normalizedPattern, type Binding, type Channel, type FacetRequest, type FilterSource, type Fragment } from "./table-filters/server/query";
+import type { Facet } from "./table-filters/types";
 export * from "./signals-shared";
 
 export interface SignalInstance extends FlagInstance {
@@ -81,17 +84,107 @@ const activeOnly = (sql: DbSql, state: Pick<SignalState, "inactive">) => state.i
 export interface SignalRiskGroup { rows: (RiskEntity & { historic?: string })[]; page: number; total: number; pageSize: number; inactive: number }
 const profileCounty = (sql: DbSql, county: string | null) => county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
 
+/** A number of a pattern's evidence, or null when it is not one. */
+const evidenceNumber = (sql: DbSql, key: string) => sql`(case when population.evidence->>${key} ~ '^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$' then (population.evidence->>${key})::numeric end)`;
+/**
+ * The number a pattern's row shows on its right (CaseMeter.tsx), as SQL for its funnel: the same reading of the same
+ * evidence. Null for a pattern without one.
+ */
+function measureOf(sql: DbSql, code: string): ReturnType<DbSql> | null {
+  const n = (key: string) => evidenceNumber(sql, key);
+  switch (code) {
+    case "da_split": return sql`${n("total")} / nullif(${n("ceiling")}, 0)`;
+    case "da_round": return sql`${n("ceiling")} - ${n("closing")}`;
+    case "da_above_ceiling": return sql`(case when population.evidence->>'basis' = 'estimate' then coalesce(nullif(${n("estimate")}, 0), ${n("closing")}) else ${n("closing")} end) - ${n("ceiling")}`;
+    case "da_year_end": return sql`100 * coalesce(nullif(${n("december_pct")}, 0), ${n("december")} / nullif(${n("total")}, 0))`;
+    case "da_concentration": return sql`100 * ${n("top_supplier_pct")}`;
+    case "da_dependence": return sql`100 * ${n("top_authority_pct")}`;
+    case "da_capacity": return sql`${n("ratio")}`;
+    case "da_first_month": case "da_first_month_buyer": return sql`${n("age_days")}`;
+    default: return null;
+  }
+}
+/** An entity column of a list: its ids counted, named and searched from core.entities. */
+const entityBinding = (sql: DbSql, id: ReturnType<DbSql>): Binding => ({
+  kind: "list", value: sql`(${id})::text`,
+  match: (ids) => sql`${id} = any(${sql.array(ids.filter((v) => /^\d+$/.test(v)))}::bigint[])`,
+  names: {
+    lookup: (ids) => sql`select id::text v, name_display l from core.entities where id = any(${sql.array(ids.filter((v) => /^\d+$/.test(v)))}::bigint[])`,
+    search: (term) => sql`${id} in (select id from core.entities where name_normalized like ${normalizedPattern(term)})`,
+  },
+});
+
+/**
+ * A pattern's cases under the column filters (owner, 20 November 2026): the population of the list (its scored groups
+ * only, for „Adunate, trec de plafon” when the list leaves the others out), each row with its period and evidence for
+ * the year and the measure. The same channel counts each funnel's options under the other filters.
+ */
+export function signalCaseSource(sql: DbSql, state: SignalState): { source: FilterSource; channel: Channel } {
+  const all = signalPopulation(sql, state, state.code);
+  const measure = measureOf(sql, state.code);
+  const channel: Channel = {
+    name: "cases",
+    from: sql`(select p.*, cf.period, cf.evidence from ${all} p join core.flags cf on cf.id = p.id) population`,
+    where: (leavesUnder(state) ? splitScored(sql, "population") : sql`true`) as Fragment,
+    bindings: {
+      cine: entityBinding(sql, sql`population.entity_id`),
+      partener: entityBinding(sql, sql`population.partner_id`),
+      an: { kind: "list", value: sql`case when population.period ~ '^[0-9]{4}$' then population.period end` },
+      ...(measure ? { masura: { kind: "range", value: measure } satisfies Binding } : {}),
+      valoare: { kind: "range", value: sql`population.total_ron` },
+    },
+  };
+  return { source: { columns: signalColumns(state), channels: [channel] }, channel };
+}
+
+/** The ranking's profiles under the column filters: the same selection, each column bound to marts.entity_flags. */
+export function signalRiskSource(sql: DbSql, state: SignalState): { source: FilterSource; channel: Channel } {
+  const criteria: string[] = [...RISK_CRITERIA[state.role]];
+  const { from, to } = state.band ?? { from: 0, to: 1 };
+  const lo = Math.round(from * 100), hi = Math.round(to * 100);
+  const band = state.criteria !== null ? sql`n_flags = ${state.criteria}` : !state.band ? sql`true`
+    : hi >= 100 ? sql`score >= ${lo}` : sql`score >= ${lo} and score < ${hi}`;
+  const channel: Channel = {
+    name: "risk",
+    from: sql`marts.entity_flags ef`,
+    where: sql`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(sql, state.county)} ${activeOnly(sql, state)}`,
+    bindings: {
+      nume: entityBinding(sql, sql`ef.entity_id`),
+      tipare: {
+        kind: "list", value: sql`unnest(array(select x from jsonb_array_elements_text(coalesce(ef.flags, '[]'::jsonb)) x where x = any(${sql.array(criteria)}::text[])))`,
+        match: (codes) => sql`ef.flags ?| ${sql.array(codes.filter((c) => criteria.includes(c)))}::text[]`,
+      },
+      achizitii: { kind: "range", value: sql`ef.n_das` },
+      valoare: { kind: "range", value: sql`ef.total_ron` },
+      risc: { kind: "range", value: sql`coalesce(ef.score, 0)` },
+    },
+  };
+  return { source: { columns: signalColumns(state), channels: [channel] }, channel };
+}
+
+/** A funnel's options on /semnale, under the other filters: the list of the state's view. */
+export async function readSignalFacet(sql: DbSql, state: SignalState, key: string, request: FacetRequest = {}): Promise<Facet> {
+  // facetOf opens its own read-only transaction with the request's time budget.
+  const { source } = state.view === "cri" ? signalRiskSource(sql, state) : signalCaseSource(sql, state);
+  return facetOf(sql, source, key, state.filters, request);
+}
+export const getSignalFacet = (state: SignalState, key: string, request: FacetRequest = {}) => readSignalFacet(database(), state, key, request);
+
 /** One page of a signal type's occurrences, largest first; an entity's case page reads longer pages (CASE_PAGE_SIZE). */
 export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = SIGNAL_PAGE_SIZE): Promise<SignalPage> {
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
     const all = signalPopulation(q, state, state.code);
-    const population = leavesUnder(state) ? q`(select scored.* from ${all} scored where ${splitScored(q, "scored")})` : all;
+    // Under column filters the list is the case source's rows that pass them (owner, 20 November 2026).
+    const filtered = signalFiltered(state) ? (() => { const { channel } = signalCaseSource(q, state); const where = channelWhere(q, channel, state.filters);
+      return where === null ? q`(select * from ${all} none where false)` : q`(select population.id, population.flag_code, population.subject_type, population.entity_id,
+        population.partner_id, population.severity, population.total_ron, population.source_id from ${channel.from} where ${where})`; })() : null;
+    const population = filtered ?? (leavesUnder(state) ? q`(select scored.* from ${all} scored where ${splitScored(q, "scored")})` : all);
     const totals = await q`select count(*)::text n from ${population} population`;
     const total = Number(totals[0]?.n ?? 0);
     // How many groups under 1,2× the national list has: left out (the line that brings them back), or listed on request.
-    const under = state.code === "da_split" && !state.entity
+    const under = state.code === "da_split" && !state.entity && !filtered
       ? Number((await q`select count(*)::int n from ${all} population where not ${splitScored(q, "population")}`)[0]?.n ?? 0) : undefined;
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / pageSize) - 1));
     const rows = await q`
@@ -149,7 +242,8 @@ export async function readSignalRiskGroup(sql: DbSql, state: SignalState): Promi
     const lo = Math.round(from * 100), hi = Math.round(to * 100);
     const band = state.criteria !== null ? q`n_flags = ${state.criteria}` : !state.band ? q`true`
       : hi >= 100 ? q`score >= ${lo}` : q`score >= ${lo} and score < ${hi}`;
-    const selection = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)}`;
+    const columns = signalFiltered(state) ? channelWhere(q, { ...signalRiskSource(q, state).channel, where: q`true` }, state.filters) : q`true`;
+    const selection = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)} and ${columns ?? q`false`}`;
     const where = q`${selection} ${activeOnly(q, state)}`;
     const [totals, old] = [await q`select count(*)::text n from marts.entity_flags ef where ${where}`,
       await q`select count(*)::int inactive from marts.entity_flags ef where ${selection} and not ${riskActive(q, "ef")}`];

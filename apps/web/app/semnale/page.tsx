@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSignalPage, getSignalRiskGroup, getSignalTypeCounts, getRiskScoreDistribution, parseSignalState } from "@/lib/signals";
+import { getSignalPage, getSignalRiskGroup, getSignalTypeCounts, getRiskScoreDistribution, parseSignalState, signalFiltered } from "@/lib/signals";
 import SignalsExplorer from "./SignalsExplorer";
 import "./signals.css";
 
@@ -19,7 +19,8 @@ export default async function SemnalePage({ searchParams }: { searchParams: Prom
     error = "Selecția ta este păstrată. Încearcă din nou pentru a vedea rezultatele.";
     return [null, null, {} as Record<string, number>, [] as { bin: number; n: number }[]] as const;
   });
-  if (signals) counts[state.code] = signals.total;
+  // The pattern chooser counts the list without its column filters; the page says the filtered count.
+  if (signals && !signalFiltered(state)) counts[state.code] = signals.total;
   const page = signals?.page ?? risk?.page ?? 0;
   // The date of the signals is the site footer's („semnale la …”; owner, 17 November 2026: no second line under the title).
   return <SignalsExplorer state={{ ...state, page }} signals={signals} risk={risk} counts={counts} distribution={distribution} error={error} />;

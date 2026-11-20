@@ -7,7 +7,12 @@ import type { SignalInstance, SignalPage, SignalRiskGroup } from "@/lib/signals"
 import type { RiskGroupSort } from "@/lib/marts";
 import { historicFact } from "@/lib/ask/historic";
 import { inactiveIncludedWords, inactiveLeftOutWords, signalListHeads, underIncludedWords, underLeftOutWords } from "@/lib/signal-list-words";
-import { parseSignalState, signalUrl, type SignalState } from "@/lib/signals-shared";
+import { parseSignalState, signalColumns, signalFiltered, signalUrl, type SignalState } from "@/lib/signals-shared";
+import ColumnFilter from "@/components/table-filters/ColumnFilter";
+import FilterBand from "@/components/table-filters/FilterBand";
+import { useFacetNames } from "@/components/table-filters/useFacetNames";
+import { withValue } from "@/lib/table-filters/codec";
+import type { FilterState } from "@/lib/table-filters/types";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { COUNTIES } from "@/lib/counties";
 import { awardValueLabel, riskListLine, signalPeriodLabel } from "@/lib/risk-presentation";
@@ -132,6 +137,26 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const noteOf = (fi: SignalInstance) => caseMeter(fi.flagCode, fi.evidence)?.note ?? riskListLine(fi.flagCode, fi.evidence).text ?? "";
   const sameNote = listRows.length > 1 && listRows.every(r => noteOf(r) === noteOf(listRows[0]!));
   const heads = signalListHeads(code, active.role);
+  // The column filters (owner, 20 November 2026): over the whole list on the server, in the address; a funnel in each
+  // column's head, the applied ones as chips above the rows. A funnel's options come from /api/semnale/optiuni.
+  const columns = signalColumns(active);
+  const facetUrl = (key: string, current: FilterState, term = "") => {
+    const q = new URL(signalUrl({ ...active, entity: null }, { filters: current }), "http://local").searchParams;
+    q.set("optiuni", key);
+    if (term) q.set("cauta", term);
+    return `/api/semnale/optiuni?${q.toString()}`;
+  };
+  const names = useFacetNames(columns, active.filters, facetUrl);
+  const filtered = signalFiltered(active);
+  const setFilters = (filters: FilterState) => navigate({ filters });
+  const funnel = (key: string, align: "start" | "end" = "start") => {
+    const column = columns.find((c) => c.key === key);
+    return column ? <ColumnFilter column={column} value={active.filters[key]} onChange={(value) => setFilters(withValue(active.filters, key, value))}
+      facetUrl={(term) => facetUrl(key, active.filters, term)} onFacet={(facet) => names.learn(key, facet)} align={align} /> : null;
+  };
+  const has = (key: string) => columns.some((c) => c.key === key);
+  /** On a phone the heads are hidden: the funnels wrap in one row of words over the list. */
+  const phoneFunnels = <div className="sg-funnels" role="group" aria-label="Filtre pe coloane">{columns.map((c) => <span key={c.key} className="th-filter">{c.label}{funnel(c.key)}</span>)}</div>;
   /*
    * What the list's values are, behind one "i" after the pattern's description (owner, 17 November 2026: the foot and the
    * period line under it were fine print): the whole period, and that cases can share acquisitions. A no-notice
@@ -153,10 +178,10 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         aria-label={`Ordonează după ${label.toLowerCase()}, ${sort === "name" ? (dir === "asc" ? "de la A la Z" : "de la Z la A") : dir === "asc" ? "crescător" : "descrescător"}`}
         onClick={() => navigate({ sort, dir })}>{label}<span aria-hidden="true">{on ? (active.dir === "asc" ? "▴" : "▾") : "↕"}</span></button>;
     };
-    return <div className="sg-rank-head" role="group" aria-label="Ordonează lista">
-      <span className="c">{col("name", active.role === "authority" ? "Instituția" : "Firma")}<span aria-hidden="true">·</span>{col("das", "Achiziții directe")}<span aria-hidden="true">·</span>{col("total", "Valoare")}</span>
-      <span className="c">{col("flags", "Tipare")}</span>
-      <span className="c r">{col("cri", "Scor", true)}</span><span />
+    return <div className="sg-rank-head" role="group" aria-label="Ordonează și filtrează lista">
+      <span className="c">{col("name", active.role === "authority" ? "Instituția" : "Firma")}{funnel("nume")}<span aria-hidden="true">·</span>{col("das", "Achiziții directe")}{funnel("achizitii")}<span aria-hidden="true">·</span>{col("total", "Valoare")}{funnel("valoare")}</span>
+      <span className="c">{col("flags", "Tipare")}{funnel("tipare")}</span>
+      <span className="c r">{col("cri", "Scor", true)}{funnel("risc", "end")}</span><span />
     </div>;
   }
   /**
@@ -169,6 +194,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     const what = active.view === "cri"
       ? `${active.role === "authority" ? "Nicio instituție" : "Nicio firmă"}${where}${band ? ` cu risc ${band}` : active.criteria !== null ? ` cu ${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : ""}.`
       : `Niciun caz de „${flagLabel(code)}” la ${active.role === "authority" ? "instituții" : "firme"}${where}.`;
+    if (filtered) return <div className="sg-empty"><h3>{active.view === "cri" ? (active.role === "authority" ? "Nicio instituție" : "Nicio firmă") : "Niciun caz"} cu filtrele alese.</h3><div className="sg-empty-acts">
+      <button className="sg-primary" onClick={() => setFilters({})}>Scoate filtrele</button></div></div>;
     return <div className="sg-empty"><h3>{what}</h3><div className="sg-empty-acts">
       {active.view === "cri" && (band || active.criteria !== null) && <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>{band ? `Scoate intervalul ${band}` : "Scoate filtrul de tipare"}</button>}
       {active.county && <button className={active.view === "cri" && (band || active.criteria !== null) ? "sg-secondary" : "sg-primary"} onClick={() => navigate({ county: null })}>Toate județele</button>}
@@ -241,14 +268,22 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
           <span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : null}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span>{/* On a phone the cards have no head: one select, the direction in its words (UX audit Z6-20). */}
           <label className="sg-sort-phone">Ordonează <select value={`${active.sort}:${active.dir}`} onChange={e => { const [sort, dir] = e.target.value.split(":") as [RiskGroupSort, "asc" | "desc"]; navigate({ sort, dir }); }}>
             {sortOptions(active.sort, active.dir).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></>}
+        <FilterBand columns={columns} state={active.filters} labels={names.labels} onChange={setFilters} />
         {total > 0 && toolbar()}
         {leftOutLine()}
-        {active.view === "cri" && total > 0 && rankHead()}
+        {(total > 0 || filtered) && phoneFunnels}
+        {active.view === "cri" && (total > 0 || filtered) && rankHead()}
+        {signals && (total > 0 || filtered) && <>
+          {/* Without the picture its title stands over the number (owner, 18 November 2026); each title has its funnel. */}
+          <div className="sg-case-head" role="group" aria-label="Filtrează lista">
+            <span className="th-filter">{heads.entity}{funnel("cine")}{has("an") && <><span className="sg-head-dot" aria-hidden="true">·</span>Anul{funnel("an")}</>}</span>
+            <span className="th-filter">{heads.partner}{funnel("partener")}</span>
+            <span className="th-filter" data-only="complet">{heads.meter || (has("masura") ? columns.find((c) => c.key === "masura")!.label : "")}{funnel("masura")}</span>
+            <span className="r th-filter">{heads.amount}{funnel("valoare", "end")}</span>
+            <span className="r"><span className="th-filter" data-only="esential">{heads.meter}{funnel("masura", "end")}</span></span><span />
+          </div>
+        </>}
         {total > 0 ? <>
-          {signals && <>
-            {/* Without the picture its title stands over the number (owner, 18 November 2026). */}
-            <div className="sg-case-head" aria-hidden="true"><span>{heads.entity}</span><span>{heads.partner}</span><span data-only="complet">{heads.meter}</span><span className="r">{heads.amount}</span><span className="r"><span data-only="esential">{heads.meter}</span></span><span /></div>
-          </>}
           {signals?.rows.map(signalRow)}
           {risk?.rows.map((r, row) => {
             const points = riskPoints(r.parts ?? {}, r.score);

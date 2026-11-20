@@ -192,3 +192,13 @@
 .sg-empty-acts{display:flex;flex-wrap:wrap;gap:10px}
 .sg-explorer .sg-histogram button:disabled{opacity:.5;cursor:default}
 .sg-explorer .sg-histogram button:disabled:hover{background:none}
+/* The column filters (owner, 20 November 2026): a funnel beside each column's title; on a phone, where the heads are
+   hidden, the funnels wrap in one row of words over the list. */
+.sg-case-head .th-filter{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2px}
+.sg-case-head .r.th-filter,.sg-case-head .r .th-filter{justify-content:flex-end}
+.sg-head-dot{margin:0 6px;color:var(--faint)}
+.sg-funnels{display:none}
+@media(max-width:700px){
+  .sg-funnels{display:flex;flex-wrap:wrap;gap:2px 14px;padding:4px 0 8px;border-bottom:1px solid var(--line);font-size:13px;font-weight:500;color:var(--muted)}
+  .sg-funnels .th-filter{min-height:44px}
+}

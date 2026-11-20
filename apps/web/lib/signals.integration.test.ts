@@ -1,7 +1,7 @@
 import {afterAll,beforeAll,describe,expect,it} from 'vitest';
 import {createDb,validateSignalLookup,type DbSql} from '@seap/db';
 import {readFile} from 'node:fs/promises';
-import {parseSignalState,readSignalPage,readSignalRiskGroup,readSignalTypeCounts,readRiskScoreDistribution,readEntitySignalCounts} from './signals';
+import {parseSignalState,readSignalFacet,readSignalPage,readSignalRiskGroup,readSignalTypeCounts,readRiskScoreDistribution,readEntitySignalCounts,signalUrl} from './signals';
 const url=process.env.TEST_SIGNAL_DATABASE_URL;
 if(url && !/^\/seap_test_(signals|audit_[a-z0-9_]+)$/.test(new URL(url).pathname)) throw Error('Dedicated seap_test_signals (or fresh seap_test_audit_*) database required');
 const sql=url?createDb(url).sql:null;
@@ -19,10 +19,12 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
    create table core.flags(id bigint primary key,flag_code text,subject_type text,subject_id bigint,partner_id bigint,triggered boolean,severity real,evidence jsonb,period text,methodology_version text);
    create table core.direct_acquisitions(id bigint primary key,sicap_da_id bigint,authority_entity_id bigint,supplier_entity_id bigint,closing_value numeric);
    create table core.awards(id bigint primary key,ca_notice_id bigint,authority_entity_id bigint,ron_contract_value numeric);
-   create table core.contracts(id bigint primary key,ca_notice_id bigint);
+   create table core.contracts(id bigint primary key,ca_notice_id bigint,ca_notice_contract_id bigint,value_ron numeric);
    create table core.contract_winners(contract_id bigint,entity_id bigint,primary key(contract_id,entity_id));
    create table marts.entity_flags(entity_id bigint,role text,name_display text,county text,cri numeric,n_flags int,n_das int,total_ron numeric,flags jsonb,
     score smallint not null default 0,score_raw real not null default 0,score_parts jsonb not null default '{}');
+   -- Every profile active (riskActive): the activity rule is Întreabă's, tested there.
+   create table marts.entity_profile(entity_id bigint,role text,last_activity text);
    insert into core.entities values(1,'Autoritate Cluj','Cluj'),(2,'Autoritate Buzău','Buzău'),(11,'Furnizor Cluj','Cluj'),(12,'Furnizor Buzău','Buzau');
    insert into core.direct_acquisitions select i,100000+i,case when i=625 then null else 1 end,case when i=624 then null when i=623 then 12 else 11 end,i*100 from generate_series(1,625) i;
    insert into core.flags select i,'da_above_ceiling','da',i,null,true,0.5,jsonb_build_object('ratio',1.25,'closing',i*100),'2025','test' from generate_series(1,625) i;
@@ -41,7 +43,8 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
     (3,'authority','Autoritate Cluj mare','Cluj',0.99,5,5000,900000,'["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]',99,98.9,'{}'),
     (4,'authority','Autoritate fără tipare','Arad',0,0,40,50000,'[]',0,0,'{}'),
     (5,'authority','Autoritate mică','Cluj',0.4,2,9,20000,'["da_split","da_round"]',40,40.1,'{}'),
-    (11,'supplier','Furnizor Cluj','Cluj',0.36,2,100,100000,'["da_split","da_above_ceiling"]',36,36,'{}');`);
+    (11,'supplier','Furnizor Cluj','Cluj',0.36,2,100,100000,'["da_split","da_above_ceiling"]',36,36,'{}');
+   insert into marts.entity_profile select entity_id,role,to_char(current_date,'YYYY-MM-DD') from marts.entity_flags;`);
   for(const statement of migration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of lookupMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of precisionMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
@@ -197,4 +200,28 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
   })).rejects.toBe(rollback);
  });
 
+
+ it('filters both lists by their columns over the whole population, keeps the filters in the address and counts each funnel under the others (owner, 20 November 2026)',async()=>{
+  const all=await readSignalPage(sql!,parseSignalState({tip:'da_above_ceiling'}));
+  const rich=await readSignalPage(sql!,parseSignalState({tip:'da_above_ceiling',valoare:'50000..'}));
+  expect(rich.total).toBe(125);
+  expect(rich.total).toBeLessThan(all.total);
+  expect(rich.rows.every(r=>r.totalRon>=50000)).toBe(true);
+  const supplier=await readSignalPage(sql!,parseSignalState({tip:'da_above_ceiling',rol:'supplier',cine:'12'}));
+  expect(supplier.total).toBe(1);
+  expect((await readSignalPage(sql!,parseSignalState({tip:'da_above_ceiling',an:'2024'}))).total).toBe(0);
+  // The address keeps the filters on another page and drops them for another pattern.
+  const state=parseSignalState({tip:'da_above_ceiling',valoare:'50000..',an:'2025'});
+  expect(signalUrl(state,{page:2})).toBe('/semnale?tip=da_above_ceiling&rol=authority&an=2025&valoare=50000..&p=2');
+  expect(signalUrl(state,{code:'da_round'})).toBe('/semnale?tip=da_round&rol=authority');
+  const years=await readSignalFacet(sql!,parseSignalState({tip:'da_above_ceiling',valoare:'50000..'}),'an');
+  expect(years).toMatchObject({kind:'options',options:[{value:'2025',n:125}]});
+  // The ranking: by a pattern of the score and by the score itself.
+  const round=await readSignalRiskGroup(sql!,parseSignalState({view:'cri',tipare:'da_round'}));
+  expect(round.rows.map(r=>r.entityId).sort()).toEqual(['1','3']);
+  const high=await readSignalRiskGroup(sql!,parseSignalState({view:'cri',risc:'50..'}));
+  expect(high.rows.map(r=>r.entityId).sort()).toEqual(['1','3']);
+  const patterns=await readSignalFacet(sql!,parseSignalState({view:'cri',risc:'50..'}),'tipare');
+  expect(patterns.kind==='options'&&Object.fromEntries(patterns.options.map(o=>[o.value,o.n]))).toMatchObject({da_split:2,da_round:2});
+ });
 });
