@@ -357,3 +357,6 @@
 /* The dot a touch chose: its ring draws once (UX audit M-03; outline.css .mo-ring). */
 .pr-dot-ring{position:absolute;left:-6px;top:-6px;width:calc(100% + 12px);height:calc(100% + 12px);overflow:visible;pointer-events:none}
 .pr-dot-ring circle{fill:none;stroke:var(--risk);stroke-width:2;vector-effect:non-scaling-stroke}
+/* What the page is not: a selection, said once under the lede (owner, 20 November 2026). */
+.pr-scope{margin:6px 0 0;max-width:72ch;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.pr-scope a{color:var(--accent);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}

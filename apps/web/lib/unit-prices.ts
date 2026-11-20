@@ -54,6 +54,9 @@ export function productNames(family: PriceFamily, pack: string): { name: string;
 export const unitPer = (family: PriceFamily) => PRICE_UNIT_LABEL[family.unit].per;
 
 /** What the reader can type in „Grupă sau produs”: our groups, then our products with their group. */
+/** How many products are compared: a hand-made selection, which the page and the guide say (owner, 20 November 2026). */
+export const PRICE_PRODUCTS = PRICE_FAMILIES.length;
+
 export function priceOptions(): PriceOption[] {
   const groups = GROUPS.map((g) => {
     const n = PRICE_FAMILIES.filter((f) => f.group === g).length;
