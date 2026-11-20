@@ -120,11 +120,15 @@
 .discovery-page .d-map-current-row>.d-map-current{margin:0}
 /* A narrow card wraps the readout between its figures, never inside "414.522 de înregistrări". */
 .d-map-current>span{white-space:nowrap}
-/* Home strip: „Ce includ cifrele” sits under the figures (beside the label's text on desktop) as quiet dotted words; what
-   they include floats over the page (components/HowNote.tsx; owner, 20 November 2026). */
-.d-national-strip>.d-national-how{grid-column:1/-1;min-width:0;margin:-8px 0 0}
-@media(min-width:901px){.d-national-strip>.d-national-how{margin-top:-16px;padding-left:49px}}
-@media(max-width:700px){.d-national-strip>.d-national-how{margin-top:-14px}}
+/* Home strip: „Ce includ cifrele” sits under the archive's years, the years on the line of the figures and the words on
+   the line of their labels (owner, 20 November 2026: a row of its own floated apart from both). What they include floats
+   over the page (components/HowNote.tsx). From 900 px down the label is a row of its own over the figures. */
+.d-national-label{align-items:flex-start}
+.d-national-label b{line-height:35px}
+.d-national-label .how-note{margin:4px 0 0;font-size:12px;line-height:1.45}
+@media(min-width:901px){.d-national-label .how-note>.term>.term-trigger{min-height:0;padding:0}}
+@media(max-width:1100px){.d-national-label b{line-height:32.5px}}
+@media(max-width:900px){.d-national-label{align-items:center}.d-national-label b{line-height:inherit}.d-national-label .how-note{margin:0}}
 .d-footer-motto{font-weight:600;color:var(--ink2);margin:0 0 8px}
 .d-footer-note,.coverage-summary{position:relative}
 /* A (?) on a word (the home number strip): the label keeps its dotted "?" word. */

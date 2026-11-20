@@ -33,7 +33,7 @@ describe("home counts", () => {
 
   it("label the strip with the archive's years; the two streams' sum is not said a third time (owner, 17 November 2026)", () => {
     expect(page).not.toContain("headline.directRecords + headline.contractRecords");
-    expect(page).toContain('<div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b></div></div>');
+    expect(page).toContain('<div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b>');
     expect(page).not.toContain("Înregistrări din");
     // The contract item keeps its deliberate label: a consortium is one row per winner.
     expect(page).toContain(">înregistrări contract–furnizor</Term>");
@@ -43,10 +43,10 @@ describe("home counts", () => {
 describe("what the figures include", () => {
   it("floats over the page from quiet words under the strip, once on the page (owner, 20 November 2026)", () => {
     const strip = page.slice(page.indexOf('<section className="d-national-strip"'), page.indexOf("</section>", page.indexOf('<section className="d-national-strip"')));
-    expect(strip).toContain('<HowNote title="Ce includ cifrele" className="d-national-how">');
+    expect(strip).toMatch(/<div className="d-national-label">.*<b>\{coverage\}<\/b>\s*\{\/\*[^]*?\*\/\}\s*<HowNote title="Ce includ cifrele" className="d-national-how">/s);
     expect(page.match(/<HowNote/g)).toHaveLength(1);
     expect(page).not.toContain("<CoverageDisclosure");
-    expect(guide).toContain(".d-national-strip>.d-national-how{grid-column:1/-1;");
+    expect(guide).toContain(".d-national-label .how-note{margin:4px 0 0;");
     // The note is now the strip's last child: the third item is found by type.
     expect(guide).not.toMatch(/\.d-national-item:last-child/);
   });

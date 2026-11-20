@@ -114,20 +114,21 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </section>
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică" data-only="complet">
-      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b></div></div>
+      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b>
+        {/* What the figures include floats over the page from quiet words under the archive's years, on the line of the figures' labels (owner, 20 November 2026: the
+            fold that opened a wall of text in the home page became the site's floating card, „Fișă”). */}
+        <HowNote title="Ce includ cifrele" className="d-national-how">
+          <span className="how-n">Achiziții directe acceptate (până la 2 mil. lei) și contracte din proceduri. Valori înregistrate, nu plăți.</span>
+          <span className="how-n">Peste 1 mld. lei, un contract intră doar dacă anunțul nu-i contrazice valoarea{aboveCap ? `; ${aboveCap === 1 ? "unul a rămas afară" : `${formatInt(aboveCap)} au rămas afară`} (${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))})` : ""}. Consorțiu: un rând pe furnizor, valoarea împărțită.</span>
+          {periods.map((row) => <span className="tip-li" key={row.label}>{row.label}: {row.range}{row.note ? <> · {row.note}</> : null}</span>)}
+          <span className="how-n">{dataAt ? `Date publicate la ${publicationDay(dataAt)} · ` : ""}<Link href="/metodologie#acoperire">Surse și limite →</Link></span>
+        </HowNote>
+      </div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
       <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term hold="line" id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term hold="line" id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term hold="line" id="valoare-inregistrata" tip>valoare înregistrată</Term></small></div>
-      {/* What the figures include floats over the page from one quiet line under the strip (owner, 20 November 2026: the
-          fold that opened a wall of text in the home page became the site's floating card, „Fișă”). */}
-      <HowNote title="Ce includ cifrele" className="d-national-how">
-        <span className="how-n">Achiziții directe acceptate (până la 2 mil. lei) și contracte din proceduri. Valori înregistrate, nu plăți.</span>
-        <span className="how-n">Peste 1 mld. lei, un contract intră doar dacă anunțul nu-i contrazice valoarea{aboveCap ? `; ${aboveCap === 1 ? "unul a rămas afară" : `${formatInt(aboveCap)} au rămas afară`} (${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))})` : ""}. Consorțiu: un rând pe furnizor, valoarea împărțită.</span>
-        {periods.map((row) => <span className="tip-li" key={row.label}>{row.label}: {row.range}{row.note ? <> · {row.note}</> : null}</span>)}
-        <span className="how-n">{dataAt ? `Date publicate la ${publicationDay(dataAt)} · ` : ""}<Link href="/metodologie#acoperire">Surse și limite →</Link></span>
-      </HowNote>
     </section>
 
     <section className="d-starts" aria-labelledby="d-starts-title">
