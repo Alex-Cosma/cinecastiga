@@ -43,7 +43,7 @@ export function contractKindLabel(kind: string | null | undefined): { text: stri
 /**
  * An institution's records grouped for display (UX audit Z5-11, 16 November 2026): the member records of one consortium
  * contract (same contract, each an equal share of it, neighbours in the table's order) become one row with all its members.
- * Only the display groups; the count and the pages stay on records (owner, 24 October 2026).
+ * The server pages these rows, 10 a page (owner, 20 November 2026); the records stay counted beside them.
  */
 export function consortiumGroups(rows: DaTx[]): DaTx[][] {
   const groups: DaTx[][] = [];

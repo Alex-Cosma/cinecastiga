@@ -46,6 +46,8 @@ interface Resp {
   ok: boolean;
   rows?: DaTx[];
   total?: number;
+  /** The table's rows (a consortium contract is one row on an institution's table). */
+  groups?: number;
   error?: string;
 }
 
@@ -65,7 +67,7 @@ export default function TxTable({
   /** The filters the page's address carries (lib/entity-tx-columns.ts). */
   initial?: FilterState;
   /** Page 1 under those filters, sorted by value, as the server rendered it: shown without fetching it again. */
-  first?: { rows: DaTx[]; total: number } | null | undefined;
+  first?: { rows: DaTx[]; total: number; groups?: number } | null | undefined;
   /** The entity's records in this role (the "Achiziții" tab's count): how many ghost rows a page without filters has. */
   count?: number | undefined;
   /** The page the address asks for (`?p=`; UX audit Z5-29), the one `first` holds. */
@@ -134,7 +136,7 @@ export default function TxTable({
   const url = `/api/entity-tx?${p.toString()}`;
   // The server's first page serves only the selection it was read for (after Back the address may ask another).
   const [seed] = useState(() => (first && start.page === initialPage && writeFilters(columns, "", start.filters) === writeFilters(columns, "", initial)
-    ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
+    ? { url, data: { ok: true, rows: first.rows, total: first.total, groups: first.groups ?? first.total } satisfies Resp } : undefined));
   const { data, loading, error, retry } = useEntityTable<Resp>(url, seed);
 
   const sortBy = (key: "value" | "date") => {
@@ -146,7 +148,9 @@ export default function TxTable({
     setPage(1);
   };
   const total = data?.total ?? 0;
-  const pages = Math.max(1, Math.ceil(total / 10));
+  // 10 rows a page, a consortium contract one row (owner, 20 November 2026): the pages count rows, not records.
+  const groups = data?.groups ?? total;
+  const pages = Math.max(1, Math.ceil(groups / 10));
   const rows = data?.rows ?? [];
   // A new order is seen in its column once its rows are here (M-16); the rows take it at once.
   const table = useRef<HTMLTableElement>(null);
@@ -157,7 +161,7 @@ export default function TxTable({
   const stale = loading && rows.length > 0;
   // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
   // neither changes length nor is read out twice.
-  const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, filters.state);
+  const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, filters.state, groups);
   // A year or a filter that changes how many records there are marks the line once (M-05); a page turn does not.
   useChangedMark(status, loading || error ? null : total, entityId);
   const [shownLine, setShownLine] = useState(line);

@@ -22,9 +22,17 @@ export function recordsWord(n: number, state: FilterState): string {
   return roCount(n, one, many);
 }
 
-/** The status line: the records (the page is the pager's: owner, 17 November 2026). */
-export function statusLine(total: number, state: FilterState): string {
-  return recordsWord(total, state);
+/**
+ * The status line: the records (the page is the pager's: owner, 17 November 2026). On an institution's table a consortium
+ * contract is one row for all its members, so when the rows are fewer than the records the line counts the rows and
+ * keeps the records beside them (owner, 20 November 2026): „6.790 de achiziții (6.810 înregistrări)”.
+ */
+export function statusLine(total: number, state: FilterState, rows: number = total): string {
+  if (rows >= total) return recordsWord(total, state);
+  const type = state["tip"];
+  const contracts = type?.kind === "options" && type.values.length === 1 && type.values[0] === "contracte";
+  const [one, many] = contracts ? NOUNS.contracte : ["o achiziție", "achiziții"];
+  return `${roCount(rows, one, many)} (${roCount(total, "o înregistrare", "înregistrări")})`;
 }
 
 /** An empty table: what it says, and the filters to take out one by one (each a chip of the band). */

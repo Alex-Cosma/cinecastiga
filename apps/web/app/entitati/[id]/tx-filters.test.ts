@@ -20,6 +20,12 @@ describe("the records table's words", () => {
     expect(recordsWord(3, { tip: { kind: "options", values: ["directe", "contracte"] } })).toBe("3 înregistrări");
   });
 
+  it("counts an institution's rows when consortium contracts join records, and keeps the records beside them", () => {
+    expect(statusLine(6810, {}, 6790)).toBe("6.790 de achiziții (6.810 înregistrări)");
+    expect(statusLine(15, { tip: { kind: "options", values: ["contracte"] } }, 12)).toBe("12 contracte (15 înregistrări)");
+    expect(statusLine(4536, {}, 4536)).toBe("4.536 de înregistrări");
+  });
+
   it("says an empty table is empty because of its filters, and offers to take each out", () => {
     const columns = txColumns(true);
     const chips = chipsOf(columns, { data: { kind: "dates", years: ["2026"], from: null, to: null }, tip: { kind: "options", values: ["contracte"] } });

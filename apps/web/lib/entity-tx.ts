@@ -141,8 +141,8 @@ export interface TxPage {
   pageSize?: number;
   /**
    * An institution's table shows a consortium contract as one row with all its members (UX audit Z5-11, 16 November
-   * 2026): a page never splits one contract's member records. A page holds the records whose contract starts within its
-   * `pageSize` places of the order, so the count and the number of pages stay those of the records.
+   * 2026): a page never splits one contract's member records. A page holds `pageSize` rows of the table (a consortium
+   * contract is one row, however many members it has: owner, 20 November 2026), and `groups` counts those rows.
    */
   wholeConsortia?: boolean;
 }
@@ -150,32 +150,38 @@ export interface TxPage {
 const canonical = (sql: DbSql, entityId: string) => canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
 
 /** One page of an entity's records under the table's filters, and how many there are. */
-export async function getEntityTransactions(entityId: string, role: Role, q: TxPage): Promise<{ rows: DaTx[]; total: number }> {
+export async function getEntityTransactions(entityId: string, role: Role, q: TxPage): Promise<{ rows: DaTx[]; total: number; groups: number }> {
   const sql = db();
   const id = await canonical(sql, entityId);
   const source = entityTxSource(sql, id, role);
   const body = unionOf(sql, source.channels, q.filters, (channel) => projection(sql, role, channel));
-  if (!body) return { rows: [], total: 0 };
+  if (!body) return { rows: [], total: 0, groups: 0 };
+  const grouped = Boolean(q.wholeConsortia && role === "authority");
   const pageSize = q.pageSize ?? 50;
   const offset = ((q.page ?? 1) - 1) * pageSize;
   const col = q.sort === "date" ? sql`finalization_date` : sql`closing_value`;
   const order = q.dir === "asc" ? sql`${col} asc nulls last` : sql`${col} desc nulls last`;
 
   // The members of one consortium contract split its value equally (the first takes the remaining bani) and share its
-  // date, so they are neighbours in either order; a page takes a contract's records together, on the page where its
-  // first record falls. A member with its own published value is not an equal share and stays where its value puts it.
-  const rows = (q.wholeConsortia && role === "authority"
+  // date, so they are neighbours in either order: one row of the table. A page takes `pageSize` such rows, numbered by
+  // where each contract's first record falls. A member with its own published value is not an equal share and stays
+  // a row of its own, where its value puts it.
+  const groupKey = sql`case when u.src = 'contract' and coalesce(u.n_winners, 1) > 1
+    and abs(u.closing_value - u.contract_value_full / u.n_winners) < 1 then u.rid::text end`;
+  const rows = (grouped
     ? await sql`
       select * from (
-        select o.*, min(o.rn) over (partition by coalesce(o.gk, o.rn::text)) first_rn
+        select f.*, dense_rank() over (order by f.first_rn) row_no
         from (
-          select u.*, row_number() over (order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last) rn,
-            case when u.src = 'contract' and coalesce(u.n_winners, 1) > 1
-              and abs(u.closing_value - u.contract_value_full / u.n_winners) < 1 then u.rid::text end gk
-          from (${body}) u
-        ) o
+          select o.*, min(o.rn) over (partition by coalesce(o.gk, o.rn::text)) first_rn
+          from (
+            select u.*, row_number() over (order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last) rn,
+              ${groupKey} gk
+            from (${body}) u
+          ) o
+        ) f
       ) p
-      where p.first_rn > ${offset} and p.first_rn <= ${offset + pageSize}
+      where p.row_no > ${offset} and p.row_no <= ${offset + pageSize}
       order by p.rn
     `
     : await sql`
@@ -183,7 +189,9 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
       order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last
       limit ${pageSize} offset ${offset}
     `) as unknown as Record<string, unknown>[];
-  const totalRows = (await sql`select count(*)::int c from (${body}) u`) as unknown as { c: number }[];
+  const totalRows = (grouped
+    ? await sql`select count(*)::int c, (count(*) filter (where ${groupKey} is null) + count(distinct ${groupKey}))::int g from (${body}) u`
+    : await sql`select count(*)::int c, count(*)::int g from (${body}) u`) as unknown as { c: number; g: number }[];
 
   // Name the other members of each consortium on this page (one indexed lookup).
   const consortiumIds = [...new Set(rows
@@ -224,6 +232,7 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
 
   return {
     total: Number(totalRows[0]?.c ?? 0),
+    groups: Number(totalRows[0]?.g ?? 0),
     rows: rows.map((r) => ({
       src: r["src"] === "contract" ? ("contract" as const) : ("da" as const),
       sicapDaId: String(r["rid"]),

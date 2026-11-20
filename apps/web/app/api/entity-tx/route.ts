@@ -35,10 +35,10 @@ export async function GET(req: Request) {
       const facet = await getEntityTxFacet(id, role, facetKey, filters, term ? { term } : {});
       return NextResponse.json({ ok: true, facet });
     }
-    const { rows, total } = await getEntityTransactions(id, role, {
+    const { rows, total, groups } = await getEntityTransactions(id, role, {
       filters, sort, dir, page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1, pageSize: 10, wholeConsortia: true,
     });
-    return NextResponse.json({ ok: true, rows, total, pageSize: 10 });
+    return NextResponse.json({ ok: true, rows, total, groups, pageSize: 10 });
   } catch (e) {
     // The technical cause goes to the server log, never to the reader.
     console.error("entity-tx", { id, role, facetKey, filters }, e);
