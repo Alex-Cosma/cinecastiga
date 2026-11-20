@@ -18,9 +18,9 @@ describe("main navigation", () => {
   });
 
   it("hides the private investigations item and its dot from anonymous visitors", () => {
-    expect(labels({})).toEqual(["Descoperă", "Întreabă", "Hartă", "Ghid"]);
+    expect(labels({})).toEqual(["Descoperă", "Întreabă", "Hartă", "Prețuri", "Ghid"]);
     const signedIn = navItems({ ...base, signedIn: true });
-    expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Hartă", "Anchete", "Ghid"]);
+    expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Hartă", "Prețuri", "Anchete", "Ghid"]);
     // The dot says something waits (an invitation, an update to review), never permanently (audit Z8-33).
     expect(signedIn.find(item => item.href === "/anchete")?.dot).toBe(false);
     expect(navItems({ ...base, signedIn: true, news: 2 }).find(item => item.href === "/anchete")?.dot).toBe(true);
@@ -35,6 +35,9 @@ describe("main navigation", () => {
   it("marks the section a page belongs to, in agreement with the „Descoperă / Caută” breadcrumb", () => {
     expect(active("/")).toEqual(["Descoperă"]);
     expect(active("/harta")).toEqual(["Hartă"]);
+    // Unit prices are a section of their own for every reader (owner, 20 November 2026), no longer under „Descoperă”.
+    expect(active("/preturi")).toEqual(["Prețuri"]);
+    expect(active("/preturi/lapte")).toEqual(["Prețuri"]);
     for (const path of ["/cauta", "/entitati/12", "/entitati/12/radiografie", "/semnale", "/semnale/abc", "/domenii", "/supra-prag", "/contracte/1", "/anunturi/2", "/achizitii/3"]) expect(active(path)).toEqual(["Descoperă"]);
     expect(active("/intreaba")).toEqual(["Întreabă"]);
     expect(active("/intreabare")).toEqual([]);

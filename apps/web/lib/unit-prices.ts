@@ -19,7 +19,7 @@ export { DEFAULT_PRICE_ORDER, PRICE_ORDERS, leadHref, priceHref, productHref, ty
  * LEAD_MIN_BUYERS institutions. Nothing here decides a lead from the multiple alone: a buyer at twice the median that
  * is not a lead is an ordinary row. A lead is a lead, not proof.
  *
- * Administrators only until the data is complete: every caller checks lib/price-access.ts before reading.
+ * Open to every reader since 20 November 2026 (owner); administrators only before, while the item lines were partial.
  */
 const globalDb = globalThis as unknown as { __seapPriceSql?: DbSql };
 const database = () => globalDb.__seapPriceSql ??= createDb().sql;

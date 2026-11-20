@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { priceAdminFor } from "@/lib/price-access";
 import { PRICE_BUYER_COLUMNS } from "@/lib/price-columns";
 import { readFilters } from "@/lib/table-filters/codec";
 import { getPriceBuyerFacet } from "@/lib/unit-prices";
@@ -11,11 +10,9 @@ const headers = { "Cache-Control": "private, no-store" };
 /**
  * GET /api/preturi/cumparatori?optiuni=<column>&produs=…&ambalaj=…&an=…[&toate=1][&cauta=…] plus the columns'
  * parameters (lib/price-columns.ts): one funnel of a product's buyers under the other filters. The rows are rendered
- * by /preturi/[produs] itself. Administrators only (owner, 11 November 2026): anyone else gets the 404 of an address
- * that does not exist, before anything is read.
+ * by /preturi/[produs] itself.
  */
 export async function GET(req: Request) {
-  if (!(await priceAdminFor(req.headers))) return NextResponse.json({ ok: false, error: "Pagina nu există." }, { status: 404, headers });
   const url = new URL(req.url);
   const get = (key: string) => url.searchParams.get(key);
   const key = get("optiuni") ?? "";

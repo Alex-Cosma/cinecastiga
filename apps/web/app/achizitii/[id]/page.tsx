@@ -7,7 +7,6 @@ import { countWords } from "@/lib/ask/answer-text";
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, formatInt, formatRon, cleanName, countyLabel } from "@/lib/format";
 import { daState, durationLabel } from "@/lib/record-labels";
-import { priceAdmin } from "@/lib/price-access";
 import { getAwardItemPrices, productHref, type ItemPrice } from "@/lib/unit-prices";
 import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shared";
 import ClipButton from "@/components/ClipButton";
@@ -66,9 +65,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const d = await acquisitionDetail(id);
   if (!d) notFound();
-  // Unit prices are for administrators only until the data is complete (owner, 11 November 2026): nobody else's
-  // page reads or carries them. Without a session cookie nothing is looked up (lib/price-access.ts).
-  const [x, prices] = await Promise.all([acquisitionContext(id).then((c) => c!), priceAdmin().then((admin): Promise<Record<string, ItemPrice>> | Record<string, ItemPrice> => admin ? getAwardItemPrices(id) : {})]);
+  // Each compared line's price against its product's median: for every reader since 20 November 2026 (owner).
+  const [x, prices] = await Promise.all([acquisitionContext(id).then((c) => c!), getAwardItemPrices(id)]);
   const title = titleOf(d, x.items);
   const namedByProducts = !d.title && title !== d.cpvName && title !== d.code && title !== "Achiziție directă";
   const sums = itemsSum(x.items, d.value);

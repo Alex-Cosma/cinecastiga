@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { PendingRegion } from "@/components/ghost/client";
-import { priceAdmin } from "@/lib/price-access";
 import { flatParams } from "@/lib/unit-prices-params";
 import { getPricePage, parsePriceState, priceOptions } from "@/lib/unit-prices";
 import Link from "next/link";
@@ -9,30 +7,26 @@ import { buyersWord, countWord, formatLei, leadsCount, priceHref, priceYearWithL
 import PriceFilters from "./PriceFilters";
 import PriceStrips from "./PriceStrips";
 import PriceMethod from "./PriceMethod";
-import DiscoverNav from "@/components/discover/DiscoverNav";
 import "./preturi.css";
 
 export const dynamic = "force-dynamic";
-/** Administrators only until the data is complete (owner, 11 November 2026): nobody else learns the page exists. */
-export async function generateMetadata(): Promise<Metadata> {
-  if (!(await priceAdmin())) return {};
-  return {
-    title: "Cine cumpără mai scump același produs",
-    description: "Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs.",
-    robots: { index: false, follow: false },
-  };
-}
+/**
+ * Open to every reader since 20 November 2026 (owner: the direct awards' item lines are complete; „Prețuri” has its own
+ * place in the header). Out of the search engines for now (owner, the same day): he decides when it is indexed.
+ */
+export const metadata: Metadata = {
+  title: "Cine cumpără mai scump același produs",
+  description: "Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs.",
+  robots: { index: false, follow: true },
+};
 
 /** Unit prices, the lead-finder (owner, 10–11 November 2026): every product and pack as a strip of its buyers. */
 export default async function PreturiPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  // Before any data is read (lib/price-access.ts).
-  if (!(await priceAdmin())) notFound();
   const state = parsePriceState(flatParams(await searchParams));
   const data = await getPricePage(state);
   const scope = state.county ? ` în ${state.county}` : "";
   const other = priceYearWithLeads(data.yearLeads);
   return <div className="pr-page">
-    <DiscoverNav current="preturi" />
     <h1 className="page-title">Cine cumpără mai scump același produs</h1>
     {/* „Valori contractate, fără TVA” is the legend's "i" by the median (owner, 17 November 2026). */}
     <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>

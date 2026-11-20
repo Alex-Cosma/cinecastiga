@@ -6,7 +6,6 @@ import { PendingRegion, RegionLink } from "@/components/ghost/client";
 import InfoMark from "@/components/InfoMark";
 import Term from "@/components/Term";
 import { formatCalendarDate } from "@/lib/format";
-import { priceAdmin } from "@/lib/price-access";
 import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHref, type ProductPage } from "@/lib/unit-prices";
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
@@ -23,10 +22,9 @@ import "../preturi.css";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ produs: string }> }): Promise<Metadata> {
-  // Administrators only until the data is complete (owner, 11 November 2026): no title for anyone else.
-  if (!(await priceAdmin())) return {};
+  // Open to every reader, out of the search engines for now (owner, 20 November 2026; see /preturi).
   const family = priceFamilyBySlug((await params).produs);
-  return { title: family ? `${family.label}: prețul pe unitate, pe instituții` : "Prețuri pe unitate", robots: { index: false, follow: false } };
+  return { title: family ? `${family.label}: prețul pe unitate, pe instituții` : "Prețuri pe unitate", robots: { index: false, follow: true } };
 }
 
 /** A sortable header: a button-like link that orders the rows by its column, the order's state on the header. */
@@ -44,8 +42,6 @@ function SortHead({ label, sortKey, data, href, children }: { label: string; sor
 export default async function ProdusPage({ params, searchParams }: {
   params: Promise<{ produs: string }>; searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // Before any data is read (lib/price-access.ts).
-  if (!(await priceAdmin())) notFound();
   const sp = flatParams(await searchParams);
   const slug = (await params).produs;
   let data = await getProductPage(slug, sp);

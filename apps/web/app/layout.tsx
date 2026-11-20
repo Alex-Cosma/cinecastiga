@@ -28,7 +28,6 @@ import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
 import { NavPending } from "@/components/ghost/client";
 import ReportProblem from "@/components/feedback/ReportProblem";
-import FooterAdminLinks from "./FooterAdminLinks";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
 import SiteNav from "./SiteNav";
@@ -111,7 +110,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {/* Who runs the site and what it holds about people (legal audit; owner, 19 November 2026): in both modes. */}
                 <li><Link href="/despre">Despre și contact</Link></li>
                 <li><Link href="/date-personale">Date personale</Link></li>
-                <FooterAdminLinks />
                 <li data-only="complet">
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>

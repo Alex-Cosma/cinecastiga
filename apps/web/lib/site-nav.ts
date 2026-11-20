@@ -24,7 +24,7 @@ export interface NavContext {
  * linked from the home page and the record pages they lead to. Only the
  * question builder itself is "Întreabă".
  */
-const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/domenii", "/supra-prag", "/preturi", "/entitati", "/contracte", "/achizitii", "/anunturi"];
+const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/domenii", "/supra-prag", "/entitati", "/contracte", "/achizitii", "/anunturi"];
 /** The guide is the methodology page (its "Pe scurt" lane) since 5 November 2026; /ghid redirects there. */
 const GUIDE_PREFIXES = ["/metodologie"];
 /** The private space's three tabs (components/private/PrivateTrail.tsx). */
@@ -42,6 +42,8 @@ export function navItems({ pathname, signedIn, news = 0 }: NavContext): NavItem[
     { href: "/intreaba", label: "Întreabă", active: under(path, "/intreaba") },
     // The map of the value contracted per inhabitant (owner, 6 November 2026): it took the place of the stories.
     { href: "/harta", label: "Hartă", active: under(path, "/harta") },
+    // Unit prices, a section of their own for every reader (owner, 20 November 2026): until then an administrator's link.
+    { href: "/preturi", label: "Prețuri", active: under(path, "/preturi") },
     // Investigations are private and invitation-only: an anonymous visitor
     // would only reach a login wall, so the item (and its dot) is hidden. It is
     // the private space: its tabs are the investigations, the follows and the
