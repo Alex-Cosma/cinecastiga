@@ -5,7 +5,7 @@ import { AXIS_FROM, AXIS_TO, axisPos, countWord, formatLei, formatQuantity, form
 
 /**
  * The strip of a product (owner, 11 November 2026: hover and click on the dots and the chart). The marks are those of
- * the list and the product page: the median and twice the median as rules, the bands, every lead as a tick, the
+ * the list and the product page: the median and twice the median as rules, the bands, the
  * largest leads as dots, the largest by lei named. Pointing at a dot shows its lead; a click opens its lines on the
  * product page. Pointing anywhere else on the strip reads the axis there: the price, its multiple of the median and,
  * under the product's histogram, how many institutions bought at about that price.
@@ -14,7 +14,7 @@ import { AXIS_FROM, AXIS_TO, axisPos, countWord, formatLei, formatQuantity, form
  * same leads, so the dots are for the mouse only. On the product page (`mode="product"`) the dots are one Tab stop:
  * the arrows move between them along the axis, Escape closes the card, and a touch reads the axis where it lands.
  */
-export default function StripChart({ band, median, per, dots, named = 1, index = 0, bins, binFrom = AXIS_FROM, binStep = 0.1, hrefBase, ticks, mode = "list", label }: {
+export default function StripChart({ band, median, per, dots, named = 1, index = 0, bins, binFrom = AXIS_FROM, binStep = 0.1, hrefBase, mode = "list", label }: {
   /** The spread in multiples of the median (eight in ten, the middle half). */
   band: { r10: number; r25: number; r75: number; r90: number };
   /** One year's median price, so the ruler reads prices; null across years (each against its own year's median). */
@@ -23,8 +23,6 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
   bins?: number[]; binFrom?: number; binStep?: number;
   /** The product page's address; a dot adds its institution (`deschis`) and the anchor of its row. */
   hrefBase: string;
-  /** Every lead's place as one path (leadTicksPath): the dots are only the largest. */
-  ticks?: string;
   mode?: "list" | "product";
   /** What the strip shows, in a sentence (its accessible name). */
   label: string;
@@ -110,7 +108,6 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
     <span className="pr-band pr-core cm-fade" style={{ left: `${axisPos(band.r25)}%`, width: `${Math.max(0.6, axisPos(band.r75) - axisPos(band.r25))}%` }} />
     <span className="pr-rule pr-median" style={{ left: `${axisPos(1)}%` }} />
     <span className="pr-rule pr-double" style={{ left: `${axisPos(2)}%` }} />
-    {ticks && <svg className="pr-ticks cm-fade cm-late" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d={ticks} vectorEffect="non-scaling-stroke" /></svg>}
     {reading && <>
       <span className="pr-ruler" style={{ left: `${reading.x}%` }} aria-hidden="true" />
       <span className={`pr-tip pr-read${side(reading.x)}`} style={{ left: `${reading.x}%` }} aria-hidden="true">

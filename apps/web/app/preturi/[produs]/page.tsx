@@ -10,7 +10,7 @@ import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHre
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
-import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
+import { buyersWord, countWord, formatUnitPrice, largestOf, leadsCount, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
@@ -110,7 +110,7 @@ export default async function ProdusPage({ params, searchParams }: {
         <div className="pr-big">
           <StripAxis />
           <StripChart mode="product" band={{ r10: g.r10, r25: g.r25, r75: g.r75, r90: g.r90 }} median={data.year ? g.medianLo : null} per={g.per} dots={data.dots} named={3}
-            ticks={leadTicksPath(data.leadRatios)} bins={data.bins} hrefBase={here({ deschis: null, pagina: null })}
+            bins={data.bins} hrefBase={here({ deschis: null, pagina: null })}
             label={data.dots.length ? `Prețurile peste dublu pe axă, ${largestOf(data.dots.length, data.dotsTotal) ?? `toate cele ${data.dots.length}`}: săgețile trec de la unul la altul, Enter îi deschide liniile` : "Banda prețurilor: niciun preț peste dublu"} />
         </div>
         <StripLegend bins dots={largestOf(data.dots.length, data.dotsTotal) ? `${largestOf(data.dots.length, data.dotsTotal)}, după lei` : null} />

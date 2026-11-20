@@ -2,14 +2,14 @@ import Link from "next/link";
 import Term from "@/components/Term";
 import InfoMark from "@/components/InfoMark";
 import { STRIP_DOTS, STRIP_LEADS, productHref, type PriceOrder, type PriceStrip } from "@/lib/unit-prices";
-import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadTicksPath, leadsWord, medianWords } from "@/lib/unit-prices-shared";
+import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadsWord, medianWords } from "@/lib/unit-prices-shared";
 import StripChart from "./StripChart";
 import StripRow from "./StripRow";
 
 /**
  * Banda prețurilor (owner, 11 November 2026): one strip per product and pack on a shared "times the median" axis.
  * The median is the forest rule, twice the median the dashed rule; the pale band holds eight buyers in ten, the dark
- * band the middle half; every lead is a risk tick, the largest by lei above the median are risk dots, the first named.
+ * band the middle half; the largest leads by lei above the median are risk dots, the first named.
  * A strip opens into its largest leads, loaded then (StripRow).
  */
 export function StripAxis() {
@@ -33,7 +33,6 @@ export function StripLegend({ bins = false, dots, prices }: { bins?: boolean; do
     <li><i className="pr-k-core" />jumătatea din mijloc</li>
     <li><i className="pr-k-band" />opt instituții din zece</li>
     {bins && <li><i className="pr-k-bins" />câte instituții, la fiecare preț</li>}
-    <li><i className="pr-k-tick" />fiecare preț peste dublu</li>
     <li><i className="pr-k-dot" />{dots ?? "un preț peste dublu"}</li>
   </ul>;
 }
@@ -61,7 +60,7 @@ function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: numbe
         <small><span className="pr-median-word">{m.label}: </span>{m.value}</small><small className="pr-label-n">{buyersWord(s.buyers)}</small>
       </span>
       <span className="pr-strip"><StripChart band={{ r10: s.r10, r25: s.r25, r75: s.r75, r90: s.r90 }} median={s.year ? s.medianLo : null} per={s.per}
-        dots={s.dots} ticks={leadTicksPath(s.leadRatios)} index={i} hrefBase={productHref(s.family, s.pack, s.year)}
+        dots={s.dots} index={i} hrefBase={productHref(s.family, s.pack, s.year)}
         label={`${median}; ${s.thin ? "prea puține instituții pentru piste" : leadsWord(s.leads)}${partial ? `, punctele sunt ${partial}` : ""}`} /></span>
       {named && <span className="pr-strip-lead" aria-hidden="true"><span className="pr-tag-name">{named.name}</span><span className="pr-tag-x"> · <b>{formatRatio(named.ratio)}</b></span></span>}
       <span className="pr-count">

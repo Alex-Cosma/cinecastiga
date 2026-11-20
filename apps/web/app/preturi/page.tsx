@@ -3,6 +3,7 @@ import { PendingRegion } from "@/components/ghost/client";
 import { flatParams } from "@/lib/unit-prices-params";
 import { PRICE_PRODUCTS, getPricePage, parsePriceState, priceOptions } from "@/lib/unit-prices";
 import Link from "next/link";
+import Term from "@/components/Term";
 import { buyersWord, countWord, formatLei, leadsCount, priceHref, priceYearWithLeads, sentenceCase } from "@/lib/unit-prices-shared";
 import PriceFilters from "./PriceFilters";
 import PriceStrips from "./PriceStrips";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
  * place in the header). Out of the search engines for now (owner, the same day): he decides when it is indexed.
  */
 export const metadata: Metadata = {
-  title: "Cine cumpără mai scump același produs",
+  title: "Același produs, alt preț",
   description: "Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs.",
   robots: { index: false, follow: true },
 };
@@ -27,15 +28,19 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
   const scope = state.county ? ` în ${state.county}` : "";
   const other = priceYearWithLeads(data.yearLeads);
   return <div className="pr-page">
-    <h1 className="page-title">Cine cumpără mai scump același produs</h1>
-    {/* „Valori contractate, fără TVA” is the legend's "i" by the median (owner, 17 November 2026). */}
-    <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>
-    {/* What the page is not (owner, 20 November 2026): a hand-made selection of ordinary products, not everything bought. */}
-    <p className="pr-scope">Comparăm {countWord(PRICE_PRODUCTS, "un produs", "produse")} obișnuite, alese de mână: alimente, curățenie, birotică, carburant. Nu e tot ce cumpără instituțiile. <Link href="/metodologie#preturi-pe-unitate" prefetch={false}>Cum le-am ales</Link></p>
+    {/* A short title and, under it, a few words that explain themselves on hover (owner, 20 November 2026: the page was
+        clogged with text): what is compared, that a lead is no proof, and that the products are a hand-made selection. */}
+    <h1 className="page-title">Același produs, alt preț</h1>
+    <p className="page-sub pr-sub"><Term tip hold="line" title="Ce comparăm" text={<>
+      <span className="pr-tip-p">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an.</span>
+      <span className="pr-tip-p">Un preț peste dublu e o pistă de verificat, nu o dovadă.</span>
+      <span className="pr-tip-p">Sunt {countWord(PRICE_PRODUCTS, "un produs", "produse")} obișnuite, alese de mână: alimente, curățenie, birotică, carburant. Nu e tot ce cumpără instituțiile. <Link href="/metodologie#preturi-pe-unitate" prefetch={false}>Cum le-am ales</Link></span>
+    </>}>Prețul pe unitate, față de mediană</Term></p>
     <PendingRegion label="Se actualizează prețurile…" className="pr-region">
       <div className="pr-bar">
         <PriceFilters state={{ ...state, year: data.year }} years={data.years} yearLeads={data.yearLeads} counties={data.counties} options={priceOptions()} />
-        <p className="pr-total" aria-live="polite">
+        {/* The count of leads at the right is Complet's too (owner, 20 November 2026): Esențial keeps the filters alone. */}
+        <p className="pr-total" aria-live="polite" data-only="complet">
           <strong>{sentenceCase(leadsCount(data.totals.leads))}{scope}</strong>
           {/* The second-level totals are Complet's (owner, 18 November 2026); the count of leads stays. */}
           <span data-only="complet">{countWord(data.totals.products, "un produs", "produse")} · {buyersWord(data.totals.buyers)}</span>

@@ -18,7 +18,7 @@ export default function PriceMethod() {
       <li><b>Marca și ambalajul.</b> Un produs de marcă sau într-un ambalaj mic poate ieși peste dublul medianei fără să fie scump pentru felul lui. E o pistă de verificat, nu o concluzie.</li>
       <li><b>Sezonul.</b> Legumele și fructele proaspete se compară tot cu mediana întregului an: o achiziție în afara sezonului poate ieși peste dublu fără să fie scumpă pentru luna ei.</li>
       <li><b>Lei peste mediană.</b> Cât a contractat instituția peste ce ar fi costat aceeași cantitate la mediană.</li>
-      <li><b>Punctele.</b> Fiecare preț peste dublu are o liniuță pe bandă; punctele sunt doar cele mai mari, după lei peste mediană, iar numele e al celui mai mare.</li>
+      <li><b>Punctele.</b> Pe bandă apar cele mai mari prețuri peste dublu, după lei peste mediană; numele e al celui mai mare. Restul sunt în lista produsului.</li>
     </ul>
     <p>Metoda completă și limitele ei: <Link href="/metodologie">Metodologie</Link>.</p>
   </details>;

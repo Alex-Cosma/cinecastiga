@@ -95,8 +95,6 @@
 .pr-median { border-left: 2px solid var(--accent); }
 .pr-double { border-left: 1.5px dashed var(--risk); }
 /* Every lead, as a tick under the dots: where they all sit, not only the largest. */
-.pr-ticks { position: absolute; left: 0; top: 42px; width: 100%; height: 5px; overflow: visible; pointer-events: none; }
-.pr-ticks path { fill: none; stroke: var(--risk); stroke-width: 1px; }
 /* A dot is solid risk with a halo of the row's own background, so neighbours stay apart without fading any of them. */
 .pr-dot { position: absolute; top: 28px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--risk); box-shadow: 0 0 0 1.5px var(--pr-bg); }
 .pr-dot-named { top: 27px; width: 12px; height: 12px; margin-left: -6px; box-shadow: 0 0 0 2px var(--pr-bg), 0 0 0 3.5px var(--risk); z-index: 2; }
@@ -166,7 +164,6 @@
 .pr-big .pr-band { top: auto; bottom: 12px; }
 .pr-big .pr-dot { top: auto; bottom: 13px; }
 .pr-big .pr-dot-named { bottom: 12px; }
-.pr-big .pr-ticks { top: auto; bottom: 1px; height: 6px; }
 .pr-big .pr-tag { top: calc(var(--t, 0) * 1.6em); }
 .pr-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; margin: 4px 0 0; padding: 0; font-size: 12px; color: var(--ink2); }
 .pr-legend i { display: inline-block; vertical-align: -1px; margin-right: 6px; width: 16px; height: 10px; box-sizing: border-box; }
@@ -175,7 +172,6 @@
 .pr-k-core { background: var(--accent); border-radius: 6px; }
 .pr-k-band { background: var(--accent-line); border-radius: 6px; box-shadow: inset 0 0 0 1px var(--pr-edge); }
 .pr-k-bins { background: var(--accent-soft); border-top: 2px solid var(--pr-edge); }
-.pr-legend .pr-k-tick { width: 9px; height: 6px; vertical-align: 0; background: repeating-linear-gradient(to right, var(--risk) 0 1px, transparent 1px 4px); }
 .pr-legend .pr-k-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--risk); }
 
 .pr-buyers { margin-top: 34px; }
@@ -338,7 +334,6 @@
   .pr-strip .pr-band { top: 8px; }
   .pr-strip .pr-dot { top: 9px; }
   .pr-strip .pr-dot-named { top: 8px; }
-  .pr-strip .pr-ticks { top: 24px; }
   .pr-open { padding: 4px 6px 16px; }
   .pr-big .pr-marks { height: 150px; }
   .pr-hero-line { font-size: 20px; }
@@ -357,6 +352,9 @@
 /* The dot a touch chose: its ring draws once (UX audit M-03; outline.css .mo-ring). */
 .pr-dot-ring{position:absolute;left:-6px;top:-6px;width:calc(100% + 12px);height:calc(100% + 12px);overflow:visible;pointer-events:none}
 .pr-dot-ring circle{fill:none;stroke:var(--risk);stroke-width:2;vector-effect:non-scaling-stroke}
-/* What the page is not: a selection, said once under the lede (owner, 20 November 2026). */
-.pr-scope{margin:6px 0 0;max-width:72ch;font-size:13.5px;line-height:1.5;color:var(--muted)}
-.pr-scope a{color:var(--accent);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+/* The words under the title explain themselves on hover (owner, 20 November 2026): what is compared, that a lead is no
+   proof, that the products are a selection. */
+.pr-sub .term-trigger { color: var(--ink2); }
+.pr-tip-p { display: block; margin-top: 7px; }
+.pr-tip-p:first-of-type { display: inline; margin-top: 0; }
+.pr-tip-p a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }

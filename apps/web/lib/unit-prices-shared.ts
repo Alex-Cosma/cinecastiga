@@ -92,16 +92,6 @@ export function largestOf(shown: number, total: number): string | null {
   return total > shown && shown > 0 ? `cele mai mari ${whole.format(shown)} din ${whole.format(total)}` : null;
 }
 
-/**
- * Every lead of a strip as one path of ticks on the strip's axis (an SVG of viewBox "0 0 100 1", stretched): the
- * place of each multiple to a quarter of a percent, drawn once, so a product with hundreds of leads is one node and
- * the reader sees where they all sit, not only the named dots.
- */
-export function leadTicksPath(ratios: readonly number[]): string {
-  const at = [...new Set(ratios.filter((r) => r > 0).map((r) => Math.round(axisPos(r) * 4) / 4))].sort((a, b) => a - b);
-  // The edges keep their tick inside the strip.
-  return at.map((x) => `M${Math.min(99.75, Math.max(0.25, x))} 0V1`).join("");
-}
 
 /** „442 de instituții”, „o instituție”. */
 export function buyersWord(n: number): string {

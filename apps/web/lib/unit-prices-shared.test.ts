@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { axisPos, buyersWord, formatQuantity, formatRatio, formatUnitPrice, largestOf, leadHref, leadTicksPath, leadsCount, leadsWord, priceHref, ratioWords, sentenceCase } from "./unit-prices-shared";
+import { axisPos, buyersWord, formatQuantity, formatRatio, formatUnitPrice, largestOf, leadHref, leadsCount, leadsWord, priceHref, ratioWords, sentenceCase } from "./unit-prices-shared";
 
 describe("unit prices: the strip and the words", () => {
   it("puts half and double at the same distance from the median, and clamps beyond the axis", () => {
@@ -36,15 +36,6 @@ describe("unit prices: the strip and the words", () => {
     expect(largestOf(40, 1250)).toBe("cele mai mari 40 din 1.250");
     expect(largestOf(12, 12)).toBeNull();
     expect(largestOf(0, 0)).toBeNull();
-  });
-
-  it("draws every lead once as a tick inside the strip", () => {
-    expect(leadTicksPath([])).toBe("");
-    // 2× sits at 55,56 % of the axis: to a quarter of a percent, once for both.
-    expect(leadTicksPath([2, 2.001])).toBe("M55.5 0V1");
-    // Beyond eight times the tick stays inside the right edge; a multiple that is not positive is dropped.
-    expect(leadTicksPath([30, 0, -1])).toBe("M99.75 0V1");
-    expect(leadTicksPath([4, 2])).toBe("M55.5 0V1M77.75 0V1");
   });
 
   it("opens a sentence with a capital, diacritics included", () => {
