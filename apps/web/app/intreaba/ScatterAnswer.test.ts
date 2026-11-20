@@ -96,15 +96,19 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("Primele 3 din 82");
     expect(words).toContain("Comuna Sageata (Primaria Comunei Sageata)");
     // Owner, 17 November 2026 (less small print): the row's count of direct acquisitions is its records link's.
-    expect(words).toContain("Primărie de comună · Buzău Adunate, trec de plafon");
+    expect(words).toContain("Primărie de comună · Buzău");
     expect(words).not.toContain("2.567 de achiziții directe");
-    expect(words).toContain(`${SPLIT} · 2018–2019`);
-    expect(words).toContain("Mulți bani contractați în decembrie · 2022");
-    expect(words).toContain("Declarate directe, peste plafon");
+    // The patterns are no tags on the row (owner, 20 November 2026): they are in the score pill's box, each with its
+    // years or share and a link to its page for this profile; the row says only how many.
+    expect(words).not.toContain(`${SPLIT} · 2018–2019`);
+    expect(markup).not.toContain("qb-tag--signal");
+    expect(markup).toMatch(new RegExp(`<b>Din ce e format scorul\\.</b>.*?<a href="/entitati/\\d+/semnale\\?tip=da_split">${SPLIT}</a>(?:<!-- -->)? · (?:<!-- -->)?2018–2019`));
+    expect(markup).toContain("Mulți bani contractați în decembrie</a>");
+    expect(words).toMatch(/pronunțat · 3 tipare/);
     // Each row's risk: the score's pill in its band's colour, the band under it.
     // The pill holds the score's explanation (M-01).
-    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-high"><button[^>]*>73 din 100<.*?<\/span><\/span><small>pronunțat<\/small>/);
-    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-mid"><button[^>]*>64 din 100<.*?<\/span><\/span><small>moderat<\/small>/);
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-high"><button[^>]*>73 din 100<.*?<\/span><\/span><small>pronunțat/);
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-mid"><button[^>]*>64 din 100<.*?<\/span><\/span><small>moderat/);
     expect(words).toContain("2.567 de înregistrări");
     // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
     expect(words).toContain("Vezi cele 4.827 de înregistrări →");
@@ -146,7 +150,7 @@ describe("the risk cloud's answer", () => {
     expect(markup).not.toContain("sc-chart");
     expect(text(markup)).toContain("5 profiluri în grup: prea puține pentru un nor. Le arătăm ca listă.");
     expect(text(markup)).toContain("SPITALUL JUDETEAN DE URGENTA BUZAU");
-    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-slab"><button[^>]*>20 din 100<.*?<\/span><\/span><small>slab<\/small>/);
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-slab"><button[^>]*>20 din 100<.*?<\/span><\/span><small>slab/);
     // Only the place leaves: the hospitals stay hospitals (review: the kind was dropped without a word).
     const link = markup.match(/href="\/intreaba\?spec=([^"]+)"[^>]*>Toate spitalele din țară · 329/);
     expect(link).not.toBeNull();
@@ -493,7 +497,8 @@ describe("the chart's geometry and words", () => {
     // Listed (asked for, or by value), a historic row says so first, with its last month and an explanation; nothing is left out.
     const asked: ScatterData = { ...BUZAU_CLOUD, list: [BUZAU_ROWS[0]!, { ...BUZAU_ROWS[1]!, historic: "2019-02-01" }, BUZAU_ROWS[2]!] };
     const listed = render(asked, spec({ filters: { authorityKind: "comuna", county: "Buzău", includeHistoric: true } }));
-    expect(text(listed)).toMatch(/Comuna Pardosi .*? Inactiv · ultima 02\.2019 Adunate, trec de plafon/);
+    // The mark stays a tag on the row; the patterns are on the pill (owner, 20 November 2026).
+    expect(text(listed)).toMatch(/Comuna Pardosi .*? Inactiv · ultima 02\.2019/);
     expect(listed).toContain("ultima înregistrare: 01.02.2019");
     expect(listed).not.toContain("sc-hist");
   });

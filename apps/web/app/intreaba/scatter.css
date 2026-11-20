@@ -43,7 +43,9 @@
 .sc-hover b{color:var(--ink);font-size:12.5px;overflow-wrap:anywhere}
 
 .sc-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 0;font-size:12px;color:var(--muted)}
-.sc-legend span{display:inline-flex;align-items:center;gap:6px}
+/* The legend's own entries only: as `.sc-legend span` the rule also reached the "?" of an explanation inside one and
+   pushed its glyph off the circle's centre (owner, 20 November 2026). */
+.sc-legend>span{display:inline-flex;align-items:center;gap:6px}
 .sc-key{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);opacity:.6;flex:none}
 .sc-key.is-flag{background:var(--orange);opacity:.95}
 .sc-key.is-list{background:var(--accent);opacity:1}
@@ -181,3 +183,7 @@
   .sc-col-who{display:contents}
   .sc-cols .th-filter{min-height:44px}
 }
+/* A row's patterns, in its score pill's box (owner, 20 November 2026): one a line, each a link to its page. */
+.sc-part{display:block;margin-top:6px}
+.sc-part:first-of-type{display:inline;margin-top:0}
+.sc-part a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}

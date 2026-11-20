@@ -8,7 +8,7 @@ import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS } from "../../lib/ask/facet-parts"
 import { askLink } from "../../lib/ask/source-spec";
 import { countyWords, questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
 import {
-  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, codeBit, groupPlural, isRetiredScatterFlag, isScatterFlag, listPlace, scatterCodes, scatterFlagLabel, scatterFlagsOf,
+  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, codeBit, flagDetail, groupPlural, isRetiredScatterFlag, isScatterFlag, listPlace, scatterCodes, scatterFlagLabel, scatterFlagsOf,
   withScatterChoice, type ScatterData, type ScatterFlag, type ScatterFlagFact,
 } from "../../lib/ask/scatter-shared";
 import { namedKind, SCATTER_FLAGS_BY_ROLE, type AskSpec } from "../../lib/ask/spec";
@@ -152,12 +152,19 @@ const flagHelp = (role: "authority" | "supplier") => <>
 const chartName = (name: string): string => { const short = cleanName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
 
 /** A row's risk beside its value: the score's pill and its band (scatter-3), or the index with its criteria (scatter-2). */
-function RowRisk({ row, levels }: { row: AnyListRow; levels: number }) {
+function RowRisk({ row, levels, parts }: { row: AnyListRow; levels: number; parts: readonly ScatterFlagFact<string>[] }) {
   if ("cri" in row) return <span className="sc-cri qb-num">{formatDecimal(row.cri, levels === 4 ? 2 : 1)} · {row.nFlags} din {levels}</span>;
+  const pill = `cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`;
   return <span className="sc-cri sc-risk">
-    {/* The pill holds the score's explanation (M-01): a resting mouse draws the outline, a tap opens it. */}
-    <Term tip hold="box" id="scor-risc" className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</Term>
-    <small>{scoreBandWord(row.score)}</small>
+    {/* The pill says what this row's score is made of (owner, 20 November 2026: the patterns' tags crowded the list):
+        each pattern with its years or share, a link to its page for this profile. What the score is, in general, is
+        said once at the legend. A resting mouse draws the outline, a tap opens it (M-01). */}
+    {parts.length > 0
+      ? <Term tip hold="box" title="Din ce e format scorul" className={pill} text={<>{parts.map((fact) => { const detail = flagDetail(fact); return <span key={fact.code} className="sc-part">
+        <Link href={`/entitati/${row.entityId}/semnale?tip=${fact.code}`} prefetch={false}>{scatterFlagLabel(fact.code)}</Link>{detail ? ` · ${detail}` : ""}
+      </span>; })}</>}>{riskScoreText(row.score)}</Term>
+      : <Term tip hold="box" id="scor-risc" className={pill}>{riskScoreText(row.score)}</Term>}
+    <small>{scoreBandWord(row.score)}{parts.length > 0 && <> · {countWords(parts.length, "tipar", "tipare")}</>}</small>
   </span>;
 }
 
@@ -705,13 +712,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
               {/* Z3-22: the count of direct acquisitions is the records link's, which says it (not with a signal chosen; owner,
                   17 November 2026: on every screen). */}
               <small>{live ? rowMeta(row, role) : rowPlace(row, role)}</small>
-              {(own.length > 0 || row.historic !== undefined) && <span className="qb-tags">
+              {/* The patterns are on the score's pill (owner, 20 November 2026); an inactive profile keeps its mark. A
+                  stored scatter-2 has no pill: its rows keep their signals' tags, as they were drawn. */}
+              {(row.historic !== undefined || ("cri" in row && own.length > 0)) && <span className="qb-tags">
                 {row.historic !== undefined && <FactTag fact={historicFact(row.historic)} />}
-                {own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
+                {"cri" in row && own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
               </span>}
             </span>
             <span className="sc-val qb-num">{formatRon(row.value)}</span>
-            <RowRisk row={row} levels={levels} />
+            <RowRisk row={row} levels={levels} parts={own} />
             <button type="button" className="qb-rec sc-rec"
               onClick={() => records({ entityIds: [row.entityId], ...(live ? { flag: live } : {}) }, `${row.name} · ${live ? lower(live) : "înregistrările profilului"}`)}>
               {rowRecordsLabel(row)}<span className="qb-glyph" aria-hidden="true">→</span></button>
