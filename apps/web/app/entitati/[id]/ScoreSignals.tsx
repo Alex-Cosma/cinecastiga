@@ -56,7 +56,7 @@ export default function ScoreSignals({ hasRiskScore, score, parts, points, signa
               const words = `${flagLabel(code)}: ${countWords(width, "punct", "puncte")} din ${formatInt(Math.round(score))}`;
               return (
                 <Link key={code} href={signalsHref(code)} className={`ent-seg ${segment(code)}`} aria-label={words} style={{ left: `${(left / total) * 100}%`, width: `${(width / total) * 100}%` }}>
-                  <span className={`ent-sig-tip${edge(left + width / 2)}`} aria-hidden="true"><b>{flagLabel(code)}</b><span>{countWords(width, "punct", "puncte")} din {formatInt(Math.round(score))}</span></span>
+                  <span className={`ent-sig-tip tipcard${edge(left + width / 2)}`} aria-hidden="true"><b className="tipcard-t">{flagLabel(code)}</b><span>{countWords(width, "punct", "puncte")} din {formatInt(Math.round(score))}</span></span>
                 </Link>
               );
             })}
@@ -64,7 +64,7 @@ export default function ScoreSignals({ hasRiskScore, score, parts, points, signa
           {/* Found, but under the threshold from which it adds points: named on the empty rest of the bar. */}
           {quiet.length > 0 && (
             <span className="ent-rest" style={{ left: `${total}%`, width: `${Math.max(0, 100 - total)}%` }} tabIndex={0} aria-label={`Găsite, prea puțin ca să conteze: ${quiet.map((c) => flagLabel(c)).join(", ")}`}>
-              <span className="ent-sig-tip r" aria-hidden="true"><b>Găsite, prea puțin ca să conteze</b>{quiet.map((c) => <span key={c}>{flagLabel(c)} · 0</span>)}</span>
+              <span className="ent-sig-tip tipcard r" aria-hidden="true"><b className="tipcard-t">Găsite, prea puțin ca să conteze</b>{quiet.map((c) => <span key={c}>{flagLabel(c)} · 0</span>)}</span>
             </span>
           )}
           <span className="ent-tick" style={{ left: `${RISK_BAND_MIN.moderat}%` }} aria-hidden="true" />

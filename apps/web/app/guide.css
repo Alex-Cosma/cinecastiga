@@ -14,9 +14,22 @@
 .term-def{display:block;max-width:46ch;margin:7px 0 2px;padding:9px 11px;background:var(--sunk);border-left:2px solid var(--accent-line);border-radius:6px;color:var(--ink2);font:400 13px/1.55 var(--body);letter-spacing:0;text-transform:none;white-space:normal;text-align:left}
 .term-def[hidden]{display:none}
 .term-def b{font-weight:600;color:var(--ink)}
+/* The explanation's title on its own line, a small green label over a thin rule: a card from a file (owner, 20 November
+   2026, „Fișă”). The text starts under it, so a text with lines never runs its first line into the title. */
+.term-def .term-def-t,.tipcard .tipcard-t{display:block;padding-bottom:8px;margin-bottom:9px;border-bottom:1px solid var(--line);font:600 12px/1.25 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+/* ---- Every floating card on the site: one frame and one title (owner, 20 November 2026, „Fișă”) ----
+   A (?)'s explanation, a chart's, a map's or a table's hover card (`.tipcard`: use-tip.tsx and the cards of /preturi,
+   /semnale, /harta, the entity page, Comparații, /domenii, the risk map), the tour's example and a record's CPV hint.
+   Only here: each card's own stylesheet keeps its place (position, side, width, z-index) and nothing of its look. The
+   title is `.tipcard-t` (the label above); figures keep tabular digits and their weight; a second line is muted. */
+.term-tip>.term-def,.tipcard,.ev-hint:hover::after{padding:12px 15px 13px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow2)}
+.tipcard,.ev-hint:hover::after{font:400 13px/1.55 var(--body);letter-spacing:0;text-transform:none;color:var(--ink2);text-align:left;overflow-wrap:break-word}
+.tipcard b,.tipcard strong{font-weight:600;color:var(--ink)}
+.tipcard small,.tipcard .tipcard-s{font-size:12px;line-height:1.45;color:var(--muted)}
+.tipcard .tipcard-v{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
 /* An explanation with points (components/TipText.tsx; owner, 19 November 2026): the lead, then one rule on a line. */
 .tip-p{display:block;margin-top:6px}
-.tip-p:first-of-type{display:inline;margin-top:0}
+.tip-p:first-of-type{margin-top:0}
 .tip-li{display:block;position:relative;margin-top:5px;padding-left:14px}
 .tip-p+.tip-li{margin-top:8px}
 .tip-li+.tip-p{margin-top:8px}
@@ -41,7 +54,7 @@
   .d-national-strip>.d-national-item{padding-left:13px}
   .d-national-item>small{line-height:1.5}
   .discovery-page .d-national-strip>.d-national-item:last-of-type{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding:16px 0 0}
-  .term-def{font-size:12.5px}
+  .term-def,.tipcard,.ev-hint:hover::after{font-size:12.5px}
   .d-invite-note{margin:24px 0 32px}
 }
 @media(max-width:380px){.d-national-strip>.d-national-item{padding-left:9px}}
@@ -101,7 +114,7 @@
 .term-tip{display:inline-flex}
 .term-tip>.term-trigger{text-decoration:none;min-width:24px;min-height:24px;display:inline-grid;place-items:center}
 .term-tip>.term-trigger>.term-mark{margin-left:0}
-.term-tip>.term-def{display:none;position:fixed;inset:auto;z-index:70;width:max-content;max-width:min(360px,calc(100vw - 32px));max-height:min(320px,60vh);overflow:auto;margin:0;box-shadow:0 6px 18px rgba(0,0,0,.12);background:var(--surface);border:1px solid var(--line)}
+.term-tip>.term-def{display:none;position:fixed;inset:auto;z-index:70;width:max-content;max-width:min(360px,calc(100vw - 32px));max-height:min(320px,60vh);overflow:auto;margin:0}
 .term-tip.term-shown>.term-def{display:block}
 .d-map-current-row{position:relative;display:flex;align-items:center;gap:2px;margin-top:10px}
 .discovery-page .d-map-current-row>.d-map-current{margin:0}

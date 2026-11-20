@@ -264,8 +264,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
                 if (press?.mouse || !(press ? press.open : tip?.dot === i)) showTip(i, event.currentTarget); else setTip(null);
               }} />;
           })}
-          {tip && example && <div className="tr-tip" role="tooltip" style={{ left: tip.left, top: tip.top, "--ox": `${tip.arrow}px` } as React.CSSProperties}>
-            <b>{example[0]}</b>{example[1]}<small>Exemplu ilustrativ. Pe site, fiecare semnal duce la achizițiile lui.</small>
+          {tip && example && <div className="tr-tip tipcard" role="tooltip" style={{ left: tip.left, top: tip.top, "--ox": `${tip.arrow}px` } as React.CSSProperties}>
+            <b className="tipcard-t">{example[0]}</b>{example[1]}<small>Exemplu ilustrativ. Pe site, fiecare semnal duce la achizițiile lui.</small>
           </div>}
         </div>
 

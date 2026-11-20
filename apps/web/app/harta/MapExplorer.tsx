@@ -635,8 +635,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
             </g>
           </svg>}
-          {shown && pointer && !touch && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
-            <b>{shown.name}</b>
+          {shown && pointer && !touch && <div className={`mx-card tipcard${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
+            <b className="tipcard-t">{shown.name}</b>
             {dots ? <DotCard a={shown} metric={metric} county={!county} schools={schools} />
               : <>{shown.perCapita !== null ? <span><em>{int(shown.perCapita)} lei</em> pe locuitor</span>
               : <span className="mx-card-gap">{shown.gap === "no_admin" ? "Primăria nu e identificată sigur: valoare necunoscută, nu zero." : shown.gap === "no_council" ? "Consiliul județean nu e identificat: fără cifră pe locuitor." : "Fără populație cunoscută."}</span>}

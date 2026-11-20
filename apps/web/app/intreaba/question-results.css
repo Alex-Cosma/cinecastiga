@@ -312,7 +312,7 @@
 .cq-how .cq-how-tag > .term-trigger:hover, .cq-how .cq-how-tag.term-shown > .term-trigger { color: var(--ink2); }
 .cq-how-ghost { display: inline-block; padding: 4px 0; }
 .cq-how-n { display: block; margin-top: 8px; }
-.cq-how-n:first-of-type { display: inline; margin-top: 0; }
+.cq-how-n:first-of-type { margin-top: 0; }
 .cq-how-n a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .cq-how-act { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
 .cq-how-copy {

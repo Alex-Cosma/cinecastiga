@@ -154,7 +154,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                   <span className="c-meter" tabIndex={0} role="img" aria-label={`${amount(r.value)}${r.estimate ? " (valoarea estimată)" : ""}, cu ${lei(r.diff)} peste plafonul de ${amount(r.ceiling)}`}>
                     {/* The part up to the ceiling and the excess grow as one bar. */}
                     <span className="c-track cm-x cm-tw" style={{ width: `${whole * 100}%`, "--i": i } as CSSProperties}><i style={{ width: `${(r.ceiling / Math.max(1, r.value)) * 100}%` }} /><b /></span>
-                    <span className="sgc-tip r" aria-hidden="true"><b>{amount(r.value)}{r.estimate ? ", valoarea estimată" : ""}</b><span>plafonul: {amount(r.ceiling)}, fără TVA</span><span>cu {lei(r.diff)} peste</span></span>
+                    <span className="sgc-tip tipcard r" aria-hidden="true"><b className="tipcard-t">{amount(r.value)}{r.estimate ? ", valoarea estimată" : ""}</b><span>plafonul: {amount(r.ceiling)}, fără TVA</span><span>cu {lei(r.diff)} peste</span></span>
                   </span>
                 </td>
                   // Just under: every bar would be full; the sum left under the ceiling says it.

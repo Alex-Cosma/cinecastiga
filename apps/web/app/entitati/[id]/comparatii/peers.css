@@ -60,9 +60,9 @@
 .pxs-focal{fill:color-mix(in srgb,var(--orange) 16%,transparent);stroke:var(--orange);stroke-width:2.5;transition:cx calc(var(--med) * var(--chart-pace)) var(--ease)}
 .pxs-focal-rule{stroke:var(--orange);stroke-width:1.5}
 .pxs-focal-t{font:600 13px var(--body);fill:var(--orange);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
-.pxs-tip{position:absolute;z-index:3;transform:translate(-50%,calc(-100% - 12px));display:grid;gap:1px;width:max-content;max-width:min(320px,90vw);padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4;color:var(--ink2)}
-.pxs-tip b{font-weight:600;color:var(--ink)}
-.pxs-tip .pxs-tip-v{font:500 12.5px var(--mono);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.pxs-tip{position:absolute;z-index:3;transform:translate(-50%,calc(-100% - 12px));display:grid;gap:1px;width:max-content;max-width:min(320px,90vw);pointer-events:none}
+.pxs-tip .pxs-tip-v{font:600 13px/1.5 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pxs-tip.l{transform:translate(-12px,calc(-100% - 12px))}
 .pxs-tip.r{transform:translate(calc(-100% + 12px),calc(-100% - 12px))}
 /* Under the stage: the neighbours and who the group is */

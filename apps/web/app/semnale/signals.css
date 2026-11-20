@@ -87,9 +87,9 @@
 .sg-meter b{position:absolute;top:-5px;bottom:-5px;border-left:2px solid var(--ink)}
 /* A list picture's figures on hover (owner, 13 November 2026), or while the row's link has the keyboard focus. */
 .sg-meter-hit{position:relative;z-index:1;display:block;padding:10px 0;margin:-10px 0;color:inherit;text-decoration:none}
-.sg-tip{display:none;position:absolute;left:50%;bottom:calc(100% - 2px);transform:translateX(-50%);z-index:30;width:max-content;max-width:290px;padding:10px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:var(--shadow2,0 10px 28px #204c3c1a);font:13px/1.5 var(--body);color:var(--ink);text-align:left;white-space:normal;pointer-events:none}
-.sg-tip>span{display:block}
-.sg-tip>span:first-child{font-weight:600;margin-bottom:2px}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.sg-tip{display:none;position:absolute;left:50%;bottom:calc(100% - 2px);transform:translateX(-50%);z-index:30;width:max-content;max-width:290px;white-space:normal;pointer-events:none}
+.sg-tip>span{display:block;font-variant-numeric:tabular-nums}
 .sg-meter-hit:hover .sg-tip,.sg-case-row:has(.sg-open:focus-visible) .sg-tip{display:block}
 .sg-meter-hit:hover .sg-meter{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
 @media(hover:none){.sg-meter-hit:hover .sg-tip{display:none}}

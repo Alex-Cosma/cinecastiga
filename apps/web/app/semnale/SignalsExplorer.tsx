@@ -224,7 +224,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       </div>
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
       {/* The picture goes in Esențial, its number (sg-x) stays (owner, 18 November 2026); the zone CSS closes the grid. */}
-      <div className="sg-meter-col" data-only="complet">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
+      <div className="sg-meter-col" data-only="complet">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip tipcard" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k} className={k === 0 && meter.tip.length > 1 ? "tipcard-t" : undefined}>{line}</span>)}</span>}</Link>}</div>
       <div className="sg-amount"><strong><Lei value={fi.totalExact ?? (fi.flagCode === "da_capacity" ? fi.evidence?.da_value as string | number | null | undefined : null)} empty="Necunoscută" /></strong>{line.mark && !line.mark.words && line.mark.beside !== "note" && warning}
         {/* The usual kind, the notice's value, is said by the count's "?"; only the other kinds stay under the sum. */}
         {fi.subjectType === "award" && awardValueLabel(fi.evidence) !== "valoarea anunțului" && <small>{awardValueLabel(fi.evidence)}</small>}</div>

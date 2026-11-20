@@ -632,8 +632,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         })()}
         {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find cm-pt" style={FAST} /> : null; })}
       </svg>
-      {hover && <div className="sc-hover" style={{ left: Math.min(hover.x + 12, g.box.width - 190), top: Math.max(hover.y - 8, 0) }} role="presentation">
-        <b>{cleanName(hover.dot.point.name)}</b>
+      {hover && <div className="sc-hover tipcard" style={{ left: Math.min(hover.x + 12, g.box.width - 250), top: Math.max(hover.y - 8, 0) }} role="presentation">
+        <b className="tipcard-t">{cleanName(hover.dot.point.name)}</b>
         <span>{formatRon(hover.dot.point.value)} · {pointRisk(hover.dot)}</span>
       </div>}
       <figcaption className={`sc-legend${legacy ? "" : " qb-tipwrap"}`}>

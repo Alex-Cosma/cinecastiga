@@ -102,7 +102,7 @@ describe("the risk cloud's answer", () => {
     // years or share and a link to its page for this profile; the row says only how many.
     expect(words).not.toContain(`${SPLIT} · 2018–2019`);
     expect(markup).not.toContain("qb-tag--signal");
-    expect(markup).toMatch(new RegExp(`<b>Din ce e format scorul\\.</b>.*?<a href="/entitati/\\d+/semnale\\?tip=da_split">${SPLIT}</a>(?:<!-- -->)? · (?:<!-- -->)?2018–2019`));
+    expect(markup).toMatch(new RegExp(`<b class="term-def-t">Din ce e format scorul</b>.*?<a href="/entitati/\\d+/semnale\\?tip=da_split">${SPLIT}</a>(?:<!-- -->)? · (?:<!-- -->)?2018–2019`));
     expect(markup).toContain("Mulți bani contractați în decembrie</a>");
     expect(words).toMatch(/pronunțat · 3 tipare/);
     // Each row's risk: the score's pill in its band's colour, the band under it.
@@ -189,7 +189,7 @@ describe("the risk cloud's answer", () => {
     expect(words).toMatch(/[\d.]+ fără semnal în scor: nedesenate/);
     // Who is left of the axis: in the (i) after the ramp (owner, 17 November 2026: less small print).
     expect(words).not.toContain("la stânga axei");
-    expect(markup).toMatch(/role="tooltip"[^>]*><b>La stânga axei\.<\/b> 3 instituții, sub 3 mii lei\.<\/span>/);
+    expect(markup).toMatch(/role="tooltip"[^>]*><b class="term-def-t">La stânga axei<\/b>3 instituții, sub 3 mii lei\.<\/span>/);
     // The count of the profiles without a signal in the score: at the legend's end.
     expect(text(markup)).toContain("14.100 fără semnal în scor: nedesenate");
     expect(markup).not.toContain(">grupul<");

@@ -3,7 +3,7 @@
 .how-note>.term>.term-trigger{min-height:32px;padding:4px 0;color:var(--muted);font:inherit;text-align:left;cursor:help}
 .how-note>.term>.term-trigger:hover,.how-note>.term.term-shown>.term-trigger{color:var(--ink2)}
 .how-n{display:block;margin-top:7px}
-.how-n:first-of-type{display:inline;margin-top:0}
+.how-n:first-of-type{margin-top:0}
 .term-def :is(.how-n,.tip-li,.tip-p) a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 @media (max-width:640px){.how-note>.term>.term-trigger{min-height:44px}}
 /* Its ghost (a route's loading.tsx): the words, quiet, with their dotted line. */

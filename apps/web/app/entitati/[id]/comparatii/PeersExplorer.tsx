@@ -368,8 +368,8 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf,
       <circle className="pxs-focal cm-pt cm-late" cx={fx} cy={mid} r={ring} />
       <text className="pxs-focal-t cm-fade cm-late" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 28 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
     </svg>}
-    {shown && <div className={`pxs-tip${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}${hover === null && pinned !== null ? " is-pinned" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden={hover !== null || pinned === null ? true : undefined}>
-      <b>{nameOf(shown.p.id, shown.p.name) || "—"}</b>
+    {shown && <div className={`pxs-tip tipcard${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}${hover === null && pinned !== null ? " is-pinned" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden={hover !== null || pinned === null ? true : undefined}>
+      <b className="tipcard-t">{nameOf(shown.p.id, shown.p.name) || "—"}</b>
       <span className="pxs-tip-v">{formatEvidenceAmount(metric === "total" ? shown.p.totalExact : shown.p.meanExact, true)}{metric === "mean" ? " pe înregistrare" : ""}</span>
       <span>{rankOf.has(shown.p.id) ? `locul ${count(rankOf.get(shown.p.id)!)} · ` : ""}{recordsWords(shown.p.records)}</span>
       {hover === null && pinned !== null

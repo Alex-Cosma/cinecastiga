@@ -20,8 +20,8 @@ export interface TipBind {
 }
 /** A screen whose main pointer cannot hover (a phone, a tablet): no cursor tip there. */
 const noHover = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(hover: none)").matches === true;
-/** The tip beside the cursor, turned to its other side near the screen's right or bottom edge (its max-width is 240 px). */
-const TIP_W = 248, TIP_H = 96;
+/** The tip beside the cursor, turned to its other side near the screen's right or bottom edge (its max-width is 280 px). */
+const TIP_W = 288, TIP_H = 128;
 function tipPlace(x: number, y: number): { left: number; top: number } {
   const w = typeof window !== "undefined" ? window.innerWidth : Infinity, h = typeof window !== "undefined" ? window.innerHeight : Infinity;
   return {
@@ -42,7 +42,7 @@ export function TipBox({ x, y, children }: { x: number; y: number; children: Rea
     const el = box.current;
     if (el && typeof el.showPopover === "function" && !el.matches(":popover-open")) el.showPopover();
   }, []);
-  return <div ref={box} className="ask-maptip" popover="manual" style={tipPlace(x, y)}>{children}</div>;
+  return <div ref={box} className="ask-maptip tipcard" popover="manual" style={tipPlace(x, y)}>{children}</div>;
 }
 export function useTip() {
   const [tip, setTip] = useState<{
@@ -82,9 +82,11 @@ export function useTip() {
       onMouseLeave: () => setTip(null),
     };
   };
+  // The title is the card's label (guide.css `.tipcard-t`) only over a line under it: a lone line, a truncated cell's
+  // full text from bindClip, stays plain text (owner, 20 November 2026).
   const el = tip ? (
     <TipBox x={tip.x} y={tip.y}>
-      <div className="t">{tip.title}</div>
+      <div className={tip.v || tip.s ? "t tipcard-t" : "t-only"}>{tip.title}</div>
       {tip.v && <div className="v">{tip.v}</div>}
       {tip.s && <div className="s">{tip.s}</div>}
     </TipBox>

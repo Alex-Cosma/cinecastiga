@@ -33,7 +33,7 @@ describe("Ask county map", () => {
     expect(note(36_138).match(/36\.138/g)).toHaveLength(1);
     expect(note(1)).toMatch(/1 înregistrare \([^)]*din selecție\) are instituția fără județ cunoscut și nu apare pe hartă\./);
     // Owner, 17 November 2026 (less small print): the note is in the legend's (?), after the colours; no line under the map.
-    expect(html(36_138)).toMatch(/class="ask-legend qb-tipwrap"[\s\S]*role="tooltip"[^>]*><b>Culorile hărții\.<\/b> Cinci trepte[^<]*36\.138 de înregistrări/);
+    expect(html(36_138)).toMatch(/class="ask-legend qb-tipwrap"[\s\S]*role="tooltip"[^>]*><b class="term-def-t">Culorile hărții<\/b>Cinci trepte[^<]*36\.138 de înregistrări/);
     expect(html(36_138)).not.toContain("procentele sunt din totalul selecției");
   });
 

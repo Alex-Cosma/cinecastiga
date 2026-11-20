@@ -168,8 +168,8 @@ function Years({ years, href, allDomains, words }: { years: MapUatResponse["year
           : <span key={y.year} {...common} role="img" aria-label={label} />;
       })}
     </div>
-    {shown && active !== null && <div ref={tip} className="mx-p-yr-tip" style={{ left }} aria-hidden="true">
-      <b>{shown.year}</b>
+    {shown && active !== null && <div ref={tip} className="mx-p-yr-tip tipcard" style={{ left }} aria-hidden="true">
+      <b className="tipcard-t">{shown.year}</b>
       <span className="mx-p-yr-main">{perInhabitant(shown)}</span>
       {avgOf(shown) !== null && <span>{capitalize(words)}: {int(avgOf(shown)!)} lei pe locuitor</span>}
       <span>{short(shown.value)} lei contractați · {withDe(shown.records, "înregistrare", "înregistrări")}</span>

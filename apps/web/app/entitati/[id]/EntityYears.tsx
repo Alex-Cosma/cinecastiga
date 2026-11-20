@@ -138,8 +138,8 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
             </div>
           )}
           {words && active !== null && (
-            <div ref={tip} className="ent-years-tip" style={{ left }} aria-hidden="true">
-              <b>{words.head}</b>
+            <div ref={tip} className="ent-years-tip tipcard" style={{ left }} aria-hidden="true">
+              <b className="tipcard-t">{words.head}</b>
               <span><i className="ent-sw ent-sw-da" />{words.da}</span>
               {words.ct && <span><i className="ent-sw ent-sw-ct" />{words.ct}</span>}
               {words.turnover && <span><i className="ent-sw ent-sw-turnover" />{words.turnover}</span>}

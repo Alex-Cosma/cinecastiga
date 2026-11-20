@@ -207,7 +207,7 @@ function mountAtlas(
   tooltip.id = tooltipId;
   tooltip.setAttribute("role", "tooltip");
   tooltip.hidden = true;
-  tooltip.className = "domain-atlas-tooltip";
+  tooltip.className = "domain-atlas-tooltip tipcard";
   document.body.append(tooltip);
   let hovered: AtlasItem | null = null;
   let focused: AtlasItem | null = null;
@@ -258,7 +258,7 @@ function mountAtlas(
     const hint = owner === active.arrow || (active === hovered && hoveredAction === "details") ? "Deschide detaliile și contractele" : actionFor(node);
     // Rows by class (domain-atlas.css): the theme's own muted text and line, in light and dark.
     const rows: [string, string][] = [
-      [node.name, "dat-name"],
+      [node.name, "dat-name tipcard-t"],
       ...(node.officialName && node.officialName !== node.name ? [[node.officialName, "dat-official"] as [string, string]] : []),
       [description, "dat-code"],
       [node.valueExact !== undefined ? formatEvidenceAmount(node.valueExact) : `${exactMoney.format(node.value)} lei`, "dat-value"],

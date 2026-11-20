@@ -110,7 +110,7 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
         <div className="sgc-bar cm-x" data-chart suppressHydrationWarning title={`Scorul ${formatInt(Math.round(e.score))} din 100`}>
           {tabs.inScore.map((c, i) => (
             <Link key={c} href={href(c)} tabIndex={-1} aria-hidden="true" className={`sgc-seg ${seg(c)}${c === code ? " on" : ""}${i === 0 ? " first" : ""}`} style={{ width: `${e.points[c] ?? 0}%` }}>
-              <span className={`sgc-tip${i === 0 ? " l" : ""}`}><b>{flagLabel(c)}</b><span>+{formatInt(e.points[c] ?? 0)} din scorul de {formatInt(Math.round(e.score))} · {caseUnitWords(c, counts[c] ?? 0)}</span></span>
+              <span className={`sgc-tip tipcard${i === 0 ? " l" : ""}`}><b className="tipcard-t">{flagLabel(c)}</b><span>+{formatInt(e.points[c] ?? 0)} din scorul de {formatInt(Math.round(e.score))} · {caseUnitWords(c, counts[c] ?? 0)}</span></span>
             </Link>
           ))}
         </div>
@@ -225,7 +225,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
                   const at = seen++;
                   const words = `${cleanName(g.partnerName)}, ${it.date ? formatCalendarDate(it.date) : "fără dată"}: ${lei(it.value)}, ${pctWords(it.ofCeiling)} din plafonul de ${lei(g.ceiling)}`;
                   return <span key={k} className="bar cm-y" data-rove tabIndex={at === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%`, "--i": at } as CSSProperties}>
-                    <span className={`sgc-tip${edge(at, shown)}`} aria-hidden="true"><b>{cleanName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
+                    <span className={`sgc-tip tipcard${edge(at, shown)}`} aria-hidden="true"><b className="tipcard-t">{cleanName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
                   </span>;
                 })}
               </div>
@@ -242,7 +242,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
               <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
-                <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
+                <span className={`sgc-tip tipcard${edge(i, top.length)}`} aria-hidden="true"><b className="tipcard-t">{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
               </i></div>;
           })}</RovingGroup>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
@@ -290,7 +290,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
  */
 function AcqDot({ it, rec, edge, style }: { it: NearCeiling; rec: CaseRecord | undefined; edge: string; style?: CSSProperties }) {
   const what = rec?.title ?? rec?.cpvName;
-  const card = <span className={`sgc-tip${edge}`}><b>{cleanName(it.partnerName) || "—"}</b>
+  const card = <span className={`sgc-tip tipcard${edge}`}><b className="tipcard-t">{cleanName(it.partnerName) || "—"}</b>
     <span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{what ? ` · ${what}` : ""}</span>
     <span><b>{exactLei(it.value)}</b> · cu {exactLei(Math.round(it.gap * 100) / 100)} sub plafonul de {lei(it.ceiling)}</span></span>;
   return rec?.src === "da" && rec.refId

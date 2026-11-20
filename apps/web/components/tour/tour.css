@@ -59,11 +59,11 @@
 .tr[data-step="4"] .tr-dot-hot:is(:hover,:focus-visible,.open){animation:none;transform:scale(1.7);box-shadow:0 0 0 6px var(--tr-warm);outline:0}
 @keyframes tr-beat{0%,100%{box-shadow:0 0 0 4px var(--tr-warm)}50%{box-shadow:0 0 0 8px transparent}}
 .tr[data-step="5"] .tr-dots{display:none}
-.tr-tip{position:absolute;z-index:5;width:min(270px,92%);padding:13px 15px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:13px;box-shadow:var(--shadow2);font-size:14px;line-height:1.45;color:var(--ink2);pointer-events:none;transform-origin:var(--ox,50%) 0;animation:tr-tip .34s var(--tr-out)}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place, its
+   arrow to the dot (the card's own surface and line) and its entrance only. */
+.tr-tip{position:absolute;z-index:5;width:min(270px,92%);pointer-events:none;transform-origin:var(--ox,50%) 0;animation:tr-tip .34s var(--tr-out)}
 .tr-tip::before{content:"";position:absolute;top:-6px;left:var(--ox,50%);width:10px;height:10px;margin-left:-5px;background:var(--surface);border:solid var(--line2);border-width:1px 0 0 1px;transform:rotate(45deg)}
-.tr-tip b{display:flex;align-items:center;gap:8px;font:700 15px/1.25 var(--display);color:var(--ink);margin-bottom:4px}
-.tr-tip b::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--orange)}
-.tr-tip small{display:block;margin-top:7px;font-size:12px;color:var(--muted)}
+.tr-tip small{display:block;margin-top:7px}
 @keyframes tr-tip{from{opacity:0;transform:translateY(-6px) scale(.95)}}
 
 .tr-fig{display:grid;gap:12px}

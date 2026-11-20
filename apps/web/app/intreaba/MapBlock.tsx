@@ -54,7 +54,7 @@ export function CountyTip({ label, value, count, national, asCount, lens, metric
   const other = lens && lens !== "value" && lens !== "count" ? lens : null;
   return (
     <>
-      <div className="t">{label}</div>
+      <div className="t tipcard-t">{label}</div>
       {value > 0 ? (
         <>
           {other ? (

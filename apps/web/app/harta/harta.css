@@ -70,10 +70,10 @@
 .mx-dot.is-gap .mx-dot-m{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
 .mx-dot.is-hover .mx-dot-m,.mx-dot:hover .mx-dot-m{stroke:var(--ink);stroke-width:2}
 
-.mx-card{position:absolute;z-index:3;transform:translate(14px,-50%);display:grid;gap:2px;width:max-content;max-width:280px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.mx-card{position:absolute;z-index:3;transform:translate(14px,-50%);display:grid;gap:2px;width:max-content;max-width:280px;pointer-events:none}
 .mx-card.r{transform:translate(calc(-100% - 14px),-50%)}
-.mx-card b{font-size:14px;font-weight:600}
-.mx-card em{font:600 13.5px var(--mono);font-style:normal;color:var(--ink)}
+.mx-card em{font:600 13.5px var(--mono);font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
 .mx-card-sub{color:var(--muted)}
 .mx-card-gap{color:var(--ink2);max-width:240px}
 .mx-card-go{display:inline-flex;align-items:center;gap:5px;color:var(--accent);font-weight:600}
@@ -239,11 +239,10 @@ span.mx-p-yr{cursor:default}
 .mx-p-yr:hover,.mx-p-yr.is-active{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .mx-p-yr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .mx-p-tick.is-active{fill:var(--ink);font-weight:600}
-.mx-p-yr-tip{position:absolute;top:calc(100% - 2px);z-index:5;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink2)}
-.mx-p-yr-tip>b{font:700 13.5px/1.4 var(--display);color:var(--ink)}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.mx-p-yr-tip{position:absolute;top:calc(100% - 2px);z-index:5;display:grid;gap:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .mx-p-yr-main{color:var(--ink);font-weight:600}
 .mx-p-yr-go{justify-self:start;margin-top:4px;padding:4px 0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.mx-p-yr-tip small{font-size:12px;color:var(--muted)}
 .mx-p-rows{margin:0;padding:0;list-style:none}
 .mx-p-rows li{display:grid;grid-template-columns:minmax(0,1fr) 48px 38px;align-items:center;gap:8px;padding:3px 0;font-size:13px}
 .mx-p-rows li>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -113,7 +113,7 @@ describe("the total line and the longer list (21)", () => {
     expect(markup.match(/class="term-trigger"/g)).toHaveLength(1);
     expect(markup).toMatch(/<span class="term term-tip[^"]*info-mark"><button[^>]*>.*<span class="d-sr-only">Valoare înregistrată, nu plăți<\/span>/);
     const box = /<span id="[^"]*" class="term-def"[^>]*>(.*?)<\/span><\/span><\/p>$/.exec(markup)?.[1] ?? "";
-    expect(text(box)).toMatch(/^Valoare înregistrată\. Nu plăți\. .*nu dovedește că banii au fost plătiți\.$/);
+    expect(text(box)).toMatch(/^Valoare înregistrată Nu plăți\. .*nu dovedește că banii au fost plătiți\.$/);
     // On a ranking of firms the same box says that a consortium's value is split equally: still one mark.
     const firms = html(TotalLine, { joint: true, children: "Din 10 lei" });
     expect(firms.match(/class="term-trigger"/g)).toHaveLength(1);

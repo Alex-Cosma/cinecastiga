@@ -97,8 +97,9 @@
 .sgc-grid50{position:absolute;left:0;right:0;bottom:50%;border-top:1px dashed var(--line2);pointer-events:none}
 .sgc-groups>div i{position:relative;outline:none}
 .sgc-groups>div i:hover,.sgc-groups>div i:focus-visible{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--risk)}
-.sgc-tip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:6;width:max-content;max-width:260px;padding:8px 11px;border-radius:7px;background:var(--ink);color:var(--paper);font:400 12.5px/1.45 var(--body);text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.2);pointer-events:none}
-.sgc-tip>*{display:block}.sgc-tip b{font-weight:600}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.sgc-tip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:6;width:max-content;max-width:280px;pointer-events:none}
+.sgc-tip>*{display:block}.sgc-tip>span{font-variant-numeric:tabular-nums}
 .sgc-tip.l{left:0;transform:none}.sgc-tip.r{left:auto;right:0;transform:none}
 .bar:hover>.sgc-tip,.bar:focus>.sgc-tip,.sgc-groups i:hover>.sgc-tip,.sgc-groups i:focus>.sgc-tip{display:block}
 .sgc-groups{gap:14px}

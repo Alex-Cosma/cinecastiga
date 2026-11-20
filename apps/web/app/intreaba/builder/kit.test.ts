@@ -94,7 +94,7 @@ describe("the profile line (18)", () => {
   it("says the same words on every profile, only the kind, the archive and the ceiling in its (?)", () => {
     const markup = html(ScopeLine, {});
     // Owner, 2 November 2026: „Profil istoric · achiziții directe, toată arhiva” said too much.
-    expect(text(markup)).toMatch(/^Achiziții directe \? Achiziții directe\. Toată arhiva, fiecare de cel mult 2 mil\. lei/);
+    expect(text(markup)).toMatch(/^Achiziții directe \? Achiziții directe Toată arhiva, fiecare de cel mult 2 mil\. lei/);
     expect(markup).not.toMatch(/Profil istoric|qb-scope-sep/);
     expect(markup).toContain('<span class="qb-nowrap"><b>Achiziții directe</b> <span class="term term-tip');
     expect(tags(markup, "button")).toHaveLength(1); // the (?) only: the line itself is not pressable

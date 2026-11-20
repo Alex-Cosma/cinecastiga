@@ -191,7 +191,7 @@ export default function Term({ children, className, tip = false, hold, ...source
       {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026).
           A manual popover: in the top layer, over windows, sticky bars and boxes that clip, and placed from the "?" itself. */}
       <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1} popover="manual">
-        <b>{entry.title}.</b> {typeof entry.text === "string" ? <TipText text={entry.text} /> : entry.text}
+        <b className="term-def-t">{entry.title}</b>{typeof entry.text === "string" ? <TipText text={entry.text} /> : entry.text}
       </span>
     </span>;
   }
@@ -209,7 +209,7 @@ export default function Term({ children, className, tip = false, hold, ...source
       <span className="d-sr-only"> (ce înseamnă)</span>
     </button>
     <span id={definitionId} className="term-def" role="note" hidden={!open}>
-      <b>{entry.title}.</b> {typeof entry.text === "string" ? <TipText text={entry.text} /> : entry.text}
+      <b className="term-def-t">{entry.title}</b>{typeof entry.text === "string" ? <TipText text={entry.text} /> : entry.text}
     </span>
   </span>;
 }

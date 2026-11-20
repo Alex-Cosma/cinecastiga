@@ -110,7 +110,7 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
     <span className="pr-rule pr-double" style={{ left: `${axisPos(2)}%` }} />
     {reading && <>
       <span className="pr-ruler" style={{ left: `${reading.x}%` }} aria-hidden="true" />
-      <span className={`pr-tip pr-read${side(reading.x)}`} style={{ left: `${reading.x}%` }} aria-hidden="true">
+      <span className={`pr-tip pr-read tipcard${side(reading.x)}`} style={{ left: `${reading.x}%` }} aria-hidden="true">
         <b>{reading.text}</b>{reading.detail && <small>{reading.detail}</small>}
       </span>
     </>}
@@ -138,8 +138,8 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
         style={{ left: `${x}%`, maxWidth: end ? `calc(${x}% + 8px)` : `${2 * Math.min(x, 100 - x)}%`, ["--t" as string]: t }} aria-hidden="true">
         <span className="pr-tag-name">{d.name}</span><span className="pr-tag-x"> · <b>{formatRatio(d.ratio)}</b></span></span>;
     })}
-    {tip && <span className={`pr-tip pr-lead-tip${side(axisPos(tip.ratio))}`} style={{ left: `${axisPos(tip.ratio)}%` }} role="tooltip">
-      <b>{tip.name}</b><small>{[tip.county, tip.year].filter(Boolean).join(" · ")}</small>
+    {tip && <span className={`pr-tip pr-lead-tip tipcard${side(axisPos(tip.ratio))}`} style={{ left: `${axisPos(tip.ratio)}%` }} role="tooltip">
+      <b className="tipcard-t">{tip.name}</b><small>{[tip.county, tip.year].filter(Boolean).join(" · ")}</small>
       <span className="pr-tip-row"><strong>{formatUnitPrice(tip.price)} {per}</strong> · {ratioWords(tip.ratio)}{tip.median != null && ` (${formatUnitPrice(tip.median)} în ${tip.year})`}</span>
       <span className="pr-tip-row">{tip.quantity != null && `${formatQuantity(tip.quantity, per)} · `}{tip.awards != null && `${countWord(tip.awards, "o achiziție", "achiziții")} · `}{formatLei(tip.excess)} peste mediană</span>
       <small className="pr-tip-hint">Pistă, nu dovadă · deschide liniile</small>

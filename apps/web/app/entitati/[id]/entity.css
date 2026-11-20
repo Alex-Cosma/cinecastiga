@@ -51,7 +51,7 @@
 .ent-risk-read>.ent-score-how>.term-trigger>.term-mark{display:none}
 .ent-risk-read>.ent-score-how .term-words{padding-bottom:3px}
 .ent-how-n{display:block;margin-top:7px}
-.ent-how-n:first-of-type{display:inline;margin-top:0}
+.ent-how-n:first-of-type{margin-top:0}
 .ent-how-n a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 .ent-how-n>b{font-variant-numeric:tabular-nums}
 /* „Ce includ cifrele”: quiet words before the footer, not a fold that opens in the page. */
@@ -85,8 +85,9 @@
 .ent-sig-bar .ent-seg:hover::before,.ent-sig-bar .ent-seg:focus-visible::before{inset:3px 0 3px 2px}
 .ent-sig-bar .ent-seg:first-of-type:hover::before,.ent-sig-bar .ent-seg:first-of-type:focus-visible::before{left:0}
 .ent-sig-bar .ent-rest{cursor:default}
-.ent-sig-bar .ent-sig-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:6;width:max-content;max-width:240px;padding:7px 10px;border-radius:7px;background:var(--ink);color:var(--paper);font:400 12.5px/1.45 var(--body);text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.2);pointer-events:none}
-.ent-sig-bar .ent-sig-tip>*{display:block}.ent-sig-bar .ent-sig-tip b{font-weight:600}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.ent-sig-bar .ent-sig-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:6;width:max-content;max-width:280px;pointer-events:none}
+.ent-sig-bar .ent-sig-tip>*{display:block}
 .ent-sig-bar .ent-sig-tip.l{left:0;transform:none}.ent-sig-bar .ent-sig-tip.r{left:auto;right:0;transform:none}
 .ent-sig-bar .ent-seg:hover>.ent-sig-tip,.ent-sig-bar .ent-seg:focus-visible>.ent-sig-tip,.ent-sig-bar .ent-rest:hover>.ent-sig-tip,.ent-sig-bar .ent-rest:focus-visible>.ent-sig-tip{display:block}
 .ent-sig-bar .ent-tick{position:absolute;top:1px;bottom:1px;border-left:1px dashed var(--muted);pointer-events:none}
@@ -143,10 +144,10 @@
 .ent-years{--years-draw:200ms}
 .ent-years-turnover.cm-draw{--cm-d:var(--years-draw)}
 .ent-years-dot.cm-fade{--cm-dur:var(--fast)}
-.ent-years-tip{position:absolute;top:calc(100% + 28px);z-index:5;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums}
-.ent-years-tip>b{font:700 13.5px/1.4 var(--display)}
-.ent-years-tip>span{display:flex;align-items:center;gap:6px;color:var(--ink2)}
-.ent-years-tip-go{justify-self:start;margin:4px 0 0;padding:4px 0;border:0;background:none;color:var(--accent);font:600 12.5px/1.4 var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+/* Its look is the site's one floating card (`.tipcard`, guide.css; owner, 20 November 2026): here its place only. */
+.ent-years-tip{position:absolute;top:calc(100% + 28px);z-index:5;display:grid;gap:2px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ent-years-tip>span{display:flex;align-items:center;gap:6px}
+.ent-years-tip-go{justify-self:start;margin:4px 0 0;padding:4px 0;border:0;background:none;color:var(--accent);font:600 13px/1.4 var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .ent-years-x{grid-column:2;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding-top:6px}
 .ent-years-x>span{text-align:center;font:11px/1.3 var(--mono);color:var(--muted)}
 .ent-years-x>span.is-partial{font-style:italic}
