@@ -213,12 +213,12 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               </figure>
               <figure className="mt-fr mt-fr3" data-n="3">
                 <div className="mt-art">
-                  <div className="mt-blocks mt-b3 mt-st3" role="img" aria-label="Trei comenzi de câte 185.000 lei, puse una după alta. A doua și a treia trec de linia plafonului, de 270.120 lei. Adunate, fac 555.000 lei, dublul plafonului">
-                    <span className="mt-lim" style={{ left: "48.6%" }} aria-hidden="true"><b>plafon</b></span>
-                    <span className="mt-bar mt-s1" style={{ left: "0", width: "calc(33.3% - 4px)" }} aria-hidden="true">185.000</span>
-                    <span className="mt-bar mt-o mt-s2" style={{ left: "33.3%", width: "calc(33.3% - 4px)" }} aria-hidden="true">185.000</span>
-                    <span className="mt-bar mt-o mt-s3" style={{ left: "66.6%", width: "calc(33.4% - 4px)" }} aria-hidden="true">185.000</span>
-                    <span className="mt-sum mt-late2" aria-hidden="true">adunate: 555.000, peste plafon</span>
+                  <div className="mt-blocks mt-b3 mt-st3" role="img" aria-label="Trei comenzi de câte 212.000 lei, puse una după alta. A doua și a treia trec de linia plafonului, de 270.120 lei. Adunate, fac 636.000 lei, dublul plafonului">
+                    <span className="mt-lim" style={{ left: "42.5%" }} aria-hidden="true"><b>plafon</b></span>
+                    <span className="mt-bar mt-s1" style={{ left: "0", width: "calc(33.3% - 4px)" }} aria-hidden="true">212.000</span>
+                    <span className="mt-bar mt-o mt-s2" style={{ left: "33.3%", width: "calc(33.3% - 4px)" }} aria-hidden="true">212.000</span>
+                    <span className="mt-bar mt-o mt-s3" style={{ left: "66.6%", width: "calc(33.4% - 4px)" }} aria-hidden="true">212.000</span>
+                    <span className="mt-sum mt-late2" aria-hidden="true">adunate: 636.000, peste plafon</span>
                   </div>
                 </div>
                 <figcaption><b>3. Un tipar</b> <span>Trei comenzi la aceeași firmă, fiecare sub plafon. Adunate, trec cu mult de plafon. Un tipar e un obicei care se repetă: ceva de verificat, nu o dovadă de vină.</span></figcaption>
@@ -634,7 +634,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <div className="mt-col mt-stack" style={{ marginBottom: "32px" }}>
               <h2 id="h-anul"><span className="mt-ch-n">Capitolul 4</span>Tiparele Comunei Exemplara</h2>
               <p>Ioana trece de la o singură achiziție la toate. Pe pagina comunei găsește patru tipare și le ia pe rând.</p>
-              <p>Din 2018 încoace, Comuna Exemplara a făcut 210 achiziții directe, de 10,8 milioane de lei în total. Scorul ține cont de toți anii din 2018 încoace, nu de unul singur, și doar de achizițiile directe. Ne uităm mai ales la 2024, anul cu cele mai multe <b>tipare</b> ale ei: lucruri care, o singură dată, nu spun nimic, dar care, repetate, merită verificate.</p>
+              <p>Din 2018 încoace, Comuna Exemplara a făcut 210 achiziții directe, de 10,8 milioane de lei în total. Scorul ține cont de toți anii din 2018 încoace, nu de unul singur, și de achizițiile directe; doar la „Adunate, trec de plafon” contează și cât înseamnă ele din tot ce a contractat comuna. Ne uităm mai ales la 2024, anul cu cele mai multe <b>tipare</b> ale ei: lucruri care, o singură dată, nu spun nimic, dar care, repetate, merită verificate.</p>
               <p>Un singur tipar poate da cel mult 60 de puncte. Comuna are tipare de două feluri: despre plafon și despre decembrie. <span aria-hidden="true">Caseta <b>Scorul Comunei Exemplara</b> arată cum crește scorul pe măsură ce afli tiparele. Pe calculator stă lângă text, iar pe telefon, într-o bandă sus. La final găsești punctele fiecărui tipar, așa cum apar pe pagina comunei.</span><span className="mt-sr">După fiecare tipar vei auzi noul scor, iar punctele fiecărui tipar sunt la finalul capitolului.</span></p>
               <p><button type="button" className="mt-btn mt-allcalc" aria-pressed="false">Arată toate calculele</button></p>
             </div>
@@ -664,30 +664,31 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <article className="mt-ev" data-step="1" aria-labelledby="e1">
                   <span className="mt-when" aria-hidden="true">Martie – mai</span>
                   <h3 id="e1"><span className="mt-sr">Martie – mai: </span>Trei comenzi de mobilier, la aceeași firmă</h3>
-                  <p>Comuna cumpără mobilier pentru trei școli, de fiecare dată direct de la Mobilier Exemplara SRL: de trei ori câte 185.000 de lei. Luată separat, fiecare comandă e sub plafonul pentru produse. Adunate, fac 555.000 de lei.</p>
+                  <p>Comuna cumpără mobilier pentru trei școli, de fiecare dată direct de la Mobilier Exemplara SRL: de trei ori câte 212.000 de lei. Luată separat, fiecare comandă e sub plafonul pentru produse. Adunate, fac 636.000 de lei.</p>
                   <figure className="mt-fig">
-                    <div className="mt-blocks mt-b3" role="img" aria-label="Trei comenzi de câte 185.000 lei, puse una după alta: 555.000 lei, peste dublul plafonului de 270.120 lei">
-                      <span className="mt-lim" style={{ left: "48.6%" }} aria-hidden="true"><b>plafon</b></span>
-                      <span className="mt-bar" style={{ left: "0", width: "calc(33.3% - 4px)" }} aria-hidden="true">185.000</span>
-                      <span className="mt-bar" style={{ left: "33.3%", width: "calc(33.3% - 4px)" }} aria-hidden="true">185.000</span>
-                      <span className="mt-bar" style={{ left: "66.6%", width: "calc(33.4% - 4px)" }} aria-hidden="true">185.000</span>
+                    <div className="mt-blocks mt-b3" role="img" aria-label="Trei comenzi de câte 212.000 lei, puse una după alta: 636.000 lei, peste dublul plafonului de 270.120 lei">
+                      <span className="mt-lim" style={{ left: "42.5%" }} aria-hidden="true"><b>plafon</b></span>
+                      <span className="mt-bar" style={{ left: "0", width: "calc(33.3% - 4px)" }} aria-hidden="true">212.000</span>
+                      <span className="mt-bar" style={{ left: "33.3%", width: "calc(33.3% - 4px)" }} aria-hidden="true">212.000</span>
+                      <span className="mt-bar" style={{ left: "66.6%", width: "calc(33.4% - 4px)" }} aria-hidden="true">212.000</span>
                     </div>
-                    <figcaption>Comenzile, puse una după alta, comparate cu plafonul de 270.120 de lei. Adunate, trec puțin de dublul plafonului.</figcaption>
+                    <figcaption>Comenzile, puse una după alta, comparate cu plafonul de 270.120 de lei. Adunate, trec de dublul plafonului.</figcaption>
                   </figure>
                   <div className="mt-found">
                     <p className="mt-name">Adunate, trec de plafon</p>
                     <p className="mt-gl">comenzi mici care, adunate, trec de limită</p>
-                    <p className="mt-plainline">Adunate, cele trei comenzi ajung la dublul plafonului. Comuna are un singur grup de acest fel, dar unul mare față de cât cumpără direct, așa că scorul ei ajunge la <b>30</b>, jumătate din cât poate da un singur tipar. Răspunsul e în documente.</p>
-                    <p className="mt-plainline">Trei <b>lucrări</b> de câte 185.000 de lei n-ar fi apărut aici, pentru că plafonul pentru lucrări e de 900.400 de lei.</p>
+                    <p className="mt-plainline">Adunate, cele trei comenzi trec de dublul plafonului. Comuna are un singur grup de acest fel, dar unul mare față de cât cumpără direct, așa că scorul ei ajunge la <b>30</b>, jumătate din cât poate da un singur tipar. Răspunsul e în documente.</p>
+                    <p className="mt-plainline">Trei <b>lucrări</b> de câte 212.000 de lei n-ar fi apărut aici, pentru că plafonul pentru lucrări e de 900.400 de lei.</p>
                     <details suppressHydrationWarning className="mt-sock">
                       <summary><span className="mt-sumw">Vezi calculul<span className="mt-sumn">: Adunate, trec de plafon</span></span></summary>
                       <ul className="mt-calc">
                         <li>Adunăm achizițiile de același fel (aceeași clasă după <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: codul CPV">codul CPV</button><span className="mt-def" hidden>codul european al lucrului cumpărat; clasa = primele 4 cifre, de exemplu 3916, mobilier pentru școli</span>) de la aceeași firmă, din același an, dacă sunt cel puțin 3.</li>
-                        <li>Un grup începe să conteze de la 1,2 ori plafonul (324.144 lei), apoi tot mai mult, în linie dreaptă, până la dublul plafonului (540.240 lei), de unde contează în întregime. Ponderea = (suma ÷ plafon − 1,2) ÷ 0,8, limitată între 0 și 1. Suma grupului, înmulțită cu ponderea, o raportăm la tot ce a contractat direct comuna. Aici: 555.000 ÷ 270.120 = 2,05, deci ponderea e 1 și grupul contează în întregime.</li>
+                        <li>Un grup începe să conteze de la 1,2 ori plafonul (324.144 lei), apoi tot mai mult, în linie dreaptă, până la dublul plafonului (540.240 lei), de unde contează în întregime. Ponderea = (suma ÷ plafon − 1,2) ÷ 0,8, limitată între 0 și 1. Suma grupului, înmulțită cu ponderea, o raportăm la tot ce a contractat direct comuna. Aici: 636.000 ÷ 270.120 = 2,35, deci ponderea e 1 și grupul contează în întregime.</li>
                         <li>Legea are în vedere necesarul estimat pe tot anul, indiferent de firmă, iar noi adunăm doar comenzile de același fel la aceeași firmă, după valorile contractate.</li>
                         <li>Nu intră produsele medicale (CPV 33) și nici grupurile de cel puțin 12 comenzi mărunte (în medie sub 10% din plafon): apar ca „comenzi repetate, fără acord-cadru”, fără puncte.</li>
-                        <li>Adunăm toate grupurile comunei, din toți anii, și le raportăm la tot ce a contractat direct comuna din 2018 încoace. Aici e un singur grup: 555.000 din 10,8 milioane = <b>5,1%</b>. De ce toți anii? Așa, baza de comparație a comunei e mai stabilă: un an cu puține achiziții n-ar umfla tiparul, iar unul cu multe nu l-ar ascunde.</li>
-                        <li>Scara: sub 1%, grupul nu contează; între 1% și 2%, nivelul urcă de la 0 la 1; 8% dau nivelul 2, iar 20% nivelul 3, cu valori proporționale între praguri. Aici: 1 + (5,1 − 2) ÷ (8 − 2) = <b>1,52</b>.</li>
+                        <li>Adunăm toate grupurile comunei, din toți anii, și le raportăm la tot ce a contractat direct comuna din 2018 încoace. Aici e un singur grup: 636.000 din 10,8 milioane = <b>5,9%</b>. De ce toți anii? Așa, baza de comparație a comunei e mai stabilă: un an cu puține achiziții n-ar umfla tiparul, iar unul cu multe nu l-ar ascunde.</li>
+                        <li>Nivelul urcă pe o curbă netedă, fără praguri: 1% din valoarea directă dă 0,38, 2% dă 0,72, 8% dă nivelul 2, 16% dă 2,67, apoi tot mai încet spre 3. Nivel = 3 × (1 − e<sup>−p ÷ 7,28%</sup>), unde p e partea grupurilor. Aici: 5,9% dă 1,66.</li>
+                        <li>Contează și cât sunt grupurile din tot ce a contractat comuna, cu procedurile: la o instituție mare, unde achizițiile directe sunt o parte mică din bani, același tipar cântărește până la jumătate. Ponderea = 0,5 + 0,5 × (1 − e<sup>−t ÷ 2%</sup>), unde t e partea din tot: 0,5 la aproape nimic, 0,82 la 2%, 0,96 la 5%. Comuna a contractat în total 18 milioane, deci cei 636.000 sunt 3,5%, iar ponderea e 0,91. Aici: 1,66 × 0,91 = <b>1,52</b>.</li>
                         <li>Când datele sunt puține, nivelul rămâne limitat: cu 10 achiziții directe, cel mult 1, iar de la 30 în sus, cel mult 3. La tiparele despre sume contează și valoarea: de la 2 milioane de lei contractați direct, tot 3. Comuna are 210 achiziții și 10,8 milioane.</li>
                         <li>Fiecare nivel valorează 20 de puncte. Singur, tiparul dă 1,52 × 20 ≈ <b>30</b>, deci scorul comunei ajunge la 30.</li>
                       </ul>
@@ -1569,7 +1570,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       </tr>
                       <tr>
                         <td>Adunate, trec de plafon</td>
-                        <td>cel puțin 3 achiziții directe: aceeași instituție, firmă, an, clasă CPV (4 cifre) și tip; un grup contează de la 1,2 × plafon (pondere zero) până la 2 × (pondere deplină) și cântărește mai puțin când comenzile sunt mici; nu contează produsele medicale (CPV 33), grupurile mai ales din Anexa 2 și grupurile de cel puțin 12 comenzi cu media sub 10% din plafon; toate grupurile, din toți anii, se adună; nivelul depinde de partea lor din valoarea directă: de la 1% (nivel 0) la 2% (nivel 1), 8% (nivel 2) și 20% (nivel 3); la firme, 2,5%, 5%, 20% și 50%</td>
+                        <td>cel puțin 3 achiziții directe: aceeași instituție, firmă, an, clasă CPV (4 cifre) și tip; un grup contează de la 1,2 × plafon (pondere zero) până la 2 × (pondere deplină) și cântărește mai puțin când comenzile sunt mici; nu contează produsele medicale (CPV 33), grupurile mai ales din Anexa 2 și grupurile de cel puțin 12 comenzi cu media sub 10% din plafon; toate grupurile, din toți anii, se adună; la instituții, nivelul urcă pe o curbă netedă cu partea lor din valoarea directă p: 3 × (1 − e<sup>−p ÷ 7,28%</sup>), adică 8% → nivelul 2, înmulțit cu o pondere după partea lor din tot ce a contractat instituția, cu procedurile, t: 0,5 + 0,5 × (1 − e<sup>−t ÷ 2%</sup>); la firme, de la 2,5% (nivel 0) la 5%, 20% și 50% din vânzările directe</td>
                       </tr>
                       <tr>
                         <td>Multe sume imediat sub plafon</td>
@@ -1784,9 +1785,9 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       </tr>
                       <tr>
                         <th scope="row"><a href="#da_split">Adunate, trec de plafon</a></th>
-                        <td data-l="Nivelul 1">grupurile cântăresc 2% din valoare, de la 1% (firme: 5%, de la 2,5%)</td>
+                        <td data-l="Nivelul 1">grupurile cântăresc circa 3% din valoarea directă, pe o curbă fără praguri, cu pondere de la 0,5 la 1 după partea din tot ce a contractat instituția (firme: 5%, de la 2,5%)</td>
                         <td data-l="Nivelul 2">8% (firme: 20%)</td>
-                        <td data-l="Nivelul 3">20% (firme: 50%)</td>
+                        <td data-l="Nivelul 3">se apropie de 3 după 20% (firme: 50%)</td>
                       </tr>
                       <tr>
                         <th scope="row"><a href="#da_round">Multe sume imediat sub plafon</a></th>
@@ -1860,7 +1861,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <details suppressHydrationWarning id="formula">
               <summary id="indice">Formula scorului și benzile</summary>
               <div className="mt-body">
-                <p>Scorul privește doar achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, din toată arhiva; filtrele unei pagini sau ale unei întrebări nu îl schimbă, iar pagina entității arată ce parte din valoare reprezintă achizițiile directe. <b>Instituții, {RISK_CRITERIA.authority.length} tipare:</b> <PatternList codes={RISK_CRITERIA.authority} />. <b>Firme, {RISK_CRITERIA.supplier.length} tipare:</b> <PatternList codes={RISK_CRITERIA.supplier} />. Semnalele din proceduri, bilanțuri și ONRC nu intră în scor; pagina entității le arată separat.</p>
+                <p>Scorul privește doar achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, din toată arhiva (la „Adunate, trec de plafon” al unei instituții contează și cât sunt grupurile din tot ce a contractat ea, cu procedurile); filtrele unei pagini sau ale unei întrebări nu îl schimbă, iar pagina entității arată ce parte din valoare reprezintă achizițiile directe. <b>Instituții, {RISK_CRITERIA.authority.length} tipare:</b> <PatternList codes={RISK_CRITERIA.authority} />. <b>Firme, {RISK_CRITERIA.supplier.length} tipare:</b> <PatternList codes={RISK_CRITERIA.supplier} />. Semnalele din proceduri, bilanțuri și ONRC nu intră în scor; pagina entității le arată separat.</p>
                 <p>Tiparele se grupează în patru familii: evitarea plafonului („Declarate directe, peste plafon”, „Adunate, trec de plafon”, „Multe sume imediat sub plafon”), legătura cu o firmă (concentrare sau dependență), decembrie și capacitatea firmei. Într-o familie se ia tiparul cel mai puternic plus 0,4 din fiecare dintre celelalte, până la limita familiei: plafonul 4, legătura cu o firmă 2 la instituții și 3 la firme, decembrie 1,25, capacitatea 3. Capacitatea singură contează pe jumătate; alături de alte tipare, ponderea ei crește spre întreg. Familiile se combină (F₁, F₂… sunt familiile):</p>
                 <p className="mt-math">scor = 100 × (1 − (1 − 0,2 × F₁) × (1 − 0,2 × F₂) × …)</p>
                 <p>Benzi: 0–9 „fără semnal în scor” (tiparele mici se văd pe pagină, fără număr); 10–39 slab; 40–67 moderat; 68–100 pronunțat. Un tipar singur ajunge cel mult la 60, deci „pronunțat” cere cel puțin două tipare; o familie singură ajunge cel mult la 80, decembrie singur la 25, capacitatea singură la 30. Un scor sub 10 nu certifică lipsa neregulilor: datele incomplete pot schimba rezultatul, așa că verifică perioada fiecărui semnal și sursele lui. Pagina entității împarte scorul în puncte fără să conteze ordinea: fiecare familie primește o parte proporțională cu −ln(1 − 0,2 × F); în familie, tiparul cel mai puternic se ia în întregime, celelalte cu 0,4; toate părțile se rotunjesc împreună, iar punctele rămase merg la părțile cu cele mai mari zecimale. Exemplu: „Adunate, trec de plafon” la tăria 2,51 și concentrare la 2,24 (legătura, plafonată la 2): 100 × (1 − 0,498 × 0,6) ≈ 70 din 100, împărțit în 40 + 30.</p>
@@ -1998,6 +1999,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Ce s-a schimbat și când</summary>
               <div className="mt-body">
                 <ul>
+                  <li id="schimbari-risc-20261120"><b>20 noiembrie 2026, rf-2026.25</b>, „Adunate, trec de plafon” la instituții: nivelul urcă pe o curbă netedă, fără praguri (8% din valoarea directă dau tot nivelul 2), și cântărește după cât sunt grupurile din tot ce a contractat instituția, cu procedurile: de la jumătate, când sunt o fărâmă din bani, până la întreg. O instituție mare, la care achizițiile directe sunt o parte mică din ce contractează, nu mai ia din acest tipar cât o comună la care ele sunt aproape tot. Firmele și celelalte tipare rămân la fel.</li>
                   <li id="schimbari-totaluri-20261119"><b>19 noiembrie 2026, totaluri</b>, contractele de peste 1 miliard lei intră în totaluri. Până acum erau ținute toate afară; acum rămâne afară doar cel a cărui valoare e contrazisă de propriul anunț sau a fost semnalată ca greșită (<a href="#peste-miliard">regula</a>). Totalurile, clasamentele, harta și comparațiile se schimbă pentru instituțiile și firmele cu astfel de contracte; regulile semnalelor rămân aceleași. Cele două semnale pe anunțuri de atribuire nu privesc în continuare anunțurile de peste 1 miliard lei.</li>
                   <li id="schimbari-risc-20261113"><b>13 noiembrie 2026, rf-2026.24</b>, semnal nou, în afara scorului: „Contracte în prima lună de la înființare” (la firme) și reversul lui, „Contracte cu firme în prima lună de la înființare” (la instituții). Achiziții directe de cel puțin 100.000 lei, publicate în primele 30 de zile de la înmatricularea firmei. Niciun alt semnal nu se schimbă.</li>
                   <li id="schimbari-risc-20261108"><b>8 noiembrie 2026, rf-2026.23</b>, semnal nou, în afara scorului: „Comenzi declarate peste plafonul acordului-cadru”. Comenzile subsecvente declarate în SEAP depășesc acordul-cadru cu peste 20% și cu cel puțin 50.000 lei. Niciun alt semnal nu se schimbă.</li>

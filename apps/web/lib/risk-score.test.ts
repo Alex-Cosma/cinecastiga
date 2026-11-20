@@ -60,6 +60,10 @@ describe("risk score on the pages", () => {
     expect(riskFact("da_split", { x: 1.51, groups: 3, share: 0.09, rawShare: 0.1275, partners: 2 })).toBe("3 grupuri · 13% din valoare");
     expect(riskFact("da_split", { x: 1.2, groups: 62, share: 0.1, rawShare: 0.22, partners: 4 }, "supplier")).toBe("62 de grupuri · 22% din valoare · la 4 instituții");
     expect(riskFact("da_split", { x: 1.2, groups: 62, share: 0.1, rawShare: 0.22, partners: 4 }, "authority")).toBe("62 de grupuri · 22% din valoare");
+    // rf-2026.25: an institution's groups against everything it contracted, when that is less than their DA share.
+    expect(riskFact("da_split", { x: 1.5, groups: 9, share: 0.158, rawShare: 0.158, wholeShare: 0.0026, partners: 5 }, "authority")).toBe("9 grupuri · 16% din valoare · sub 1% din tot ce a contractat");
+    expect(riskFact("da_split", { x: 1.5, groups: 9, share: 0.2, rawShare: 0.2, wholeShare: 0.09, partners: 5 }, "authority")).toBe("9 grupuri · 20% din valoare · 9% din tot ce a contractat");
+    expect(riskFact("da_split", { x: 1.5, groups: 1, share: 0.05, rawShare: 0.05, wholeShare: 0.05, partners: 1 }, "authority")).toBe("1 grup · 5% din valoare");
     expect(riskFact("da_round", { x: 2.24, n: 103, expected: 11.6 })).toBe("103 achiziții la 96–100% din plafon · așteptat ~12");
     expect(riskFact("da_year_end", { x: 1, years: [{ y: 2021, pct: 0.49 }], zs: 2 })).toBe("decembrie: 2021 (49% din an)");
     expect(riskFact("da_year_end", { x: 1, years: [], zs: 2 })).toBe("decembrie peste instituțiile de același tip");

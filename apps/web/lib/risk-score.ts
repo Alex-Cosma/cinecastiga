@@ -165,7 +165,9 @@ export function riskFact(code: RiskCriterion, part: ScorePart, role?: RiskRole):
       const share = part.rawShare != null ? n(part.rawShare) : n(part.share);
       // rf-2026.22 (S7): the lei next to the share, where the build stores them.
       const lei = part.value != null ? ` · ${formatRon(n(part.value))}` : "";
-      return `${countWords(n(part.groups), "grup", "grupuri")}${lei} · ${pct(share)} din valoare` + partnersTail(role, n(part.partners));
+      // rf-2026.25: an institution's groups also against everything it contracted, which weighs the pattern.
+      const whole = part.wholeShare != null && n(part.wholeShare) < share - 0.005 ? ` · ${pct(n(part.wholeShare))} din tot ce a contractat` : "";
+      return `${countWords(n(part.groups), "grup", "grupuri")}${lei} · ${pct(share)} din valoare${whole}` + partnersTail(role, n(part.partners));
     }
     case "da_round":
       return part.expected != null

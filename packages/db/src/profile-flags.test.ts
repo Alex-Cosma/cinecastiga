@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   FIRM_DUTY, PROFILE_FLAG_CODES, SCORE_FAMILY, familyStrength, familyStrengths, firmDutyCap, ramp, scoreBand, scoreCountCap,
   scoreOf, scoreOfCriteria, scorePoints, scoreValueCap, splitGroupRecurring, splitGroupWeight, strengthAbove, strengthCapacity,
-  strengthConcentration, strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
+  strengthConcentration, strengthDependence, strengthRound, strengthSplit, strengthYearEnd, splitMateriality,
 } from "./profile-flags.js";
 
 // Values from the audit's simulation on the local copy (3 November 2026).
@@ -92,6 +92,30 @@ describe("risk score (rf-2026.22)", () => {
     expect(strengthAbove("supplier", 10, 0.12, true)).toBe(2);
   });
 
+  it("reads an institution's repeated purchases on a smooth curve, weighed by their share of all it contracted (rf-2026.25)", () => {
+    // Groups that are all its spending: the curve, through level 2 at 8% of the DA value, no corners, nothing cut under 1%.
+    const curve = (s: number) => strengthSplit("authority", s, true, undefined, 1);
+    expect(curve(0.08)).toBeCloseTo(2, 5);
+    expect(curve(0.01)).toBeCloseTo(0.38, 2);
+    expect(curve(0.02)).toBeCloseTo(0.72, 2);
+    expect(curve(0.16)).toBeCloseTo(2.67, 2);
+    expect(curve(0.30)).toBeCloseTo(2.95, 2);
+    expect(curve(0)).toBe(0);
+    // The weight of the same groups in everything the institution contracted: half at none, whole once they are a real part.
+    expect(splitMateriality(0)).toBe(0.5);
+    expect(splitMateriality(0.02)).toBeCloseTo(0.816, 3);
+    expect(splitMateriality(0.05)).toBeCloseTo(0.959, 3);
+    expect(splitMateriality(1)).toBeCloseTo(1, 6);
+    // A large city (owner's example, 20 November 2026): 15.8% of its direct acquisitions, 0.26% of its 3.48 bn.
+    expect(strengthSplit("authority", 0.158, true, undefined, 0.0026)).toBeCloseTo(2.66 * splitMateriality(0.0026), 2);
+    expect(strengthSplit("authority", 0.158, true, undefined, 0.0026)).toBeLessThan(1.6);
+    // A commune whose direct acquisitions are its spending: almost the curve.
+    expect(strengthSplit("authority", 0.158, true, undefined, 0.158)).toBeGreaterThan(2.6);
+    // Without the total, the groups are taken as all its spending; the evidence cap still holds.
+    expect(strengthSplit("authority", 0.30, true)).toBeCloseTo(curve(0.30), 6);
+    expect(strengthSplit("authority", 0.30, 1.4, undefined, 1)).toBe(1.4);
+  });
+
   it("weighs a firm's part in the buyer's duty (decision B)", () => {
     expect(firmDutyCap(0.3)).toBe(FIRM_DUTY.cap);
     expect(firmDutyCap(0.7)).toBeCloseTo(2.25);
@@ -103,10 +127,6 @@ describe("risk score (rf-2026.22)", () => {
     expect(strengthAbove("supplier", 16, 0.8, true, { top2: 0.3, utility: true })).toBeCloseTo(0.9);
     expect(strengthSplit("supplier", 0.5, true, spread)).toBe(FIRM_DUTY.cap);
     expect(strengthSplit("supplier", 0.5, true, close)).toBe(3);
-    expect(strengthSplit("authority", 0.20, true)).toBe(3);
-    expect(strengthSplit("authority", 0.08, true)).toBe(2);
-    expect(strengthSplit("authority", 0.01, true)).toBe(0);
-    expect(strengthSplit("authority", 0.015, true)).toBeCloseTo(0.5); // from 1% to level 1 at 2%
     expect(strengthSplit("supplier", 0.5, true, { top2: 0.7, utility: false })).toBeCloseTo(2.25); // the cap rises 60% → 80%
   });
 

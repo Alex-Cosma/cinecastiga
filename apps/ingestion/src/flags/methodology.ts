@@ -47,6 +47,10 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 //   days after its ONRC registration reach 100,000 lei, and the same fact on each institution that alone reaches it
 //   (first-month.ts). The registration day comes from the ONRC import (migration 0109). Informative, not in the score;
 //   no other signal changes.
+// rf-2026.25: an institution's repeated purchases (owner, 20 November 2026): the strength follows a smooth curve of the
+//   weighted share of its DA value (level 2 at 8% as before, no corners, no cut under 1%), times a weight from 0.5 to 1
+//   by the same groups' share of everything it contracted, procedures too (splitMateriality): a large buyer whose groups
+//   are a sliver of its money keeps the lead at half. Firms unchanged; no other signal or rule changes.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 

@@ -18,7 +18,7 @@ const CHECK = '<svg class="mo-done-check" viewBox="0 0 16 16" aria-hidden="true"
 // pattern adds, rounded by the largest remainders. The levels are Comuna Exemplara's.
 type Code = "split" | "round" | "above" | "dec" | "rel";
 type On = Partial<Record<Code, boolean>>;
-const X: Record<Code, number> = { split: 1.5232, round: 1.0, above: 1.0, dec: 0.8333, rel: 2.0 };
+const X: Record<Code, number> = { split: 1.5215, round: 1.0, above: 1.0, dec: 0.8333, rel: 2.0 };
 const ORD: Code[] = ["split", "round", "above", "dec", "rel"];
 const FAM: Record<Code, "A" | "C" | "R"> = { split: "A", round: "A", above: "A", dec: "C", rel: "R" };
 const NAMES: Record<Code, string> = {

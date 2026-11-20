@@ -100,6 +100,8 @@ export function authorityDecemberSql(sql: DbSql, opts: { maxPlausible: number; m
 /** The measures of one profile, from the SQL below. */
 export interface ProfileMeasures {
   eid: string; role: ProfileFlagRole; n: number; v: number;
+  /** Everything an institution contracted, procedures too (marts.entity_profile, built before the flags); its DA value at least. */
+  total?: number;
   /** Institutions: classic, association or private_buyer (regime.ts). */
   regime: string | null;
   /** Firms: a utility or mass supplier; a firm of its institution (in-house). */
@@ -154,11 +156,14 @@ export function scoreProfile(m: ProfileMeasures): ProfileScore {
     const sum = vals.reduce((a, b) => a + b, 0);
     const top2 = sum > 0 ? (vals[0]! + (vals[1] ?? 0)) / sum : 1;
     const s = share(sum);
-    x.da_split = strengthSplit(m.role, s, valueCap, { top2, utility: m.utility });
+    // rf-2026.25 (owner, 20 November 2026): an institution's groups also against everything it contracted.
+    const whole = m.role === "authority" ? sum / Math.max(m.total ?? 0, m.v, 1) : undefined;
+    x.da_split = strengthSplit(m.role, s, valueCap, { top2, utility: m.utility }, whole);
     dutyCaps.push(firmDutyCap(top2));
     const raw = weighted.reduce((a, g) => a + g.total, 0);
-    // rf-2026.22 (S7): the lei of the counted groups next to their share.
-    facts.da_split = { groups: weighted.length, partners: byPartner.size, share: r4(s), rawShare: r4(share(raw)), value: Math.round(raw), top2: r4(top2) };
+    // rf-2026.22 (S7): the lei of the counted groups next to their share; rf-2026.25 their share of all it contracted.
+    facts.da_split = { groups: weighted.length, partners: byPartner.size, share: r4(s), rawShare: r4(share(raw)), value: Math.round(raw), top2: r4(top2),
+      ...(whole !== undefined ? { wholeShare: r4(whole), total: Math.round(Math.max(m.total ?? 0, m.v)) } : {}) };
   }
 
   if (m.round) {
@@ -236,7 +241,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
   await q`create index on score_regime (eid)`;
 
   const profiles = (await q`
-    select ef.entity_id::text eid, ef.role, ef.n_das n, coalesce(ef.total_ron, 0)::float8 v,
+    select ef.entity_id::text eid, ef.role, ef.n_das n, coalesce(ef.total_ron, 0)::float8 v, coalesce(ep.total_ron_full, 0)::float8 total,
       case when ef.role = 'authority' then coalesce(r.regime, 'classic') end regime,
       ef.role = 'supplier' and n.nm ~ ${UTILITY_SUPPLIER_NAME} utility,
       ef.role = 'supplier' and n.nm ~ ${INHOUSE_SUPPLIER_NAME} inhouse
@@ -244,6 +249,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
     join core.entities e on e.id = ef.entity_id
     cross join lateral (select ${entityNameSql(q, "e")} nm) n
     left join score_regime r on ef.role = 'authority' and r.eid = ef.entity_id
+    left join marts.entity_profile ep on ep.entity_id = ef.entity_id and ep.role = ef.role
   `) as unknown as Row[];
 
   // Above the ceiling: records, events (partner × month), value, the share of the top two partners.
@@ -331,7 +337,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
   const prof = new Map<string, ProfileMeasures>();
   for (const p of profiles) {
     prof.set(key(p["role"], p["eid"]), {
-      eid: String(p["eid"]), role: p["role"] as ProfileFlagRole, n: num(p["n"]), v: num(p["v"]),
+      eid: String(p["eid"]), role: p["role"] as ProfileFlagRole, n: num(p["n"]), v: num(p["v"]), total: num(p["total"]),
       regime: (p["regime"] as string | null) ?? null, utility: Boolean(p["utility"]), inhouse: Boolean(p["inhouse"]),
       above: null, groups: [], round: null, december: null, concentration: null, dependence: null, capacity: [],
     });

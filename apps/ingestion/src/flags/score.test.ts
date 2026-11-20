@@ -23,18 +23,33 @@ describe("scoreProfile", () => {
 
   it("combines families and gives each criterion its points and facts", () => {
     const s = scoreProfile(measures({
-      groups: [group("7", 200_000), group("8", 100_000)], // weights 1 (2× the ceiling) and 0 (1×): 20% → 3
+      groups: [group("7", 200_000), group("8", 100_000)], // weights 1 (2× the ceiling) and 0 (1×): 20% → 2.81 (rf-2026.25 curve)
       round: { o: 30, e: 2 }, // θ = 31/3: log2 = 3.37 → 3
       concentration: { share: 0.9, rawShare: 0.92, partner: "7" },
       december: { years: 6, top2: 2.5, flagged: [{ y: 2024, pct: 0.61 }] },
     }));
     expect(s.codes).toEqual(["da_split", "da_round", "da_year_end", "da_concentration"]);
     expect(s.parts["da_round"]).toMatchObject({ x: 3, n: 30, expected: 2 });
-    expect(s.parts["da_split"]).toMatchObject({ x: 3, groups: 1, partners: 1, share: 0.2 });
+    expect(s.parts["da_split"]).toMatchObject({ groups: 1, partners: 1, share: 0.2, wholeShare: 0.2, total: 1_000_000 });
+    expect(Number(s.parts["da_split"]!["x"])).toBeCloseTo(2.8075, 3);
     // avoid = min(4, 3 + 0.4 · 3); relation = 2 (cap); calendar = 1.25 × (2.5·6/8 − 1)/1.5 = 0.729
     const left = (1 - 0.2 * 4) * (1 - 0.2 * 2) * (1 - 0.2 * (1.25 * (2.5 * 6 / 8 - 1) / 1.5));
     expect(s.scoreRaw).toBeCloseTo(100 * (1 - left), 6);
     expect(Object.values(s.parts).reduce((a, p) => a + Number(p["pts"]), 0)).toBe(s.score);
+  });
+
+  it("weighs an institution's repeated purchases by their share of everything it contracted (rf-2026.25)", () => {
+    // The same groups, 20% of the direct acquisitions: a commune whose direct acquisitions are its spending, then a
+    // city that contracted 100 times more through procedures (the groups are 0.2% of all it contracted).
+    const commune = scoreProfile(measures({ groups: [group("7", 200_000)], total: 1_000_000 }));
+    const city = scoreProfile(measures({ groups: [group("7", 200_000)], total: 100_000_000 }));
+    expect(Number(commune.parts["da_split"]!["x"])).toBeCloseTo(2.8075, 3);
+    expect(Number(city.parts["da_split"]!["x"])).toBeCloseTo(2.8075 * (0.5 + 0.5 * (1 - Math.exp(-0.002 / 0.02))), 3);
+    expect(city.parts["da_split"]).toMatchObject({ share: 0.2, wholeShare: 0.002, total: 100_000_000 });
+    expect(city.score).toBeLessThan(commune.score);
+    // A firm keeps its scale: no total, no weight.
+    const seller = scoreProfile(measures({ ...firm, groups: [group("7", 200_000)], total: 100_000_000 }));
+    expect(seller.parts["da_split"]).not.toHaveProperty("wholeShare");
   });
 
   it("weighs a firm's above-ceiling sales by decision B", () => {

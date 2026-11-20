@@ -44,7 +44,7 @@
  * publication records it; when it differs, the next scheduled run is full
  * (processing.ts), since a daily run keeps the previous risk.
  */
-export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.24';
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.25';
 
 /**
  * Buyers reviewed by hand (owner decision S6 of 5 November 2026), by CUI:
@@ -206,16 +206,36 @@ export function strengthAbove(role: ProfileFlagRole, events: number, w: number, 
 }
 
 /**
- * Repeated purchases: s is the weighted value of the profile's groups over
- * its value (splitGroupWeight). Institutions 2% → 1, 8% → 2, 20% → 3;
- * firms 5%, 20%, 50%.
+ * Repeated purchases of an institution (rf-2026.25, owner decision of 20 November 2026): how often it buys this way
+ * and how much that is of all it buys. The share s of its direct-acquisition value in weighted groups climbs a smooth
+ * curve, x = 3 × (1 − e^(−s/τ)), through level 2 at 8% as before (1% → 0.38, 2% → 0.72, 16% → 2.67, 30% → 2.95), with
+ * no corners and no cut under 1%. The share of everything the institution contracted (procedures too) weighs it:
+ * from half for a buyer whose groups are a sliver of its spending (a municipality whose direct acquisitions are a
+ * small part of its money) to the whole once they are a real part of it (splitMateriality).
  */
-export function strengthSplit(role: ProfileFlagRole, s: number, gate: number | boolean, firm: FirmDutyContext = NO_FIRM): number {
-  // rf-2026.21: from half the first level (1% / 2.5%), not a step at it.
-  let x = role === 'authority'
-    ? ramp(s, [[0.01, 0], [0.02, 1], [0.08, 2], [0.20, 3]])
-    : ramp(s, [[0.025, 0], [0.05, 1], [0.20, 2], [0.50, 3]]);
-  if (role === 'supplier' && x > 0) x = firmDuty(x, firm);
+export const SPLIT_CURVE = { level2Share: 0.08 } as const;
+const SPLIT_TAU = SPLIT_CURVE.level2Share / Math.log(3);
+/** The weight of an institution's groups by their share of all it contracted: 0.5 at none, 0.82 at 2%, 0.96 at 5%. */
+export const SPLIT_MATERIALITY = { floor: 0.5, scale: 0.02 } as const;
+export function splitMateriality(wholeShare: number): number {
+  const w = Math.max(0, wholeShare);
+  return SPLIT_MATERIALITY.floor + (1 - SPLIT_MATERIALITY.floor) * (1 - Math.exp(-w / SPLIT_MATERIALITY.scale));
+}
+
+/**
+ * Repeated purchases: s is the weighted value of the profile's groups over its direct-acquisition value
+ * (splitGroupWeight). An institution: the smooth curve times the weight of `wholeShare`, the same groups over
+ * everything it contracted (without it, the groups are taken as all its spending). A firm: 5% → 1, 20% → 2, 50% → 3,
+ * from half the first level, under its buyer-duty cap.
+ */
+export function strengthSplit(role: ProfileFlagRole, s: number, gate: number | boolean, firm: FirmDutyContext = NO_FIRM, wholeShare?: number): number {
+  if (role === 'authority') {
+    if (!(s > 0)) return 0;
+    return capped(3 * (1 - Math.exp(-s / SPLIT_TAU)) * splitMateriality(wholeShare ?? s), gate);
+  }
+  // rf-2026.21: from half the first level (2.5%), not a step at it.
+  let x = ramp(s, [[0.025, 0], [0.05, 1], [0.20, 2], [0.50, 3]]);
+  if (x > 0) x = firmDuty(x, firm);
   return capped(x, gate);
 }
 
