@@ -1,5 +1,5 @@
 .coverage-disclosure {
-  color: var(--ink-secondary);
+  color: var(--ink2);
   font: 400 13px/1.65 var(--font-body);
 }
 .coverage-disclosure > summary {

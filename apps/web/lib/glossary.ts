@@ -80,7 +80,7 @@ export const GLOSSARY = {
   },
   "atlas-navigare": {
     title: "Cum navighezi",
-    text: "Zona deschide subdomeniile, săgeata ↗ deschide detaliile. La ultimul nivel, și zona deschide detaliile.",
+    text: "Zona deschide subdomeniile; la ultimul nivel, deschide detaliile. Un domeniu ales are detaliile la „Detalii despre domeniu”.",
   },
   "rezultat-lot-ted": {
     title: "Rezultat de lot TED",
@@ -357,7 +357,7 @@ export const GLOSSARY = {
   },
   "ordinea-valorii": {
     title: "În ordinea valorii",
-    text: "Cei de pe listă au același procent de risc. Îi ordonăm după valoarea achizițiilor directe din profil: locul în listă nu spune cine ar fi mai riscant.",
+    text: "Cei de pe listă au același scor de risc. Îi ordonăm după valoarea achizițiilor directe din profil: locul în listă nu spune cine ar fi mai riscant.",
   },
   "diferenta-locul-doi": {
     title: "Diferența față de locul 2",

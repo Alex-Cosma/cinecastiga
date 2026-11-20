@@ -263,8 +263,6 @@
 .topic-panel>.topic-role{margin:14px 24px}
 .topic-panel>.topic-units{margin:14px 24px 4px!important}
 .topic-panel>.topic-error{margin:16px 24px}
-.topic-how{max-width:75ch;font-size:13px;color:var(--topic-muted);line-height:1.75}
-.topic-how>summary{cursor:pointer;font-weight:500;color:var(--ink);min-height:36px;display:flex;align-items:center}
 @media(max-width:900px){.topic-acquisition,.topic-document{grid-template-columns:minmax(0,1fr) 180px;gap:18px}.topic-best{align-items:flex-start;flex-direction:column;gap:14px}}
 @media(max-width:650px){
  .topic-tabbar{flex-direction:column;align-items:stretch;gap:6px;border-bottom:0;margin-bottom:22px}

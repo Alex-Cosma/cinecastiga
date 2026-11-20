@@ -14,6 +14,7 @@ import { FloatStatus } from "@/components/ghost/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import EntityName from "@/components/EntityName";
+import { countWords } from "@/lib/ask/answer-text";
 import { writeAddress } from "@/lib/address";
 import { entityHref } from "@/lib/entity-href";
 import HospitalLayer from "./HospitalLayer";
@@ -101,7 +102,7 @@ const FOLLOW_DELAY = 250;
 /** „UAT-ul” with a hyphen that does not break the line (UX audit Z4-23: „UAT-” / „uri” at a line's end). */
 const NB = (text: string) => text.replace(/-/g, "\u2011");
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
+const withDe = countWords;
 
 /** Brings a ranking row into view inside the list's own scroll (never the page's), clear of the bottom fade. */
 function followRow(list: HTMLElement | null, key: string, top = false) {
@@ -578,7 +579,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           under={kind !== "local_admin" ? undefined : { after: "local_admin", node: <label className="mx-check">
             <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
             <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
-            {counts && <small>+{int(counts.institutions)} {counts.institutions === 1 ? "instituție" : "instituții"}, {withDe(counts.companies, "companie", "companii")}</small>}
+            {counts && <small>+{withDe(counts.institutions, "instituție", "instituții")}, {withDe(counts.companies, "companie", "companii")}</small>}
           </label> }} />
       </Pick>
       <Pick label="Perioada" text={years === "all" ? "Toată perioada" : `${yearsWords(years, allYears)}${current ? " · în curs" : ""}`} title="Ce ani?">
@@ -645,9 +646,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && !dots && byKey.has(shown.key) && <span className="mx-card-go">Apasă: {shown.perCapita === null ? "vecinii lui" : `fișa ${NB("UAT-ului")}`} <Arrow /></span>}
             {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? (/^gr[aă]din/i.test(shown.name) ? "grădiniței" : "școlii") : "spitalului"} <Arrow /></span>}
           </div>}
-          {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
-          {/* The work sign along the bottom of the map while a county or the country loads (M-15). */}
-          <WorkLine busy={busy} />
+          {/* One sign of work (DESIGN M-15, audit 20 November 2026): before any map is drawn, the words in the empty
+              stage; once a map is there, the line along its bottom while a county or the country loads, the words
+              only for a screen reader. */}
+          {busy && <p className={geo ? "g-sr" : "mx-busy g-float"} role="status">Se încarcă…</p>}
+          <WorkLine busy={busy && !!geo} />
           {/* The smallest area and the most looked for, one touch away on phones (Z4-03). */}
           {!county && geo && <button type="button" className="mx-chip" onClick={() => openCounty("bucuresti")}>București ›</button>}
         </div>

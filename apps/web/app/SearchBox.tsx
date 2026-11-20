@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EntityHit } from "@/lib/search";
 import { LINKED_LABEL } from "@/lib/entity-successors";
+import { cleanName, countyLabel } from "@/lib/format";
 
 /**
  * Header typeahead. Debounced fetch to /api/search, dropdown of entity hits with
@@ -107,11 +108,11 @@ export default function SearchBox() {
                 go(h.id);
               }}
             >
-              <span className="sd-name">{h.name}</span>
+              <span className="sd-name">{cleanName(h.name)}</span>
               <span className="sd-meta">
                 {h.linked ? <span className="sd-linked">{LINKED_LABEL[h.linked]} · </span> : null}
                 {h.cui ? `CUI ${h.cui}` : ""}
-                {h.county ? ` · ${h.county}` : ""}
+                {h.county ? ` · ${countyLabel(h.county)}` : ""}
                 {h.registryName ? ` · în registru: ${h.registryName}` : ""}
               </span>
             </li>

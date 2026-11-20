@@ -4,6 +4,8 @@ import { countyName } from "../../lib/counties";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import EntityName from "../../components/EntityName";
+import Lei from "../../components/Lei";
+import { leiRounded } from "../../lib/lei";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
 import type { ConnectionEvidenceSelection } from "@/lib/connection-evidence-shared";
@@ -14,6 +16,8 @@ import { countWords } from "@/lib/ask/answer-text";
 import { flagLabel } from "@/lib/flags";
 import { RISK_CRITERIA, riskFact, riskScoreText, riskPoints } from "@/lib/risk-score";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
+import "@/components/how-note.css";
 import FollowButton from "@/components/FollowButton";
 import { useViewer } from "@/lib/use-viewer";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -86,7 +90,7 @@ function SourcesGhost({ listGroup, streams, toolsOpen }: { listGroup: boolean; s
       <p className="ev-summary-line"><G.Line inline w="44ch" /></p>
     </div>
     <div className="g-quiet" inert>
-      <details className="ev-calculation"><summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary></details>
+      <p className="how-note ev-how"><span className="how-ghost">Cum ajungem la acest rezultat</span></p>
       <div className={`ev-tools${toolsOpen ? " is-open" : ""}`}>
         <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen}>Caută / filtrează</button>
         <div className="ev-filters">
@@ -266,29 +270,29 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           : <span key={i}><span className={i === 1 ? "ev-summary-sep" : undefined}>{" · "}</span>{i === 1 ? <strong className="ev-money">{part}{result.profile ? " în profil" : ""}</strong> : <span>{part}</span>}</span>)}</p>
       </div>
       {result?.profile && <ProfileSourceNote reconciled={result.profileReconciled} profileCount={result.profileCount} />}
-      {result && <details className="ev-calculation">
-        <summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary>
-        <p>Numărul reprezintă rândurile incluse. Totalul însumează valorile înregistrate ale acelor rânduri, înainte de rotunjirea pentru afișare. Căutarea, starea și pagina din această listă nu schimbă întrebarea aplicată.</p>
-        <p className="ev-exact-total">Suma în precizia stocată: <strong>{formatEvidenceAmount(result.sourceValue, true)}</strong>. Afișarea principală este rotunjită la bani; CSV păstrează toate zecimalele, inclusiv cotele firmelor în asociere.</p>
-        {filtered && <p className="ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</p>}
-        {result.scopeNotes.map((note, i) => <p key={i}>{note}</p>)}
-        {result.profile && <div data-only="complet">
-          <p>Riscul adună punctele tiparelor din achizițiile directe, pe tot istoricul, de la 0 la 100. Nu este o probabilitate de corupție. <Link href="/metodologie">Vezi metodologia →</Link></p>
-          {result.profiles.map((p) => {
-            // A saved drawer never holds these: they are read live, so every profile has its score (rf-2026.18).
-            const points = riskPoints(p.parts, p.score);
-            const codes = RISK_CRITERIA[p.role].filter((code) => p.parts[code]);
-            return <div className="ev-formula-profile" key={`${p.role}:${p.entityId}`}>
-              <Link prefetch={false} href={`/entitati/${p.entityId}`}>{p.name}</Link>
-              <span>{riskScoreText(p.score)}{codes.length > 1 ? ` = ${codes.map((code) => points[code] ?? 0).join(" + ")}` : ""}</span>
-              {codes.length
-                ? codes.map((code) => <small key={code}>{flagLabel(code)} +{points[code] ?? 0}: {riskFact(code, p.parts[code]!, p.role)}</small>)
-                : <small>Niciun tipar găsit</small>}
-            </div>;
-          })}
-          {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
-        </div>}
-      </details>}
+      {/* How the result is reached floats over the drawer (owner, 20 November 2026; before: a fold that pushed the list down). */}
+      {result && <p className="how-note ev-how"><Term tip hold="line" title="Cum ajungem la acest rezultat" text={<>
+          <span className="how-n">Numărul reprezintă rândurile incluse. Totalul însumează valorile înregistrate ale acelor rânduri, înainte de rotunjirea pentru afișare. Căutarea, starea și pagina din această listă nu schimbă întrebarea aplicată.</span>
+          <span className="how-n ev-exact-total">Suma în precizia stocată: <strong>{formatEvidenceAmount(result.sourceValue, true)}</strong>. Afișarea principală este rotunjită la leu; CSV păstrează toate zecimalele, inclusiv cotele firmelor în asociere.</span>
+          {filtered && <span className="how-n ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</span>}
+          {result.scopeNotes.map((note, i) => <span className="how-n" key={i}>{note}</span>)}
+          {result.profile && <span className="ev-how-profiles" data-only="complet">
+            <span className="how-n">Riscul adună punctele tiparelor din achizițiile directe, pe tot istoricul, de la 0 la 100. Nu este o probabilitate de corupție. <Link href="/metodologie">Vezi metodologia →</Link></span>
+            {result.profiles.map((p) => {
+              // A saved drawer never holds these: they are read live, so every profile has its score (rf-2026.18).
+              const points = riskPoints(p.parts, p.score);
+              const codes = RISK_CRITERIA[p.role].filter((code) => p.parts[code]);
+              return <span className="ev-formula-profile" key={`${p.role}:${p.entityId}`}>
+                <Link prefetch={false} href={`/entitati/${p.entityId}`}>{p.name}</Link>
+                <span>{riskScoreText(p.score)}{codes.length > 1 ? ` = ${codes.map((code) => points[code] ?? 0).join(" + ")}` : ""}</span>
+                {codes.length
+                  ? codes.map((code) => <small key={code}>{flagLabel(code)} +{points[code] ?? 0}: {riskFact(code, p.parts[code]!, p.role)}</small>)
+                  : <small>Niciun tipar găsit</small>}
+              </span>;
+            })}
+            {result.profileCount > result.profiles.length && <span className="how-n">Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</span>}
+          </span>}
+        </>}>Cum ajungem la acest rezultat</Term></p>}
       <div className={`ev-tools${toolsOpen ? " is-open" : ""}`}>
       <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen} aria-controls="ev-filters ev-sort" onClick={() => setToolsOpen((open) => !open)}>Caută / filtrează</button>
       <div className="ev-filters" id="ev-filters">
@@ -300,11 +304,11 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         </select></label>
       </div>
       <div className={`ev-list-toolbar${filtered ? " is-filtered" : ""}`}>
-        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
+        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · <Lei value={result.value} /></> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
       </div>
       </div>
       </>}
-      {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
+      {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Reîncearcă</button></div>}
       {/* A new page, order or filter of the same list: the old rows stay, dimmed, until the new ones arrive. */}
       <div className={`ev-records${busy && result ? " g-stale" : ""}`} aria-busy={busy} inert={busy}>
         {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
@@ -318,8 +322,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
               <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{heading}</Link> : null}<span className="ev-muted ev-record-line">{r.daCode ?? `#${r.refId ?? "?"}`} · {r.src === "contracts" && !r.date ? "Dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span>{!cpvRepeatsTitle(r.refId ? heading : null, cpv) && <span>{r.cpvCode ? <span className="ev-hint" data-hint={`CPV ${r.cpvCode}`}>{cpv}</span> : cpv}</span>}</td>
               {/* Z3-03: the buyer one quiet line, „→” the firm under it; the county only when the question leaves it open. */}
               <td data-label="Instituție și furnizor"><div className="ev-party ev-party-buyer"><EntityName id={r.authorityId} role="authority">{r.authorityId ? r.authority ?? `Instituție #${r.authorityId}` : r.authority ?? "Instituție neprecizată"}</EntityName></div>{r.county && !sameCounty && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<div className="ev-party ev-party-supplier"><span className="ev-party-arrow" aria-hidden="true">→</span><EntityName id={r.supplierId} role="supplier">{r.supplierId ? r.supplier ?? `Furnizor #${r.supplierId}` : r.supplier ?? "Furnizor neprecizat"}</EntityName></div></td>
-              <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
-                <details className="ev-record-details" data-only="complet"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
+              <td data-label="Valoare"><strong className="ev-row-value"><Lei value={r.valueExact} /></strong>{r.valueSuspect && <span className="ev-warning">Valoare de verificat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
+                <details className="ev-record-details" data-only="complet"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd><Lei value={r.contractValueFull} /></dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd><Lei value={r.estimatedValueRon} /></dd></>}</dl></details>
               </td>
               <td data-label="Sursă">{note && <span className="ev-state">{note}</span>}{links.seap ? <a className="ev-seap" href={links.seap} target="_blank" rel="noopener noreferrer" aria-label={`Deschide ${r.daCode ?? r.refId} în SEAP`}>SEAP ↗</a> : <span className="ev-source-missing">Fără ID SEAP în import</span>}{links.ted && <a className="ev-ted" href={links.ted} target="_blank" rel="noopener noreferrer" aria-label="Același anunț în TED">TED ↗</a>}</td>
             </tr>;
@@ -331,7 +335,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
     <footer className="ev-footer" data-only={!viewer.userId && !onSave ? "complet" : undefined}><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" blocked={watchBlocked} />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")} data-only="complet">{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")} data-only="complet">{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
-      title, headline: `${records(result.sourceTotal)} · ${formatEvidenceAmount(result.sourceValue)}`,
+      title, headline: `${records(result.sourceTotal)} · ${leiRounded(result.sourceValue) ?? "—"}`,
       pills: [], evidenceScope: scope ?? null, evidenceOptions: peer?.selection.kind === "comparison" ? {} : { search, state, stream }, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
       dateFrom: result.dateFrom, dateTo: result.dateTo, profile: result.profile, scopeNotes: result.scopeNotes,
       capturedAt: new Date().toISOString(), snapshotKind: "query-scope-and-totals",

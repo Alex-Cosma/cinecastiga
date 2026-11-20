@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { coverageDate, type Coverage } from "./coverage";
 import { TED_COUNTRY_UNRESOLVED, countryName } from "./ted-labels";
+import { roCount } from "./ro-count";
 
 // The vocabulary is in ted-labels.ts, safe for the browser (the column filters' declarations use it).
 export * from "./ted-labels";
@@ -40,7 +41,7 @@ export function formatTedAmount(value: string | number | null, currency: string 
 }
 
 export function competitionLabel(count: number | null): string {
-  return count == null ? "Număr de oferte necunoscut" : count === 1 ? "1 ofertă primită" : `${count} oferte primite`;
+  return count == null ? "Număr de oferte necunoscut" : roCount(count, "1 ofertă primită", "oferte primite");
 }
 
 export function tedAmountHeadline(row: {

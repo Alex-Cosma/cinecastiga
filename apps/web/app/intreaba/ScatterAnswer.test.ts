@@ -112,8 +112,9 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("2.567 de înregistrări");
     // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
     expect(words).toContain("Vezi cele 4.827 de înregistrări →");
-    // The whole list on the page (owner, 19 November 2026): a funnel on each column (Complet's), never „Arată încă 10”.
-    expect(markup).toMatch(/<div class="sc-cols" role="group" aria-label="Filtre pe coloane" data-only="complet">/);
+    // The whole list on the page (owner, 19 November 2026): a funnel on each column, in both modes (owner, 20 November
+    // 2026, decision E), never „Arată încă 10”.
+    expect(markup).toMatch(/<div class="sc-cols" role="group" aria-label="Filtre pe coloane">/);
     for (const label of ["instituție", "județ", "tipare", "valoare", "risc", "achiziții directe"]) expect(markup).toContain(`aria-label="Filtrează după ${label}"`);
     expect(markup).not.toContain("Arată încă");
     expect(words).toContain("Toată lista pe /semnale");

@@ -8,7 +8,8 @@ import { countWords, formatDecimal } from "@/lib/ask/answer-text";
 import type { CompareData, CompareEntity, ComparePartner, PartialYear } from "@/lib/ask/compile";
 import { readableCpvName } from "@/lib/entity-summary";
 import { glossaryEntry } from "@/lib/glossary";
-import { FLAG_META, flagLabel } from "@/lib/flags";
+import { flagLabel } from "@/lib/flags";
+import { signalTagTip } from "@/lib/ask/signal-tips";
 import { riskLabel, riskScoreText } from "@/lib/risk-score";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -291,7 +292,11 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
       </p>
       {named > 0 && <p data-only="esential">{countWords(named, "semnal", "semnale")} · pistă, nu dovadă <Term tip title={SIGNALS_TIP.title} text={SIGNALS_TIP.text} /></p>}
       {e.flags.length > 0 && (
-        <div className="cmp-flags">{e.flags.map((flag) => <span key={flag} title={FLAG_META[flag]?.short}>{flagLabel(flag)}</span>)}</div>
+        <div className="cmp-flags">{e.flags.map((flag) => {
+          // Each tag explains itself on hover or a tap (owner, 15 November 2026), never by a native title.
+          const tip = signalTagTip(flag, e.role === "supplier" ? "supplier" : "authority");
+          return tip ? <Term tip hold="box" key={flag} className="cmp-flag" title={tip.title} text={tip.text}>{flagLabel(flag)}</Term> : <span key={flag} className="cmp-flag">{flagLabel(flag)}</span>;
+        })}</div>
       )}
     </div>
   );

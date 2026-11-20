@@ -24,7 +24,7 @@ const attr = (tag: string, name: string) => new RegExp(`\\s${name}="([^"]*)"`).e
 const actions: RowAction[] = [
   { id: "rec", label: "Vezi înregistrările", glyph: "→", onSelect: () => undefined },
   { id: "out", label: "Scoate din calcul", glyph: "−", disabled: "Cel mult 5 excluderi." },
-  { id: "page", label: "Fișa firmei", glyph: "↗", href: "/entitati/1" },
+  { id: "page", label: "Fișa firmei", glyph: "→", href: "/entitati/1" },
 ];
 
 describe("the strip beside the answer (14)", () => {
@@ -165,14 +165,14 @@ describe("the empty state (17)", () => {
 });
 
 describe("the card (19)", () => {
-  const props = { title: "Comuna Sageata", meta: "Primărie de comună · locul 20 din 82, după semnale", facts: [{ label: "Achiziții directe", value: "21,0 mil. lei" }], lines: [{ tag: { text: "posibilă fracționare", tone: "signal" as const }, text: "2018–2019", records: { label: recordsWords(9) } }], actions: [{ label: "Vezi cele 9 cu semnalul", glyph: "→" as const }, { label: "Unde se situează?", glyph: "›" as const }, { label: "Fișa instituției", glyph: "↗" as const, href: "/entitati/2" }], onClose: () => undefined };
+  const props = { title: "Comuna Sageata", meta: "Primărie de comună · locul 20 din 82, după semnale", facts: [{ label: "Achiziții directe", value: "21,0 mil. lei" }], lines: [{ tag: { text: "posibilă fracționare", tone: "signal" as const }, text: "2018–2019", records: { label: recordsWords(9) } }], actions: [{ label: "Vezi cele 9 cu semnalul", glyph: "→" as const }, { label: "Unde se situează?", glyph: "›" as const }, { label: "Fișa instituției", glyph: "→" as const, href: "/entitati/2" }], onClose: () => undefined };
   it("is a region named by its title, whose heading takes focus, closed from ×", () => {
     const markup = html(DetailCard, props);
     expect(markup.startsWith('<section class="qb-card" aria-label="Comuna Sageata">')).toBe(true); // a named section is a region
     expect(markup).toContain('<h4 tabindex="-1">Comuna Sageata</h4>');
     expect(markup).toContain('<button type="button" class="qb-close" aria-label="Închide fișa">×</button>');
     expect(text(markup)).toContain("posibilă fracționare 2018–2019 9 înregistrări →");
-    expect(markup).toMatch(/<a class="qb-secondary" href="\/entitati\/2">Fișa instituției<span class="qb-glyph" aria-hidden="true">↗<\/span><\/a>/);
+    expect(markup).toMatch(/<a class="qb-secondary" href="\/entitati\/2">Fișa instituției<span class="qb-glyph" aria-hidden="true">→<\/span><\/a>/);
     expect(markup).not.toMatch(/background:|qb-card--fill/); // a mint surface from CSS, never an inline or solid fill
   });
   it("returns focus only when it was inside the card or nowhere", () => {

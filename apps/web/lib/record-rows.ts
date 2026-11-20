@@ -11,7 +11,10 @@ export interface RecordRow {
   href: string;
   /** Null: the sum is not published. */
   value: number | null;
+  /** To the leu (Decision A, owner, 20 November 2026); `valueExact` gives the exact amount on hover or tap. */
   valueText: string;
+  /** The exact decimal amount, null when the sum is not published. */
+  valueExact?: string | null;
   seap: string | null;
   ted: string | null;
   /** The other patterns the same acquisition is in, named. */

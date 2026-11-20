@@ -125,7 +125,7 @@
 .sc-cells.is-flag .sc-cell.s4{fill:var(--orange)}
 .sc-bar{fill:var(--accent-line)}
 .sc-cells.is-flag .sc-bar{fill:var(--orange);opacity:.85}
-.sc-floor{stroke:var(--line-strong);stroke-width:1}
+.sc-floor{stroke:var(--line2);stroke-width:1}
 .sc-zone-word{font-size:12px;font-weight:600;fill:currentColor}
 .sc-rail{color:var(--ink2)}
 .sc-rail rect{fill:currentColor;opacity:.75}

@@ -13,7 +13,7 @@
 .contract-publication-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
 .contract-publication-current { color: var(--accent-ink); font-size: 13px; }
 .contract-publication-value { font-variant-numeric: tabular-nums; font-size: 15px; }
-.contract-publication-suppliers { font-size: 13px; color: var(--ink-secondary); }
+.contract-publication-suppliers { font-size: 13px; color: var(--ink2); }
 .contract-publication-previous { padding-top: 8px; border-top: 1px solid var(--line); }
 .contract-publications details > .note { max-width: none; }
 .contract-publications summary { min-height: 40px; }

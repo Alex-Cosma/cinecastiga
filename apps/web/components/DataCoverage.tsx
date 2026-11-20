@@ -4,6 +4,7 @@ import Term from "./Term";
 import CollectionHistory from "./CollectionHistory";
 import { coverageDate, getCoverage, type Dataset } from "@/lib/coverage";
 import { formatExactDecimal, formatInt, formatRon } from "@/lib/format";
+import { takesDe } from "@/lib/ro-count";
 import {getProcessingFreshness} from '@/lib/processing-freshness';
 
 const LABELS: Record<Dataset, string> = { da: "Achiziții directe", contracts: "Contracte prin proceduri", ted: "Publicații TED" };
@@ -49,7 +50,7 @@ export async function CoverageSummary() {
         : "inventarul nu a fost încă recalculat"}</dd></div>
       {freshness?.riskAt && <div><dt>Semnale la</dt><dd>{coverageDate(freshness.riskAt)}</dd></div>}
     </>}
-    more={excluded && Number(excluded)>0 ? <li><Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri →</Link></li> : null}
+    more={excluded && Number(excluded)>0 ? <li><Link href="/metodologie/excluderi">{Number(excluded) === 1 ? "Un grup exclus" : `${n(excluded)} ${takesDe(Number(excluded)) ? "de " : ""}grupuri excluse`} temporar din totaluri →</Link></li> : null}
   />;
 }
 

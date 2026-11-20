@@ -48,7 +48,7 @@ describe("the answer's targets and contrast", () => {
   it("gives the records list 44 px under 600 px and its small text 4.5:1", () => {
     const drawer = css("./evidence-drawer.css");
     const rules = phoneRules(drawer, ".ev-party-arrow{color:var(--muted)}");
-    for (const rule of [".ev-close{min-width:44px;min-height:44px}", ".ev-calculation>summary,.ev-record-details>summary{min-height:44px", ".ev-pagination button", ".ev-contract-title,.ev-seap,.ev-ted{display:flex;align-items:center;min-height:44px}"])
+    for (const rule of [".ev-close{min-width:44px;min-height:44px}", ".ev-how>.term>.term-trigger,.ev-record-details>summary{min-height:44px", ".ev-pagination button", ".ev-contract-title,.ev-seap,.ev-ted{display:flex;align-items:center;min-height:44px}"])
       expect(rules, rule).toContain(rule);
     // --muted on the summary's green is 4.0:1, --amber on its warm fill 3.7:1.
     expect(drawer).toContain(".ev-source-summary span,.ev-source-summary p{color:var(--ink2)}");

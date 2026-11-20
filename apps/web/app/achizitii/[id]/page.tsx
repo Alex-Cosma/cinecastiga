@@ -12,6 +12,8 @@ import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shar
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
+import { leiRounded } from "@/lib/lei";
 import InfoMark from "@/components/InfoMark";
 import RecordTitle from "@/components/record/RecordTitle";
 import ItemsMore from "@/components/record/ItemsMore";
@@ -73,7 +75,9 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const state = daState(d.state);
   // Only a refused or unaccepted offer is "not a purchase"; a state the source does not give stays a purchase in doubt.
   const purchase = state.kind !== "refused" && state.kind !== "unaccepted";
-  const amount = (value: string | null) => value == null ? "Valoare neprecizată" : `${formatExactDecimal(value)} lei`;
+  // To the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026); the products table below keeps
+  // its prices and line totals exact, so quantity × price = total still adds up.
+  const amount = (value: string | null) => value == null ? "Valoare neprecizată" : <Lei value={value} />;
   const authority = d.authorityId ? <EntityName id={d.authorityId} role="authority">{cleanName(d.authority)}</EntityName> : <span>{d.authority ?? "Instituție neprecizată"}</span>;
   const supplier = d.supplierId ? <EntityName id={d.supplierId} role="supplier">{cleanName(d.supplier)}</EntityName> : <span>{d.supplier ?? "furnizor neprecizat"}</span>;
   const sameParty = x.supplierIsAuthority || (!!d.supplierId && d.supplierId === d.authorityId);
@@ -86,7 +90,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const outWhy = closing != null && closing > 2_000_000 ? "Peste 2 milioane lei, limita de plauzibilitate a site-ului." : closing != null && closing <= 0 ? "Valoare zero." : null;
   const notes = [
     !purchase || x.counted || sameParty ? null : outWhy ? <>Nu intră în totaluri <InfoMark title="Motivul" text={outWhy} /></> : "Nu intră în totaluri.",
-    x.valueSuspect === true && purchase && "Valoare neplauzibilă față de estimare: o verificăm separat.",
+    x.valueSuspect === true && purchase && "Valoare de verificat: diferă mult de estimare.",
     // The method page is Complet only (owner, 18 November 2026): its link goes, the note stays.
     sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
   ];
@@ -96,7 +100,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
     h && d.authorityId && d.supplierId && (h.nDa > 0 || h.nCt > 0) && <a href={pairHref({ id: d.authorityId, name: cleanName(d.authority) }, { id: d.supplierId, name: cleanName(d.supplier) })}>
       {(h.nDa > 0 ? h.nDa : h.nCt) === 1 ? "Încă" : "Alte"} {[h.nDa > 0 && (h.nDa === 1 ? "o achiziție directă" : countWords(h.nDa, "achiziție directă", "achiziții directe")), h.nCt > 0 && (h.nCt === 1 ? "un contract" : countWords(h.nCt, "contract", "contracte"))].filter(Boolean).join(" și ")} cu instituția · {formatRon(h.totalRon)}</a>,
     ...pairLines(x.pair),
-    s && <span className="warn">În aceeași fereastră de 60 de zile{s.cpvName ? `, ${s.cpvName.toLowerCase()}` : ", aceeași categorie"}: {countWords(s.n, "achiziție", "achiziții")} · {formatExactDecimal(s.sumRon)} lei{s.ceilingRon ? ` față de plafonul de ${formatExactDecimal(s.ceilingRon)} lei` : ""}{s.from && s.to ? ` (${formatCalendarDate(s.from)} – ${formatCalendarDate(s.to)})` : ""}</span>,
+    s && <span className="warn">În aceeași fereastră de 60 de zile{s.cpvName ? `, ${s.cpvName.toLowerCase()}` : ", aceeași categorie"}: {countWords(s.n, "achiziție", "achiziții")} · <Lei value={s.sumRon} />{s.ceilingRon ? ` față de plafonul de ${leiRounded(s.ceilingRon)}` : ""}{s.from && s.to ? ` (${formatCalendarDate(s.from)} – ${formatCalendarDate(s.to)})` : ""}</span>,
   ];
   const parties: Party[] = [
     { key: "s", role: purchase ? "Furnizorul" : "Ofertantul", name: supplier, lines: supplierLines },

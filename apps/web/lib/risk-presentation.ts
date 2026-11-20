@@ -171,11 +171,13 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     return Number.isFinite(value) ? value : null;
   };
   const s = (key: string) => evidence[key] == null ? "neprecizat" : String(evidence[key]);
+  /** A counted noun from the evidence, „de” from 20 (owner rule, 25 October 2026). */
+  const c = (key: string, one: string, many: string) => n(key) === null ? `${s(key)} ${many}` : countWords(n(key)!, one, many);
   const money = (key: string) => n(key) === null ? "valoare necunoscută" : formatRon(n(key));
   const pct = (key: string) => n(key) === null ? "pondere necunoscută" : `${Math.round(n(key)! * 100)}%`;
   switch (code) {
     case "da_split":
-      return `${s("count")} achiziții în ${s("year")}${evidence.cpv_class ? ` · CPV ${s("cpv_class")}` : ""}, plafon de referință ${money("ceiling")}.`;
+      return `${c("count", "achiziție", "achiziții")} în ${s("year")}${evidence.cpv_class ? ` · CPV ${s("cpv_class")}` : ""}, plafon de referință ${money("ceiling")}.`;
     case "da_year_end":
       return `${s("year")}: ${pct("december_pct")} din valoarea achizițiilor directe finalizate în acel an revine lunii decembrie (${money("december")} din ${money("total")}).`;
     // Both compare one acquisition's closing value with its own ceiling (rf-2026.18: closing, ceiling, type).
@@ -184,19 +186,19 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return nearThresholdEvidence(evidence);
     case "da_concentration":
       // rf-2026.20: the rule reads the share without the supplier's largest DA (adjusted_pct).
-      return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe${n("adjusted_pct") === null ? "" : `, ${pct("adjusted_pct")} fără cea mai mare achiziție a lui`} (${money("total")} în total, ${s("suppliers")} furnizori, HHI ${s("hhi")}).`;
+      return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe${n("adjusted_pct") === null ? "" : `, ${pct("adjusted_pct")} fără cea mai mare achiziție a lui`} (${money("total")} în total, ${c("suppliers", "furnizor", "furnizori")}, HHI ${s("hhi")}).`;
     case "da_dependence":
       // Audit F30: a supplier with one public client meets the share criterion
       // by construction; the owner kept the rule and asked for it to be said.
       return n("authorities") === 1
         ? `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (o singură autoritate în date). Cu un singur client public, semnalul apare automat: dependența de acest client este pista de verificat, nu o dovadă de neregulă.`
-        : `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${s("authorities")} autorități în date).`;
+        : `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${c("authorities", "autoritate", "autorități")} în date).`;
     case "da_capacity": {
       // rf-2026.20: a year's DA sales against the firm's turnover (balance sheet of that year or up to two before).
       const sheet = n("turnover_year") !== null && n("turnover_year") !== n("year") ? ` (bilanț ${s("turnover_year")})` : "";
       const staff = evidence.zero_staff === true ? " · 0 angajați" : "";
       const ratio = n("ratio") === null ? "" : ` · ${(Math.round(n("ratio")! * 10) / 10).toFixed(1).replace(".", ",")}× cifra de afaceri`;
-      return `${s("year")}: ${money("da_value")} în ${s("da_count")} achiziții directe · ${n("turnover") === null ? "cifră de afaceri necunoscută" : `cifră de afaceri ${money("turnover")}`}${sheet}${ratio}${staff}${evidence.young === true ? " · firmă nouă" : ""}.`;
+      return `${s("year")}: ${money("da_value")} în ${c("da_count", "achiziție directă", "achiziții directe")} · ${n("turnover") === null ? "cifră de afaceri necunoscută" : `cifră de afaceri ${money("turnover")}`}${sheet}${ratio}${staff}${evidence.young === true ? " · firmă nouă" : ""}.`;
     }
     case "da_first_month":
     case "da_first_month_buyer":
@@ -205,21 +207,21 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return `${s("procedure")} · ${awardValueLabel(evidence)}: ${money("value")} · CPV ${s("cpv")}.${noticeContractsNote(evidence)}`;
     case "award_single_bid":
       return evidence.confirmed_contract_count
-        ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${s("confirmed_contract_count")} contracte asociate unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}${noticeContractsNote(evidence)}`
+        ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${c("confirmed_contract_count", "contract asociat", "contracte asociate")} unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}${noticeContractsNote(evidence)}`
         : "Lista contractelor cu o singură ofertă raportată nu este disponibilă în această versiune a semnalului.";
     case "award_calloffs_over_ceiling":
       return calloffsOverCeilingLine(evidence);
     case "award_concentration":
-      return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${s("winners")} furnizori în date, HHI ${s("hhi")}).`;
+      return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${c("winners", "furnizor", "furnizori")} în date, HHI ${s("hhi")}).`;
     case "award_dependence":
-      return `Autoritatea principală: ${pct("top_authority_pct")} din valoarea contractelor furnizorului (${s("authorities")} autorități în date).`;
+      return `Autoritatea principală: ${pct("top_authority_pct")} din valoarea contractelor furnizorului (${c("authorities", "autoritate", "autorități")} în date).`;
     case "fin_tiny_staff":
-      return `${s("year")}: ${s("employees")} salariați în medie · ${money("total")} în achiziții înregistrate.`;
+      return `${s("year")}: ${c("employees", "salariat", "salariați")} în medie · ${money("total")} în achiziții înregistrate.`;
     case "fin_public_reliance":
-      return `Raport valori contractate / cifră de afaceri: ${pct("ratio")} (${money("public_total")} / ${money("revenue_total")}, ${s("years")} ani cu bilanț). Nu reprezintă ponderea încasărilor de la stat.`;
+      return `Raport valori contractate / cifră de afaceri: ${pct("ratio")} (${money("public_total")} / ${money("revenue_total")}, ${c("years", "an", "ani")} cu bilanț). Nu reprezintă ponderea încasărilor de la stat.`;
     case "net_shared_admin":
       // A name that ends in a full stop („… S.A.”) ends the sentence (UX audit bug: „S.A..”).
-      return `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme cu ${money("combined")} în achiziții înregistrate la ${s("authority").replace(/\s+$/, "").replace(/\.+$/, "")}.${onrcRoleNote(evidence)}`;
+      return `${s("person")} apare ca reprezentant legal pentru ${c("n_firms", "firmă", "firme")} cu ${money("combined")} în achiziții înregistrate la ${s("authority").replace(/\s+$/, "").replace(/\.+$/, "")}.${onrcRoleNote(evidence)}`;
     default:
       return null;
   }
@@ -244,6 +246,8 @@ export function riskListLine(code: string, evidence: Record<string, unknown> | n
     return Number.isFinite(value) ? value : null;
   };
   const s = (key: string) => evidence[key] == null ? "neprecizat" : String(evidence[key]);
+  /** A counted noun from the evidence, „de” from 20 (owner rule, 25 October 2026). */
+  const c = (key: string, one: string, many: string) => n(key) === null ? `${s(key)} ${many}` : countWords(n(key)!, one, many);
   const money = (key: string) => n(key) === null ? "valoare necunoscută" : formatRon(n(key));
   // What the notice publishes, when it is not the usual contracts or the framework ceiling the value's label already names.
   const kind = evidence.notice_contracts === "contract" || (noticeIsFrameworkOnly(evidence) && awardValueLabel(evidence) === "plafon acord-cadru")
@@ -254,7 +258,7 @@ export function riskListLine(code: string, evidence: Record<string, unknown> | n
     case "award_single_bid": {
       if (!evidence.confirmed_contract_count) break;
       const value = singleBidValueParts(evidence);
-      const count = n("confirmed_contract_count") === 1 ? "1 contract" : `${s("confirmed_contract_count")} contracte`;
+      const count = n("confirmed_contract_count") === 1 ? "1 contract" : `${c("confirmed_contract_count", "contract", "contracte")}`;
       return {
         text: [`${count}.`, value.scope, value.unknown].filter(Boolean).join(" ") + kind,
         mark: value.above ? { words: null, title: "Contractele citate", text: value.above } : null,
@@ -270,11 +274,11 @@ export function riskListLine(code: string, evidence: Record<string, unknown> | n
         : { text, mark: { words: null, beside: "note", title: "Depășire sau eroare", text: calloffsRepeatWords(repeats) } };
     }
     case "fin_tiny_staff":
-      return { text: `${s("employees")} salariați în medie.`, mark: null };
+      return { text: `${c("employees", "salariat", "salariați")} în medie.`, mark: null };
     case "fin_public_reliance":
-      return { text: `Raport valori contractate / cifră de afaceri: ${n("ratio") === null ? "pondere necunoscută" : `${Math.round(n("ratio")! * 100)}%`} (${money("public_total")} / ${money("revenue_total")}, ${s("years")} ani cu bilanț).`, mark: null };
+      return { text: `Raport valori contractate / cifră de afaceri: ${n("ratio") === null ? "pondere necunoscută" : `${Math.round(n("ratio")! * 100)}%`} (${money("public_total")} / ${money("revenue_total")}, ${c("years", "an", "ani")} cu bilanț).`, mark: null };
     case "net_shared_admin":
-      return { text: `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme.${onrcRoleNote(evidence)}`, mark: null };
+      return { text: `${s("person")} apare ca reprezentant legal pentru ${c("n_firms", "firmă", "firme")}.${onrcRoleNote(evidence)}`, mark: null };
   }
   return { text: riskEvidenceLine(code, evidence), mark: null };
 }

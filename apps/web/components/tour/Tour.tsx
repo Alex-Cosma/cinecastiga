@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { countyMap } from "@/lib/map";
 import { formatInt, formatRon } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
+import { takesDe } from "@/lib/ro-count";
+import { flagLabel } from "@/lib/flags";
+import { RISK_BAND_WORD } from "@/lib/risk-score";
 import {
   TOUR_DOTS, TOUR_LAST_STEP, TOUR_SEARCH_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, TOUR_WIDE_QUERY, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent,
   tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden, type TourData,
@@ -208,8 +212,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
           </>}
           {step === 4 && <>
             <h1>Un semnal e o pistă, nu o dovadă.</h1>
-            <p>Căutăm automat tipare care merită o a doua privire: aceeași firmă câștigă mereu, achiziții chiar sub plafon, un singur ofertant.</p>
-            <p>Un semnal spune <em>„uită-te aici”</em>. Nu spune că cineva a greșit. Scorul de risc, de la 0 la 100, arată câte tipare apar la o instituție sau firmă.</p>
+            <p>Căutăm automat tipare care merită o a doua privire, ca „{flagLabel("da_concentration")}” sau „{flagLabel("da_round")}”.</p>
+            <p>Un semnal spune <em>„uită-te aici”</em>. Nu spune că cineva a greșit. Scorul de risc, de la 0 la 100, arată cât de pronunțate sunt tiparele unei instituții sau firme.</p>
           </>}
           {step === 5 && <>
             <h1>Caută cu cuvintele tale.</h1>
@@ -267,8 +271,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
 
         <div className="tr-fig" key={`${step}-${county}-${topicKey}`}>
           {step === 1 && reading && <>
-            <p className="tr-stat">În {year}, în {place}, la {topic!.inText}: <span className="tr-nw"><b><Count value={reading.count} /></b> achiziții,</span> <span className="tr-nw">publicate de <b><Count value={reading.authorities} /></b> instituții.</span></p>
-            <p className="tr-cap">Un punct înseamnă cam {formatInt(perDot)} {perDot === 1 ? "achiziție" : "achiziții"}.</p>
+            <p className="tr-stat">În {year}, în {place}, la {topic!.inText}: <span className="tr-nw"><b><Count value={reading.count} /></b> {reading.count === 1 ? "achiziție" : `${takesDe(reading.count) ? "de " : ""}achiziții`},</span> <span className="tr-nw">publicate de <b><Count value={reading.authorities} /></b> {reading.authorities === 1 ? "instituție" : `${takesDe(reading.authorities) ? "de " : ""}instituții`}.</span></p>
+            <p className="tr-cap">Un punct înseamnă cam {countWords(perDot, "achiziție", "achiziții")}.</p>
           </>}
           {step === 2 && guessing && <div className="tr-guess">
             <label htmlFor="tr-guess-range">Din 100 de achiziții de aici, câte crezi că sunt directe, fără licitație?</label>
@@ -292,7 +296,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
           </div>}
           {step === 4 && <>
             <p className="tr-cap">Câteva puncte ies în evidență. {touch ? "Atinge un punct portocaliu" : "Treci cu mouse-ul peste un punct portocaliu"} ca să vezi un exemplu de semnal.</p>
-            <div className="tr-score" role="img" aria-label="Exemplu: scor de risc 73 din 100"><span className="tr-score-mark">73 din 100</span><div className="tr-score-track" /><div className="tr-score-ends"><span>0 · niciun tipar</span><span>100 · multe tipare</span></div></div>
+            <div className="tr-score" role="img" aria-label="Exemplu: scor de risc 73 din 100"><span className="tr-score-mark">73 din 100</span><div className="tr-score-track" /><div className="tr-score-ends"><span>0 · {RISK_BAND_WORD.none}</span><span>100 · tipare pronunțate</span></div></div>
           </>}
           {step === 5 && chosen && <div className="tr-search">
             <div className="tr-search-box"><SearchIcon /><Typed text={query} /></div>

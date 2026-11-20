@@ -141,7 +141,7 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
     {tip && <span className={`pr-tip pr-lead-tip${side(axisPos(tip.ratio))}`} style={{ left: `${axisPos(tip.ratio)}%` }} role="tooltip">
       <b>{tip.name}</b><small>{[tip.county, tip.year].filter(Boolean).join(" · ")}</small>
       <span className="pr-tip-row"><strong>{formatUnitPrice(tip.price)} {per}</strong> · {ratioWords(tip.ratio)}{tip.median != null && ` (${formatUnitPrice(tip.median)} în ${tip.year})`}</span>
-      <span className="pr-tip-row">{tip.quantity != null && `${formatQuantity(tip.quantity, per)} · `}{tip.awards != null && `${tip.awards === 1 ? "o achiziție" : `${tip.awards} achiziții`} · `}{formatLei(tip.excess)} peste mediană</span>
+      <span className="pr-tip-row">{tip.quantity != null && `${formatQuantity(tip.quantity, per)} · `}{tip.awards != null && `${countWord(tip.awards, "o achiziție", "achiziții")} · `}{formatLei(tip.excess)} peste mediană</span>
       <small className="pr-tip-hint">Pistă, nu dovadă · deschide liniile</small>
     </span>}
   </div>;

@@ -26,7 +26,7 @@ import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import DiscoverNav from "@/components/discover/DiscoverNav";
 import DiscoverPager from "@/components/discover/DiscoverPager";
-import { signalLei } from "@/lib/signal-money";
+import Lei from "@/components/Lei";
 import CompletOnly from "@/components/mode/CompletOnly";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
@@ -225,7 +225,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
       {/* The picture goes in Esențial, its number (sg-x) stays (owner, 18 November 2026); the zone CSS closes the grid. */}
       <div className="sg-meter-col" data-only="complet">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
-      <div className="sg-amount"><strong>{signalLei(fi.totalExact ?? (fi.flagCode === "da_capacity" ? fi.evidence?.da_value as string | number | null | undefined : null)) ?? "Necunoscută"}</strong>{line.mark && !line.mark.words && line.mark.beside !== "note" && warning}
+      <div className="sg-amount"><strong><Lei value={fi.totalExact ?? (fi.flagCode === "da_capacity" ? fi.evidence?.da_value as string | number | null | undefined : null)} empty="Necunoscută" /></strong>{line.mark && !line.mark.words && line.mark.beside !== "note" && warning}
         {/* The usual kind, the notice's value, is said by the count's "?"; only the other kinds stay under the sum. */}
         {fi.subjectType === "award" && awardValueLabel(fi.evidence) !== "valoarea anunțului" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
       <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}${meter?.under ? " under" : ""}`}>{meter?.value ?? ""}</div>
@@ -233,7 +233,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     </article>;
   }
   const distTotal = distribution.reduce((n, d) => n + d.n, 0), distNone = distribution.find(d => d.bin === 0)?.n ?? 0;
-  // The risk score's tenths with patterns (1–9, 10–19 … 90–100; 0 is "fără niciun tipar"); a bar selects its band.
+  // The risk score's tenths with patterns (1–9, 10–19 … 90–100; 0 is "fără semnal în scor": no pattern, or patterns under 10 points); a bar selects its band.
   // The scores with patterns start at 10, so there is no 1–9 column (UX audit Z6-19); an empty column cannot be pressed.
   const bins = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(bin => ({ bin, n: distribution.find(d => d.bin === bin)?.n ?? 0 }));
   const distMax = Math.max(1, ...bins.map(b => b.n));
@@ -264,7 +264,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>
       {reshaping ? <ResultsGhost state={requested}/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
-        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "instituții" : "firme"} cu tipare</h3><p>{formatInt(distNone)} fără niciun <span className="sg-keep">tipar <InfoMark title="Ce se numără" text={`Din ${countWords(distTotal, "profil", "profiluri")} cu cel puțin 10 achiziții directe.`} /></span></p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} disabled={n === 0 && !binOn(bin)} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls">{/* Nothing chosen: the unpressed histogram says it (owner, 17 November 2026: no „Toate valorile riscului”). */}
+        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{active.role === "authority" ? countWords(distTotal - distNone, "instituție", "instituții") : countWords(distTotal - distNone, "firmă", "firme")} cu tipare</h3><p>{formatInt(distNone)} fără semnal în <span className="sg-keep">scor <InfoMark title="Ce se numără" text={`Din ${countWords(distTotal, "profil", "profiluri")} cu cel puțin 10 achiziții directe. Fără semnal în scor: niciun tipar, sau tipare care adună sub 10 puncte.`} /></span></p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} disabled={n === 0 && !binOn(bin)} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${countWords(n, "profil", "profiluri")}`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls">{/* Nothing chosen: the unpressed histogram says it (owner, 17 November 2026: no „Toate valorile riscului”). */}
           <span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : null}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span>{/* On a phone the cards have no head: one select, the direction in its words (UX audit Z6-20). */}
           <label className="sg-sort-phone">Ordonează <select value={`${active.sort}:${active.dir}`} onChange={e => { const [sort, dir] = e.target.value.split(":") as [RiskGroupSort, "asc" | "desc"]; navigate({ sort, dir }); }}>
             {sortOptions(active.sort, active.dir).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></>}
@@ -292,7 +292,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
             return <article className="sg-result sg-rank-row" key={r.entityId} style={{ "--i": row } as CSSProperties}>
               <div className="sg-entity"><div className="sg-entity-name"><EntityName id={r.entityId} role={active.role}>{cleanName(r.name)}</EntityName>
                 {/* Listed when asked for: an inactive profile says so, its last month, the rest on hover or a tap (historicFact). */}
-                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip hold="box" className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {formatInt(r.nDas)} achiziții directe · {formatRon(r.totalRon)}</p></div>
+                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip hold="box" className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {countWords(r.nDas, "achiziție directă", "achiziții directe")} · {formatRon(r.totalRon)}</p></div>
               <div className="sg-comp-col">{parts.length ? <>
                 {/* The composition is revealed as one bar, with a clip (never scaled: its numbers stay their size). */}
                 <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}><span>{formatInt(points[c] ?? 0)}</span></i>)}</div>

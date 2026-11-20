@@ -146,7 +146,7 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
         </button>}
       </div>
       <TotalLine conditions={conditions}>
-        {`${list === "all" ? "" : `${NETWORK_LIST_LABELS[list]} · `}`}<span className="qb-num">{formatRonFull(own.value)}</span> · {formatInt(own.count)} {own.count === 1 ? "înregistrare" : "înregistrări"}
+        {`${list === "all" ? "" : `${NETWORK_LIST_LABELS[list]} · `}`}<span className="qb-num">{formatRonFull(own.value)}</span> · {countWords(own.count, "înregistrare", "înregistrări")}
       </TotalLine>
     </>}
   </div>;

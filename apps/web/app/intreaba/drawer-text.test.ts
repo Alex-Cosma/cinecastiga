@@ -22,10 +22,10 @@ describe("the records drawer's phone header", () => {
   });
 
   it("says the card's figures on one line, the year once when both dates fall in it", () => {
-    expect(summaryParts(28, "235150.00", "2024-01-05", "2024-12-30").join(" · ")).toBe("28 de înregistrări · 235.150,00 lei · 05.01–30.12.2024");
-    expect(summaryParts(403915, "2526100822.6700", "2018-04-02", "2026-09-25").join(" · ")).toBe("403.915 înregistrări · 2.526.100.822,67 lei · 02.04.2018–25.09.2026");
-    expect(summaryParts(1, "12585482.55", "2025-03-19", "2025-03-19").join(" · ")).toBe("1 înregistrare · 12.585.482,55 lei · 19.03.2025");
-    expect(summaryParts(0, "0", null, null)).toEqual(["0 înregistrări", "0,00 lei"]);
+    expect(summaryParts(28, "235150.00", "2024-01-05", "2024-12-30").join(" · ")).toBe("28 de înregistrări · 235.150 lei · 05.01–30.12.2024");
+    expect(summaryParts(403915, "2526100822.6700", "2018-04-02", "2026-09-25").join(" · ")).toBe("403.915 înregistrări · 2.526.100.823 lei · 02.04.2018–25.09.2026");
+    expect(summaryParts(1, "12585482.55", "2025-03-19", "2025-03-19").join(" · ")).toBe("1 înregistrare · 12.585.483 lei · 19.03.2025");
+    expect(summaryParts(0, "0", null, null)).toEqual(["0 înregistrări", "0 lei"]);
     expect(dateSpan("2024-01-05", null)).toBe("05.01.2024–Dată neprecizată");
   });
 });

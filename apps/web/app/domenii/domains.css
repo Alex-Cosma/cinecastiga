@@ -107,8 +107,9 @@
 .dm-leaf-note{padding:4px 0 8px}
 .dm-next-step{margin:38px 0 0}
 .dm-next-step>a{font-size:12px;font-weight:500;display:inline-flex;gap:14px;align-items:center;color:var(--ink)}.dm-next-step>a:hover{text-decoration:underline}.dm-next-step>a svg{color:var(--orange)}
-.dm-method{margin-top:28px;color:var(--muted);font-size:12px;line-height:1.85;border-top:1px solid var(--line);padding-top:16px}
-.dm-method summary{cursor:pointer;color:var(--ink);font-size:12px}.dm-method p{margin:12px 0;max-width:1000px}.dm-method a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+/* The method note: dotted words whose box floats (components/HowNote.tsx, owner 20 November 2026); „Despre date” by the map opens the same box. */
+.dm-caption .dm-about>.term-trigger{font-size:12px;color:var(--muted);text-decoration:none;cursor:help}
+.dm-caption .dm-about>.term-trigger:hover,.dm-caption .dm-about.term-shown>.term-trigger{color:var(--ink2)}
 @media(min-width:1500px){.domains-page{--domain-atlas-height:530px}.dm-hero{padding-top:52px;padding-bottom:40px}.dm-atlas-list{max-height:422px}}
 @media(max-width:1050px){.dm-hero{grid-template-columns:1fr 240px;gap:30px}.domains-page h1{font-size:48px}.dm-atlas-layout{grid-template-columns:minmax(0,1fr) 205px}.dm-detail-hero{grid-template-columns:1fr}.dm-detail-actions{margin-top:-10px}.dm-question-strip{grid-template-columns:repeat(3,1fr)}.dm-question-strip>p{grid-column:1/-1}.dm-question-strip>p strong{display:inline;margin-right:5px}.dm-hero-context{padding-left:20px}.dm-national-value{font-size:30px}}
 @media(max-width:760px){

@@ -5,6 +5,7 @@ import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import FunnelGhost from "@/components/table-filters/FunnelGhost";
 import { TED_LABEL } from "@/lib/ted-labels";
+import "@/components/discover/discover-pager.css";
 import "./supra-prag.css";
 
 /* Decorative widths of the country chips (in characters), close to the real names and counts; not data. */
@@ -76,11 +77,25 @@ export default function SupraPragLoading() {
           </tbody>
         </table>
         </div>
-        <div className="pager" inert>
-          <span className="off">← anterioarele</span><span className="pager-pos"><G.Line inline w="20ch" /></span><a>următoarele →</a>
+        {/* The page's pager (DiscoverPager, UX audit Z6-14) in its real classes: the count a line, the arrows and the first
+            pages real; the numbers come with the page. */}
+        <div className="dsc-pg dsc-pg-bottom tp-pager" inert aria-hidden="true">
+          <p className="dsc-pg-count"><G.Line inline w="22ch" /></p>
+          <nav className="dsc-pg-pages">
+            <span className="dsc-pg-b dsc-pg-off"><GhostArrow back /></span>
+            <span className="dsc-pg-slot"><span className="dsc-pg-b on">1</span></span>
+            <span className="dsc-pg-slot"><span className="dsc-pg-b">2</span></span>
+            <span className="dsc-pg-slot"><span className="dsc-pg-gap" aria-hidden="true">…</span><span className="dsc-pg-b"><G.Line inline w="3ch" /></span></span>
+            <span className="dsc-pg-b"><GhostArrow /></span>
+          </nav>
         </div>
       </section>
       </CompletOnly>
     </Ghost>
   );
+}
+
+/** DiscoverPager's arrow, drawn the same in the ghost. */
+function GhostArrow({ back = false }: { back?: boolean }) {
+  return <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d={back ? "m14 5-7 7 7 7" : "m10 5 7 7-7 7"} fill="none" stroke="currentColor" strokeWidth="1.7" /></svg>;
 }

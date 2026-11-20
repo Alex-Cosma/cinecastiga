@@ -23,9 +23,13 @@ import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey 
 import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
+import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import Pager from "./Pager";
+
+/** The single-bid tag's explanation: „O singură ofertă” is the site's one name for it (audit of 20 November 2026). */
+const SINGLE_BID_TIP = "Sursa raportează o singură ofertă pentru acest contract. Merită văzut cine a putut participa; piețele de nișă pot avea legitim o singură ofertă.";
 
 /**
  * The entity page's records table, to the drill-table standard: 10 rows a page, sortable dates and values, a SEAP
@@ -211,7 +215,7 @@ export default function TxTable({
         <div className="tx-tools">
           {/* The export is Complet's; Întreabă stays in both modes (owner, 18 November 2026). */}
           <a href={`/api/entity-tx/csv?${filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, sort, dir })).toString()}`} download data-only="complet">Descarcă CSV</a>
-          {askHref && <a href={askHref}>Deschide în Întreabă <span aria-hidden="true">↗</span></a>}
+          {askHref && <a href={askHref}>Deschide în Întreabă <span aria-hidden="true">→</span></a>}
         </div>
       </div>
       <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
@@ -274,12 +278,10 @@ export default function TxTable({
               <tr key={txRowKey(t, i)}>
                 <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 <td className="c-src">
-                  <span
-                    className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
-                    title={t.src === "contract" ? "contract atribuit prin procedură" : "achiziție directă"}
-                  >
+                  {/* Every mark of a row explains itself on hover or a tap (owner, 15 November 2026), never by a native title. */}
+                  <Term tip hold="box" id={t.src === "contract" ? "contract-procedura" : "achizitie-directa"} className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}>
                     {t.src === "contract" ? "contract" : "directă"}
-                  </span>
+                  </Term>
                 </td>
                 {members ? (
                 <td className="clip c-party" {...tip.bindClip(members.map((m) => cleanName(m.partnerName)).join(" · "))}>
@@ -311,54 +313,50 @@ export default function TxTable({
                   {/* What was bought, as SICAP publishes it (UX audit Z5-06): one line, whole on hover. */}
                   {t.src === "da" && t.title && <span className="tx-title" title={t.title}>{t.title}</span>}
                 </td>
-                <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}`}>
+                {/* Struck through only when the value stays out of the totals (zero, or over 2 million lei); a suspect value that still counts is not. */}
+                <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}${t.valueSuspect && !(t.closingValue != null && t.closingValue > 0 && t.closingValue <= 2000000) ? " val-out" : ""}`}>
                   {/* The value and its warning together: on a phone's card they sit at the right of its first line (Z5-24). */}
                   <span className="c-val-main">
                   <span title={exact}>{formatRonFull(t.closingValue)}</span>
                   {t.valueSuspect && (
-                    <span
+                    <>{" "}<Term
+                      tip
+                      hold="box"
                       className="val-warn"
-                      {...tip.bind(
-                        "valoare de verificat",
-                        t.estimatedValueRon
-                          ? `estimat: ${formatRonFull(t.estimatedValueRon)}`
-                          : undefined,
-                        t.closingValue != null && t.closingValue > 2000000
-                          ? "Depășește plafonul analitic de 2 milioane lei și este exclusă din total. Verifică valoarea și unitatea de măsură în sursă."
-                          : "Valoarea diferă de estimare de cel puțin 100 de ori. Dacă este pozitivă și de cel mult 2 milioane lei, rămâne inclusă în total. Verifică valoarea și unitatea de măsură în sursă.",
-                      )}
-                    >
-                      {" "}
-                      ⚠
-                    </span>
+                      title="Valoare de verificat"
+                      text={`${t.estimatedValueRon ? `Estimat: ${formatRonFull(t.estimatedValueRon)}. ` : ""}${t.closingValue != null && t.closingValue > 2000000
+                        ? "Depășește plafonul analitic de 2 milioane lei și este exclusă din total. Verifică valoarea și unitatea de măsură în sursă."
+                        : "Valoarea diferă de estimare de cel puțin 100 de ori. Dacă este pozitivă și de cel mult 2 milioane lei, rămâne inclusă în total. Verifică valoarea și unitatea de măsură în sursă."}`}
+                    ><span aria-hidden="true">⚠</span><span className="d-sr-only">valoare de verificat</span></Term></>
                   )}
                   </span>
                   {isConsortium(t.nWinners) && (
-                    <span className="cons-line" title={consortiumExplanation(t.nWinners)}>
+                    <Term tip hold="line" className="cons-line" title="Consorțiu" text={consortiumExplanation(t.nWinners)}>
                       {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
-                    </span>
+                    </Term>
                   )}
                   {(() => {
                     const kind = contractKindLabel(t.financialKind);
-                    return kind ? <span className="cons-line kind-line" title={kind.title}>{kind.text}</span> : null;
+                    return kind ? <Term tip hold="line" className="cons-line kind-line" title={kind.text[0]!.toUpperCase() + kind.text.slice(1)} text={kind.title}>{kind.text}</Term> : null;
                   })()}
                 </td>
                 {/* The leads of the row: its signals, and a single bidder for a contract in every view (critique of 2 November 2026). */}
                 <td className="c-flags" data-empty={flagged ? undefined : "1"}>
-                  {t.daFlags.map((f) => (
-                    <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
-                      {flagRecordLabel(f)}
-                    </span>
-                  ))}
-                  {t.singleBidder === true && <span className="flag-badge sm neutral" title="O singură ofertă raportată în sursă">1 ofertant</span>}
+                  {t.daFlags.map((f) => {
+                    const why = FLAG_META[f]?.short;
+                    return why
+                      ? <Term tip hold="box" key={f} className="flag-badge sm" title={flagRecordLabel(f)} text={why}>{flagRecordLabel(f)}</Term>
+                      : <span className="flag-badge sm" key={f}>{flagRecordLabel(f)}</span>;
+                  })}
+                  {t.singleBidder === true && <Term tip hold="box" className="flag-badge sm neutral" title="O singură ofertă" text={SINGLE_BID_TIP}>1 ofertă</Term>}
                 </td>
                 <td className="c-links">
                   {/* The contract's number in the source is not shown here (owner, 19 November 2026; it was Complet's from 18
                       November): the row leads to the contract's page, which has it. */}
                   {group.some((m) => republished.has(txRowKey(m, rows.indexOf(m)))) ? (
-                    <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
+                    <Term tip hold="line" className="c-no c-dup" title="Apare și sub alt anunț" text="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
                       apare și sub alt anunț
-                    </span>
+                    </Term>
                   ) : null}
                   {/* Every row leads to its page on the site, its SEAP source smaller beside it (UX audit Z5-06). */}
                   {t.src === "contract" ? (

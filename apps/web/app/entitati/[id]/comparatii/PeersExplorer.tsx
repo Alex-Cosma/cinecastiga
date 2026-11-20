@@ -11,12 +11,15 @@ import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import ClipButton from "@/components/ClipButton";
+import EntityCrumb from "../EntityCrumb";
 import EntityName from "@/components/EntityName";
 import InfoMark from "@/components/InfoMark";
 import Term from "@/components/Term";
+import "@/components/how-note.css";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import { countWords } from "@/lib/ask/answer-text";
+import { takesDe } from "@/lib/ro-count";
 import { glossaryEntry } from "@/lib/glossary";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
 import type { ConnectionRole } from "@/lib/connections-shared";
@@ -66,7 +69,7 @@ function initialMembers(value?: string): PeerSelectionMember[] | undefined {
 const kinds: Record<string, string> = { comuna: "comune", oras_municipiu: "orașe / municipii", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli", universitate: "universități", minister: "ministere" };
 const DATASETS = [{ value: "all", label: "Toate" }, { value: "da", label: "Directe" }, { value: "contracts", label: "Proceduri" }] as const;
 /** Romanian "de" after a number: 19 înregistrări, 20 de înregistrări, 101 înregistrări, 120 de înregistrări. */
-const de = (n: number) => { const last = Math.abs(Math.trunc(n)) % 100; return n !== 0 && (last === 0 || last >= 20) ? " de" : ""; };
+const de = (n: number) => (takesDe(n) ? " de" : "");
 const recordsWords = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const lowerFirst = (text: string) => (text ? text.charAt(0).toLocaleLowerCase("ro-RO") + text.slice(1) : text);
 /** The kind's institutions, for the group's sentence (UX audit Z4-35: „Spitalele cu activitate asemănătoare…”). */
@@ -221,7 +224,7 @@ function PeersGhost({ name }: { name: string }) {
         <div className="pxs-acts pxs-acts--foot"><G.Block w="10.2em" h="36px" /><G.Block w="7.75em" h="36px" /><G.Block w="9.4em" h="36px" /></div>
       </section>
     </div>
-    <div className="pxs-method g-quiet" aria-hidden="true"><span className="pxs-method-s"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</span></div>
+    <p className="how-note pxs-method g-quiet" aria-hidden="true"><span className="how-ghost">Cum e construit grupul și ce limite are</span><span className="pxs-method-sep"> · </span><span className="how-ghost">Detalii tehnice</span></p>
   </Ghost>;
 }
 
@@ -376,8 +379,8 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf,
   </div>;
 }
 
-export default function PeersExplorer({ entityId, entityName, county = null, role, initial: fromServer, place = null }: {
-  entityId: string; entityName: string; county?: string | null; role: ConnectionRole; initial: Record<string, string>;
+export default function PeersExplorer({ entityId, entityName, county = null, role, bothRoles = false, initial: fromServer, place = null }: {
+  entityId: string; entityName: string; county?: string | null; role: ConnectionRole; bothRoles?: boolean; initial: Record<string, string>;
   /** A town hall's place on the map (page.tsx townHallPlace), for the way there. */
   place?: { county: string; siruta: number | null } | null;
 }) {
@@ -599,7 +602,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   };
   const showFilters = !unknownType && !(error && !data);
   // „Cine e în grup”: the group's rule and its source, said in the title's (?) (owner, 17 November 2026: a paragraph before).
-  const populationRule = data && focal?.population ? <>Cele {count(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : null;
+  const populationRule = data && focal?.population ? <>Cele {count(data.cohort.count)}{de(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : null;
   const activityRule = data && focal ? `${role === "supplier" ? "Firmele" : KIND_PLURAL[data.cohort.authorityKind ?? ""] ?? "Instituțiile de același tip"} cu activitate asemănătoare ${cpvCode === "all" ? (yearValue === "all" ? "în toți anii" : "în același an") : yearValue === "all" ? "în același domeniu, în toți anii" : "în același domeniu și an"}: între jumătate și dublul celor ${recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.` : "";
   // The group's rule and its source, in a (?) beside the ranking's title (owner, 19 November 2026: „Cine e în grup” was a
   // panel of its own, with nothing left under its title but buttons).
@@ -614,7 +617,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
     const id = a?.getAttribute("href")?.match(/\/entitati\/(\d+)/)?.[1];
     if (id) rememberVisit(id);
   }}>
-    <p className="pxs-crumb"><Link href={entityHref(entityId, role)}>← Pagina {role === "supplier" ? "firmei" : "instituției"}</Link> · Comparații</p>
+    <EntityCrumb id={entityId} name={currentName} role={role} bothRoles={bothRoles} current="Comparații" />
     <header className="pxs-head">
       <h1><span className="pxs-h1-name-wrap">{ranking ? <>Unde stă <Named name={shownName} />{domainWords ? ` la ${domainWords},` : ""} {periodWords}</>
         : firstLoad ? <>Unde stă <Named name={shownName} /> <Ghost as="span" name="pxs-h1" wait="client"><G.Line inline w="11ch" /></Ghost></> : <>Cu cine se compară <Named name={shownName} /></>}</span></h1>
@@ -710,18 +713,20 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
           {copied && <p className="pxs-note" role="status">{copied}</p>}
         </>}
         </div>
-        <details className="pxs-method"><summary><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</summary>
-          {/* Three plain sentences first (UX audit Z4-42), the technical text behind its own fold. */}
-          <p>{method === "population" ? "Intră administrațiile din țară cu populația cea mai apropiată (recensământul 2021), oricât au cumpărat." : method === "manual" ? "Intră administrațiile alese de tine." : `Intră ${role === "supplier" ? "firmele" : "instituțiile de același tip"} cu un număr asemănător de înregistrări în aceeași selecție.`}
-            {" "}Se compară valoarea înregistrată în perioada, domeniul și canalul alese. O diferență față de mediană e o pistă de verificat, nu o neregulă; valorile nu sunt plăți.</p>
-          <details className="pxs-method-more"><summary>Detalii tehnice ›</summary>
-            {data.methodology.descriptions.map((text) => <p key={text}>{text}</p>)}
-            {(data.filters.year === "all" || data.filters.cpv === "all") && <p>{data.filters.year === "all" && "Valorile cumulează toți anii disponibili. "}Intră și înregistrările {data.filters.year === "all" && data.filters.cpv === "all" ? "fără dată sau fără cod CPV" : data.filters.year === "all" ? "fără dată" : "fără cod CPV"} care respectă celelalte filtre.</p>}
-            <p>În sursele entității: {recordsWords(data.coverage.focalUndatedRows)} fără an utilizabil; {recordsWords(data.coverage.focalYearMissingCpvRows)} fără CPV utilizabil în perioada aleasă. {recordsWords(data.coverage.unresolvedEntityRows)} din populația selectată nu au identități rezolvate.</p>
-            {(data.cohort.excludedUnknownType > 0 || data.cohort.excludedUnknownCounty > 0) && <p>Excluderi din grup: {countWords(data.cohort.excludedUnknownType, "entitate", "entități")} cu tip necunoscut sau ambiguu; {countWords(data.cohort.excludedUnknownCounty, "entitate", "entități")} fără județ cunoscut atunci când restrângi geografia.</p>}
-            <p>Versiunea datelor: {data.checkpoint.version}. Validarea acestei versiuni nu reprezintă data colectării surselor. Un an încheiat nu garantează colectare completă.</p>
-          </details>
-        </details>
+        {/* Three plain sentences first (UX audit Z4-42), the technical text behind its own words; both float over the page
+            (owner, 20 November 2026; before: a fold, and a fold inside it, that pushed the page down). */}
+        <p className="how-note pxs-method">
+          <Term tip hold="line" title="Cum e construit grupul și ce limite are" text={<span className="how-n">{method === "population" ? "Intră administrațiile din țară cu populația cea mai apropiată (recensământul 2021), oricât au cumpărat." : method === "manual" ? "Intră administrațiile alese de tine." : `Intră ${role === "supplier" ? "firmele" : "instituțiile de același tip"} cu un număr asemănător de înregistrări în aceeași selecție.`}
+            {" "}Se compară valoarea înregistrată în perioada, domeniul și canalul alese. O diferență față de mediană e o pistă de verificat, nu o neregulă; valorile nu sunt plăți.</span>}>Cum e construit grupul și ce limite are</Term>
+          <span className="pxs-method-sep" aria-hidden="true"> · </span>
+          <Term tip hold="line" title="Detalii tehnice" text={<>
+            {data.methodology.descriptions.map((text) => <span className="how-n" key={text}>{text}</span>)}
+            {(data.filters.year === "all" || data.filters.cpv === "all") && <span className="how-n">{data.filters.year === "all" && "Valorile cumulează toți anii disponibili. "}Intră și înregistrările {data.filters.year === "all" && data.filters.cpv === "all" ? "fără dată sau fără cod CPV" : data.filters.year === "all" ? "fără dată" : "fără cod CPV"} care respectă celelalte filtre.</span>}
+            <span className="how-n">În sursele entității: {recordsWords(data.coverage.focalUndatedRows)} fără an utilizabil; {recordsWords(data.coverage.focalYearMissingCpvRows)} fără CPV utilizabil în perioada aleasă. {recordsWords(data.coverage.unresolvedEntityRows)} din populația selectată nu au identități rezolvate.</span>
+            {(data.cohort.excludedUnknownType > 0 || data.cohort.excludedUnknownCounty > 0) && <span className="how-n">Excluderi din grup: {countWords(data.cohort.excludedUnknownType, "entitate", "entități")} cu tip necunoscut sau ambiguu; {countWords(data.cohort.excludedUnknownCounty, "entitate", "entități")} fără județ cunoscut atunci când restrângi geografia.</span>}
+            <span className="how-n">Versiunea datelor: {data.checkpoint.version}. Validarea acestei versiuni nu reprezintă data colectării surselor. Un an încheiat nu garantează colectare completă.</span>
+          </>}>Detalii tehnice</Term>
+        </p>
       </>}
     {sources && <EvidenceDrawer spec={peerEvidenceSpec(sources.receipt)} peer={sources.receipt} title={sources.title} onClose={() => setSources(null)} />}
   </div>;

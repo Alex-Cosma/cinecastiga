@@ -8,6 +8,7 @@ import InfoMark from '@/components/InfoMark';
 import EntityName from '@/components/EntityName';
 import {G,Ghost} from '@/components/ghost/Ghost';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
+import {countWords} from '@/lib/ask/answer-text';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
@@ -82,12 +83,12 @@ function SubjectWord({text,scope,effective,subject,others,total}:{text:string;sc
   <summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> (ce numărăm la acest subiect)</span></summary>
   <div className="topic-part-menu topic-domain-menu">
    <div className="topic-domain-head">
-    <div>{n>0?<p className="topic-domain-title">La „{label}” numărăm {n===1?'un domeniu CPV':`${n} domenii CPV`}</p>:subject.cpvName?<p className="topic-domain-title">Domeniul CPV: {subject.cpvName}</p>:<p className="topic-domain-title">„{capital(label)}”</p>}
+    <div>{n>0?<p className="topic-domain-title">La „{label}” numărăm {n===1?'un domeniu CPV':`${countWords(n,'domeniu','domenii')} CPV`}</p>:subject.cpvName?<p className="topic-domain-title">Domeniul CPV: {subject.cpvName}</p>:<p className="topic-domain-title">„{capital(label)}”</p>}
      {n>0&&<p className="topic-domain-note">După încadrarea oficială a achiziției, nu după titlu.{choose&&' Alege unul ca să vezi doar acel domeniu.'}</p>}</div>
     <button type="button" className="topic-domain-close" onClick={close} aria-label="Închide"><DiscoveryIcon name="close"/></button>
    </div>
    {choose&&<Link prefetch={false} scroll={false} className="topic-domain" aria-current={subject.chosen?undefined:'true'} href={searchHref(withoutDomain(scope),{})} onClick={close}>
-    <span className="topic-domain-mark" aria-hidden="true"/><span className="topic-domain-name"><span>Toate cele {n} domenii</span><small>tot ce numărăm la „{label}”</small></span>{figure(subject.term)}</Link>}
+    <span className="topic-domain-mark" aria-hidden="true"/><span className="topic-domain-name"><span>Toate cele {countWords(n,'domeniu','domenii')}</span><small>tot ce numărăm la „{label}”</small></span>{figure(subject.term)}</Link>}
    {parts.map(x=>{const inner=<><span className="topic-domain-mark" aria-hidden="true"/><span className="topic-domain-name"><span>{x.name}</span><code>{x.code}</code>{bar(x.code)}</span>{figure(x.code)}</>;
     return choose&&x.pick?<Link prefetch={false} scroll={false} key={x.code} className="topic-domain" aria-current={subject.chosen===x.code?'true':undefined} href={searchHref(scope,{domain:x.code})} onClick={close}>{inner}</Link>
      :<div key={x.code} className={`topic-domain is-plain${choose?'':' is-only'}`}>{inner}</div>;})}
@@ -320,7 +321,7 @@ function AnswerHead({scope,filters,compare,townHall,institutions=false,ghost=fal
  */
 function AnswerFoot({answer,caveats,literalHref,full,ghost=false}:{answer:Answer;caveats:string[];literalHref?:string|undefined;full:boolean;ghost?:boolean}){
  const n=answer.cpv.length;
- const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu CPV':`${n} domenii CPV`}</small>}</span></>;
+ const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu CPV':`${countWords(n,'domeniu','domenii')} CPV`}</small>}</span></>;
  return <div className="topic-answer-foot" data-only="complet">
   {ghost?<div className="topic-answer-how"><p className="topic-answer-how-summary">{summary}</p></div>
   :<details className="topic-answer-how"><summary className="topic-answer-how-summary">{summary}</summary><div className="topic-answer-how-body">
@@ -422,7 +423,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
   {head}
   {failed?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
    :shape==='empty'?<><div className="topic-answer-empty" role="status"><p className="topic-answer-empty-line">{answer.empty}</p>
-     {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${formatInt(titleCount)} titluri conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}
+     {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${countWords(titleCount,'titlu','titluri')} conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}
      {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div></>
    :sides?(()=>{const max=Math.max(0,...sides.map(x=>x.value));return <><ol className="topic-answer-sides" role="list" data-chart="">{sides.map((x,i)=><li key={x.entityId??x.name}>
      <EntityName id={x.entityId}>{cleanName(x.name)}</EntityName>

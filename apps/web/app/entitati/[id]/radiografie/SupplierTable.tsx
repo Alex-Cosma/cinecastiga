@@ -14,6 +14,7 @@ import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import type { DepPage, DepRow, DepSort } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
 import { formatInt, formatRon } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import { useEntityTable } from "../useEntityTable";
 import { recordWords, sharePct } from "./supplier-words";
 import Pager from "../Pager";
@@ -167,7 +168,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
       <div className="rv-rank-top">
         <p className="rv-rank-count" role="status">
           {/* Unfiltered, the count is the server's own: only a filtered count waits for the first page. */}
-          {loading && !rows.length && filtered ? <><span className="g-sr">Se încarcă furnizorii…</span><Ghost as="span" name="rv-count" wait="client"><G.Line inline w="22ch" /></Ghost></> : <><b>{filtered ? `${formatInt(total)} din ${formatInt(suppliers)}` : formatInt(suppliers)} {suppliers === 1 ? "furnizor" : "furnizori"}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
+          {loading && !rows.length && filtered ? <><span className="g-sr">Se încarcă furnizorii…</span><Ghost as="span" name="rv-count" wait="client"><G.Line inline w="22ch" /></Ghost></> : <><b>{filtered ? `${formatInt(total)} din ${countWords(suppliers, "furnizor", "furnizori")}` : countWords(suppliers, "furnizor", "furnizori")}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
         </p>
         <p className="rv-legend" aria-hidden="true"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>

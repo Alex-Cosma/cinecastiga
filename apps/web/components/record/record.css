@@ -50,9 +50,9 @@
 .record-signal-list p { margin-top: 6px; font-size: 15px; line-height: 1.55; max-width: 72ch; }
 .record-signal-list .record-evidence { font-size: 14px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .record-signal-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; font-size: 14px !important; }
-.record-signal-links summary { cursor: pointer; color: var(--accent); }
-.record-signal-links details[open] { flex-basis: 100%; }
-.record-signal-links details p { font-size: 14px; color: var(--ink2); }
+/* „De ce nu e o dovadă”: dotted words whose box floats over the page (owner, 20 November 2026; before: a fold). */
+.record-why > .term-trigger { color: var(--ink2); cursor: help; }
+.record-why > .term-trigger:hover, .record-why.term-shown > .term-trigger { color: var(--ink); }
 
 .record-parties-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
 .record-parties-list li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
@@ -101,8 +101,6 @@
 .record-reps li + li { margin-top: 4px; }
 
 .record-caveat { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink2); }
-.record-caveat summary { cursor: pointer; color: var(--accent); font-weight: 600; }
-.record-caveat p { margin-top: 8px; max-width: 72ch; line-height: 1.55; }
 
 .record-sources ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .record-sources li a { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; text-underline-offset: 4px; overflow-wrap: anywhere; }
@@ -125,3 +123,4 @@
 }
 
 .record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status, .record-meta, .record-sources > p) { position: relative; }
+@media (max-width: 700px) { .record-caveat .record-why > .term-trigger { display: inline-flex; align-items: center; min-height: 44px; } }

@@ -132,9 +132,6 @@ span.cx-search{display:block}
 .cx-error{margin:18px 0;padding:16px 18px;border-radius:10px;background:var(--risk-soft);color:var(--ink)}
 .cx-error p{margin:0 0 10px}
 
-.cx-method{margin-top:36px;padding-top:20px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
-.cx-method summary{cursor:pointer;color:var(--accent);font-weight:600;width:fit-content}
-.cx-method p{max-width:80ch}
 /* (?) explanations keep their small look inside this page */
 .cx-shell .term-trigger,.cx-shell .term-trigger:hover{gap:0;padding:0;border:0;border-radius:0;background:none;font:inherit}
 

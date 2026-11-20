@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import EntityName from "@/components/EntityName";
+import { countyLabel } from "@/lib/format";
 import { useSortedColumn } from "../../../components/motion/rows";
-import { formatLei, formatQuantity, formatRatio, formatUnitPrice, perWord, ratioWords } from "@/lib/unit-prices-shared";
+import { countWord, formatLei, formatQuantity, formatRatio, formatUnitPrice, perWord, ratioWords } from "@/lib/unit-prices-shared";
 
 export interface BuyerRowLine { daId: string; date: string | null; name: string | null; unit: string | null; quantity: string; unitPrice: string; perUnit: string; note: string }
 export interface BuyerRowData {
@@ -51,11 +52,11 @@ export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort,
       const k = keyOf(b), isOpen = open.has(k);
       return <Fragment key={k}>
         <tr role="row" id={`institutie-${k}`} className={`pr-brow${b.lead ? " is-lead" : ""}${isOpen ? " is-open" : ""}`}>
-          <td role="cell" className="c-who" data-label="Instituția"><EntityName id={b.id} role="authority">{b.name}</EntityName>{b.county && <small>{b.county}</small>}</td>
+          <td role="cell" className="c-who" data-label="Instituția"><EntityName id={b.id} role="authority">{b.name}</EntityName>{b.county && <small>{countyLabel(b.county)}</small>}</td>
           {showYear && <td role="cell" className="pr-num c-year" data-label="Anul">{b.year}</td>}
           <td role="cell" className="pr-num c-price" data-label="Preț"><b>{formatUnitPrice(b.price)}</b> {per}</td>
           <td role="cell" className="pr-num c-x" data-label="Multiplu" title={`${ratioWords(b.ratio)} (${formatUnitPrice(b.median)} în ${b.year})`}>{formatRatio(b.ratio)}</td>
-          <td role="cell" className="pr-num c-qty" data-label="Cantitate" data-only={qtyComplet ? "complet" : undefined}>{formatQuantity(b.quantity, per)}<small>{b.awards === 1 ? "o achiziție" : `${b.awards} achiziții`}</small></td>
+          <td role="cell" className="pr-num c-qty" data-label="Cantitate" data-only={qtyComplet ? "complet" : undefined}>{formatQuantity(b.quantity, per)}<small>{countWord(b.awards, "o achiziție", "achiziții")}</small></td>
           <td role="cell" className="pr-num c-lei" data-label="Peste mediană">{b.excess > 0 ? formatLei(b.excess) : <small>sub mediană</small>}</td>
           <td role="cell" className="c-sup" data-label="Furnizori">{b.suppliers.length ? <>{b.suppliers.map((s, i) => <Fragment key={s.id}>{i > 0 && ", "}<EntityName id={s.id} role="supplier">{s.name}</EntityName></Fragment>)}{b.moreSuppliers > 0 && ` și încă ${b.moreSuppliers}`}</> : "—"}</td>
           <td role="cell" className="c-open"><a href={hrefOf(k)} role="button" className="pr-lines-btn" data-lines={k} data-no-pending="" aria-expanded={isOpen} aria-controls={isOpen ? `linii-${k}` : undefined}
@@ -80,7 +81,7 @@ export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort,
                   <td role="cell" className="c-da"><Link href={`/achizitii/${l.daId}`} prefetch={false} aria-label={`Achiziția din ${l.date ?? "dată neprecizată"}: ${l.name ?? "denumire neprecizată"}`}>Achiziția</Link></td>
                 </tr>)}</tbody>
               </table>
-              {b.lines > b.shown.length && <p className="pr-lines-more">Cele mai scumpe {b.shown.length} din {b.lines} linii; toate sunt în achizițiile instituției.</p>}
+              {b.lines > b.shown.length && <p className="pr-lines-more">Cele mai scumpe {b.shown.length} din {countWord(b.lines, "o linie", "linii")}; toate sunt în achizițiile instituției.</p>}
             </div>
           </td>
         </tr>}

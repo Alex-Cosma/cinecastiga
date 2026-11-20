@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import type { DrillRow } from "./ask/compile";
 import { sumDecimalStrings } from "./ask/evidence";
+import { roCount } from "./ro-count";
 export type SourceRecord = DrillRow & { originalValueExact?: string | null };
 
 /** A server-selected population, suitable for viewing and freezing in a case. */
@@ -25,7 +26,7 @@ export function completeFindingRows<T extends DrillRow>(rows: T[]): T[] {
 export function sourceEvidence(input: Omit<SourceEvidence, "sourceCount" | "totalExact">): SourceEvidence {
   const records = completeFindingRows(input.records);
   const unknown = records.filter(row => row.originalValueExact === null).length;
-  if (unknown) input.warnings.push(`${unknown} înregistrări nu au valoare publicată. Suma afișată include numai valorile cunoscute; lipsa nu este zero.`);
+  if (unknown) input.warnings.push(`${unknown === 1 ? "O înregistrare nu are" : `${roCount(unknown, "", "înregistrări")} nu au`} valoare publicată. Suma afișată include numai valorile cunoscute; lipsa nu este zero.`);
   return { ...input, records, sourceCount: records.length, totalExact: sumDecimalStrings(records.map(row => row.valueExact)) };
 }
 

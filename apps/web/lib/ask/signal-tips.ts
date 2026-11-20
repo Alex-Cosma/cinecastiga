@@ -1,4 +1,4 @@
-import { flagEntityRule, flagLabel } from "../flags";
+import { FLAG_META, flagEntityRule, flagLabel } from "../flags";
 import { flagDetail, isRetiredScatterFlag, scatterFlagLabel, type ScatterFlagFact, type ScatterRole } from "./scatter-shared";
 
 /*
@@ -54,4 +54,16 @@ export function signalTip(fact: Fact, role: Role): { title: string; text: string
   const detail = flagDetail(fact);
   const more = detail ? detailWords(fact, role, detail) : "";
   return { title: title || flagLabel(fact.code), text: more ? `${meaning} ${more}` : meaning };
+}
+
+/**
+ * The tip of a bare signal tag on a profile (a name, no number): its meaning for an institution or a firm, else the
+ * signal's short sentence (audit of 20 November 2026: the comparison's and the entity card's tags had only a native
+ * title, which a phone never shows).
+ */
+export function signalTagTip(code: string, role: Role): { title: string; text: string } | null {
+  const tip = signalTip({ code }, role);
+  if (tip) return tip;
+  const short = FLAG_META[code]?.short;
+  return short ? { title: flagLabel(code), text: short } : null;
 }

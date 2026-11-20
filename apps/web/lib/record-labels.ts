@@ -1,5 +1,5 @@
 import { AWARD_COUNTING_CAVEAT, FLAG_META } from "./flags";
-import { formatExactDecimal } from "./format";
+import { leiRounded } from "./lei";
 
 /*
  * The words of a record page (owner, 7 November 2026: one template for contracts, direct acquisitions and notices).
@@ -145,7 +145,7 @@ export function noticeGapNote(e: { total: string | null; award: string | null; f
   if (e.total == null || e.award == null || !(Number(e.award) > 0) || e.frameworks != null || e.everyValue !== e.total) return null;
   const gap = Math.round((Number(e.total) - Number(e.award)) * 100) / 100;
   if (Math.abs(gap) < Math.max(1, 0.01 * Number(e.award))) return null;
-  const lei = (value: string) => `${formatExactDecimal(value)} lei`;
+  const lei = (value: string) => leiRounded(value) ?? "—";
   return `Contractele găsite însumează ${lei(e.total)}, cu ${lei(Math.abs(gap).toFixed(2).replace(/\.00$/, ""))} ${gap > 0 ? "mai mult" : "mai puțin"}. Diferența nu e explicată în sursă.`;
 }
 

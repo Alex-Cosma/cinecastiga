@@ -30,7 +30,7 @@ describe("case record order (owner, 12 November 2026: long lists paged on the se
     const record = { src: "da", refId: "77", daCode: "DA77", date: "2024-12-03", title: null, cpvName: "Lapte", valueExact: "12.50",
       originalValueExact: "12.50", authorityId: "1", authority: "SPITAL", supplierId: "2", supplier: "FIRMA SRL", value: 12.5 } as unknown as CaseRecord;
     const [r] = caseRecordRows([record], { "77": ["da_split", "da_year_end"] }, "da_year_end", "supplier");
-    expect(r).toMatchObject({ code: "DA77", title: "Lapte", href: "/achizitii/77", value: 12.5, valueText: "12,50 lei",
+    expect(r).toMatchObject({ code: "DA77", title: "Lapte", href: "/achizitii/77", value: 12.5, valueText: "13 lei", valueExact: "12.50",
       party: { id: "2", role: "supplier" } });
     expect(r!.also).toHaveLength(1);
   });

@@ -7,6 +7,7 @@ import { chartPace } from "../../../../components/motion/pace";
 import type { DepRow } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
 import { formatRon, formatInt } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import { INITIAL_ZOOM, boundZoom, zoomAt, percent, yearRange, type Zoom } from "@/lib/radiografie-view";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import { useTip, type TipBind } from "../../../intreaba/use-tip";
@@ -188,7 +189,7 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
  <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <SupplierDot key={s.id} born={!drawn ? "cm-pt" : fresh?.has(s.id) ? "cm-in" : ""} i={shown.indexOf(s)} selected={p.id === s.id} ring={chose && p.id === s.id} cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.all)}
             aria={`${s.name}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} tip={tip.bind(shortName(s.name), formatRon(s.all), `${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile firmei`)} onSelect={() => select(s)}
             label={p.id === s.id && <DotLabel first={!drawn} x={Math.min(470, Math.max(62, X(s.shareHere) - 60))} y={Y(s.shareLife) > 258 ? Y(s.shareLife) - R(s.all) - 10 : Y(s.shareLife) + R(s.all) + 20}>{shortName(s.name).slice(0, 30)}</DotLabel>}/>)}</g></svg></div>
- {visible < shown.length && <p className="rv-small">{visible} din {shown.length} furnizori în zona vizibilă</p>}</div></div>
+ {visible < shown.length && <p className="rv-small">{visible} din {countWords(shown.length, "furnizor", "furnizori")} în zona vizibilă</p>}</div></div>
  <aside ref={detail} tabIndex={-1} className="rv-selection" aria-live="polite"><p className="rv-small">Relația · {yearRange(p.y0, p.y1)}{inChart ? "" : " · în afara graficului"}</p><h3><Link prefetch={false} href={`/entitati/${p.id}`}>{shortName(p.name)}</Link></h3><dl>
  <div><dt>Valoare alocată <Term tip id="consortiu" /></dt><dd>{formatRon(p.all)}<small>{p.here > 0 && p.daHere > 0 ? `${formatRon(p.here)} contracte · ${formatRon(p.daHere)} achiziții directe` : p.here > 0 ? "doar contracte prin proceduri" : "doar achiziții directe"}</small></dd></div>
 {/* The firm's dependence first, then its weight for the authority (owner, 19 November 2026). */}
@@ -198,9 +199,9 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
  {/* A tag whose explanation opens over the page after a resting mouse, at once on a tap or from the keyboard
      (owner, 19 November 2026): it no longer pushes the panel down. */}
  {p.n > 0 && <p className="rv-details"><Term tip hold="box" className="rv-fin" title="Context financiar și concurență" text={<>
-   <span className="rv-fin-p">În {win.from}–{win.to}: {formatRon(p.cFrame + p.cPlain)} valoare alocată din contracte. Cifra de afaceri cumulată pentru anii acoperiți: {p.turnWin == null ? "necunoscută" : formatRon(p.turnWin)}; bilanț disponibil în {p.nyWin} din {p.yrs.length} ani.</span>
+   <span className="rv-fin-p">În {win.from}–{win.to}: {formatRon(p.cFrame + p.cPlain)} valoare alocată din contracte. Cifra de afaceri cumulată pentru anii acoperiți: {p.turnWin == null ? "necunoscută" : formatRon(p.turnWin)}; bilanț disponibil în {p.nyWin} din {countWords(p.yrs.length, "an", "ani")}.</span>
    <span className="rv-fin-p">Contractele simple sunt comparate cu anul semnării; acordurile-cadru ({formatRon(p.cFrame)}) cu până la patru ani. Execuția și recunoașterea veniturilor pot avea alte perioade.</span>
-   <span className="rv-fin-p">Ofertant unic: {p.ns} din {p.nk} contracte cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. Câștiguri publice de la {p.nAuth} autorități.</span></>}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11.5v5M12 7.8h.01" /></svg>Context financiar și concurență</Term></p>}</aside></div></section>
+   <span className="rv-fin-p">O singură ofertă: {p.ns} din {countWords(p.nk, "contract", "contracte")} cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. Câștiguri publice de la {countWords(p.nAuth, "autoritate", "autorități")}.</span></>}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11.5v5M12 7.8h.01" /></svg>Context financiar și concurență</Term></p>}</aside></div></section>
  <SupplierTable authorityId={authorityId} suppliers={suppliers} maxValue={rows[0]?.all ?? 0} selectedId={p.id} onSelect={select}/></>}
  {tip.el}
  {sources && p && <EvidenceDrawer title={`Relația · ${p.name}`} spec={pairSpec({ id: authorityId, name: authorityName }, { id: p.id, name: p.name })} onClose={() => setSources(false)}/>}</>;

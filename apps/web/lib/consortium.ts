@@ -77,7 +77,7 @@ export function consortiumPhrase(others: readonly string[], nWinners: number): s
 
 /** Tooltip/explanation shared by the tables: why the amount is a share. */
 export function consortiumExplanation(nWinners: number): string {
-  return `Contractul are ${nWinners} câștigători în consorțiu. Sursa nu publică partea fiecăruia, așa că împărțim valoarea egal între membri (estimare). Suma nu a fost atribuită de ${nWinners} ori; valorile înregistrate nu sunt plăți.`;
+  return `Contractul are ${roCount(nWinners, "un câștigător", "câștigători")} în consorțiu. Sursa nu publică partea fiecăruia, așa că împărțim valoarea egal între membri (estimare). Suma nu a fost atribuită de ${nWinners} ori; valorile înregistrate nu sunt plăți.`;
 }
 
 /** Ranking marker: the partner's total includes consortium shares. */

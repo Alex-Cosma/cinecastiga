@@ -193,12 +193,6 @@
 .pr-pager a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 600; }
 
 /* ── how it was compared ──────────────────────────────────────────────── */
-.pr-method { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); }
-.pr-method summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); width: fit-content; }
-.pr-method summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.pr-method ul { margin: 12px 0 0; padding-left: 18px; max-width: 72ch; color: var(--ink2); font-size: 13px; line-height: 1.6; }
-.pr-method li { margin-bottom: 8px; }
-.pr-method p { font-size: 13px; color: var(--ink2); }
 
 /* ── hover, focus and touch on the strips (owner, 11 November 2026) ────── */
 .pr-dot { display: block; cursor: pointer; z-index: 1; }
@@ -302,7 +296,7 @@
   .pr-pager a { min-height: 44px; padding: 0 10px; }
   .pr-buyers-head a, .pr-more a { display: inline-flex; align-items: center; min-height: 44px; }
   .pr-lines .c-da a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
-  .pr-method summary, .pr-fold > summary { padding-top: 12px; padding-bottom: 12px; }
+  .pr-fold > summary { padding-top: 12px; padding-bottom: 12px; }
   .pr-clear { width: 44px; height: 44px; right: 0; }
   .pr-pick-box input { padding-right: 46px; }
   .pr-crumb a { display: inline-block; padding: 12px 0; }

@@ -1,5 +1,6 @@
 import { sumDecimalStrings } from "./ask/evidence";
 import { formatExactDecimal } from "./format";
+import { roCount } from "./ro-count";
 
 /*
  * The products of a direct acquisition, as the institution wrote them (UX audit Z7-16, Z7-17, bug "cantitatea fără
@@ -83,5 +84,5 @@ export function productsTitle(names: readonly (string | null | undefined)[]): st
   const rest = names.length - first.length;
   const head = first.length > 1 ? `${first.slice(0, -1).join(", ")}${rest > 0 ? ", " : " și "}${first.at(-1)}` : first[0]!;
   const titled = head.charAt(0).toLocaleUpperCase("ro-RO") + head.slice(1);
-  return rest > 0 ? `${titled} și încă ${rest === 1 ? "un produs" : `${rest}${rest % 100 >= 20 || rest % 100 === 0 ? " de" : ""} produse`}` : titled;
+  return rest > 0 ? `${titled} și încă ${rest === 1 ? "un produs" : roCount(rest, "un produs", "produse")}` : titled;
 }

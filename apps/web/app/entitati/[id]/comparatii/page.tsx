@@ -37,5 +37,5 @@ export default async function PeersPage({ params, searchParams }: {
   // A town hall's place on the map (UX audit Z4-26, Z4-39): the comparison links to it, even when the group cannot load.
   const place = role === "authority" ? townHallPlace(profile.name, profile.county) : null;
   // Complet's (owner, 18 November 2026): opened from a link in Esențial it shows whole, under one line that says so.
-  return <CompletOnly><PeersExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role} initial={initial} place={place} /></CompletOnly>;
+  return <CompletOnly><PeersExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role} bothRoles={profile.roles.length > 1} initial={initial} place={place} /></CompletOnly>;
 }

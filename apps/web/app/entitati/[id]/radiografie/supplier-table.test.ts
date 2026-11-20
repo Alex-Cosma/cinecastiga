@@ -12,6 +12,7 @@ describe("the relation table's words", () => {
   it("splits a pair's records by channel", () => {
     expect(recordWords({ n: 2, nDa: 802 })).toBe("2 contracte · 802 directe");
     expect(recordWords({ n: 1, nDa: 0 })).toBe("1 contract");
+    expect(recordWords({ n: 25, nDa: 120 })).toBe("25 de contracte · 120 de directe");
     expect(recordWords({ n: 0, nDa: 1 })).toBe("1 directă");
   });
 });

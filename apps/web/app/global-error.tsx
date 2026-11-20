@@ -42,11 +42,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <main className="ge">
           <div role="alert">
             <h1>Pagina nu <span style={{ whiteSpace: "nowrap" }}>s-a putut</span> încărca</h1>
-            <p className="ge-lead">De obicei e trecător. Încearcă din nou.</p>
+            <p className="ge-lead">De obicei e trecător.</p>
           </div>
           <p className="ge-acts">
             <button type="button" className="ge-btn pri" onClick={() => reset()}>
-              Încearcă din nou
+              Reîncearcă
             </button>
             {/* A full navigation: the root layout must be rebuilt, not reused. */}
             <a href="/" className="ge-btn">

@@ -1,10 +1,11 @@
 import { evidenceLinks } from "./ask/evidence";
 import { flagLabel } from "./flags";
-import { cleanName, formatExactDecimal } from "./format";
+import { cleanName } from "./format";
+import { leiRounded } from "./lei";
 import type { RecordRow } from "./record-rows";
 import type { CaseRecord } from "./signal-case";
 
-const lei = (v: string | number | null | undefined) => (v == null ? "necunoscută" : `${formatExactDecimal(String(v))} lei`);
+const lei = (v: string | number | null | undefined) => (v == null ? "necunoscută" : leiRounded(v) ?? "necunoscută");
 
 /**
  * The side a case's rows name (UX audit Z6-07): the other party of each acquisition, when the list has more than one
@@ -31,6 +32,7 @@ export function caseRecordRows(records: readonly CaseRecord[], alsoIn: Record<st
       href: `/${r.src === "contracts" ? "contracte" : "achizitii"}/${r.refId}`,
       value: r.originalValueExact === null ? null : Number(r.valueExact),
       valueText: r.originalValueExact === null ? "valoare nepublicată" : lei(r.valueExact),
+      valueExact: r.originalValueExact === null || r.valueExact == null ? null : String(r.valueExact),
       seap: links.seap, ted: links.ted,
       also: (r.refId ? alsoIn[r.refId] ?? [] : []).filter((c) => c !== code).map((c) => flagLabel(c)),
       party: party && counterparty ? { id: party.id ?? null, name: cleanName(party.name) || "—", role: counterparty } : null,

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { flagLabel } from "../flags";
 import { RISK_CRITERIA } from "../risk-score";
-import { signalTip } from "./signal-tips";
+import { signalTip, signalTagTip } from "./signal-tips";
 
 /*
  * Every signal tag explains itself on hover or a tap (owner, 15 November 2026): what the pattern means for an
@@ -54,5 +54,14 @@ describe("a signal tag that explains itself", () => {
   it("shows no \"?\" on the tag: the whole tag is the button (owner, 15 November 2026)", () => {
     const css = readFileSync(new URL("../../app/intreaba/builder/filters-kit.css", import.meta.url), "utf8");
     expect(css).toContain(".qb .qb-tag.qb-tag-tip>.term-trigger>.term-mark{display:none}");
+  });
+});
+
+describe("a bare signal tag on a profile (audit of 20 November 2026)", () => {
+  it("explains itself with the signal's meaning for the role, else its short sentence, never nothing for a known signal", () => {
+    expect(signalTagTip("da_split", "authority")!.text).toContain("Instituția a cumpărat");
+    expect(signalTagTip("da_split", "supplier")!.text).toContain("Obligația e a instituției");
+    expect(signalTagTip("award_single_bid", "authority")).toEqual(expect.objectContaining({ title: flagLabel("award_single_bid") }));
+    expect(signalTagTip("no_such_signal", "authority")).toBeNull();
   });
 });

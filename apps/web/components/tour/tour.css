@@ -165,7 +165,7 @@
 .tr-mode[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
 .tr-mode[aria-checked="true"]::after{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 5px,var(--surface) 6px)}
 .tr-mode:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.tr-mode:hover{transform:translateY(-1px)}
+.tr-mode:hover:not([aria-checked="true"]){border-color:var(--accent-line)}
 .tr-m-ink{fill:var(--ink)}.tr-m-accent{fill:var(--accent)}.tr-m-line{fill:var(--line2)}.tr-m-soft{fill:var(--accent-line)}.tr-m-bars{fill:var(--slate)}
 @media (max-width:700px){.tr-modes{gap:10px}.tr-mode{padding:10px 10px 13px;gap:7px}.tr-mode b{font-size:18px}.tr-mode span{font-size:13px}.tr-mode::after{top:17px;right:17px;width:16px;height:16px}}
-@media (prefers-reduced-motion:reduce){.tr-mode{transition:none}.tr-mode:hover{transform:none}}
+@media (prefers-reduced-motion:reduce){.tr-mode{transition:none}}

@@ -1,5 +1,6 @@
 import { createDb, type DbSql } from "@seap/db";
 import nodemailer from "nodemailer";
+import { roCount } from "./ro-count";
 
 export type MonitoringDigestState = "queued" | "sending" | "sent" | "failed" | "uncertain" | "cancelled";
 export interface MonitoringDigestStatus {
@@ -76,7 +77,7 @@ function escapeHtml(value: string): string {
 /** No contract amounts, findings, people, or source content are copied into mail. */
 export function renderMonitoringDigest(digest: ClaimedDigest, config: Pick<DigestConfig,"origin"|"from">): DigestMessage {
   if (!config.origin?.startsWith("https://")) throw new Error("Origine HTTPS necesară pentru trimitere.");
-  const subject = `${digest.updates.length} ${digest.updates.length === 1 ? "actualizare nouă" : "actualizări noi"} în urmăririle tale`;
+  const subject = `${roCount(digest.updates.length, "1 actualizare nouă", "actualizări noi")} în urmăririle tale`;
   const settings = `${config.origin}/urmariri`;
   const inbox = `${config.origin}/urmariri`;
   const shown = digest.updates.slice(0,20);

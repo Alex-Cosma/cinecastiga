@@ -10,16 +10,18 @@ import { notFound } from "next/navigation";
 import { getContractDetail, type ContractDetail } from "@/lib/marts";
 import { getContractContext, tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { leiRounded } from "@/lib/lei";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import { contractValueState, kindLabel, lotTitle, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
-/** What „un singur ofertant” means, beside it (M-01); the words of the welcome tour's glossary (lib/tour.ts). */
+/** What „o singură ofertă” means, beside it (M-01); the site's one name for it (audit of 20 November 2026). */
 const SINGLE_BIDDER_TIP = "O licitație la care s-a depus o singură ofertă.";
 import { countWords } from "@/lib/ask/answer-text";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
 import InfoMark from "@/components/InfoMark";
 import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type ModePart, type Party, type RecordValue, type Source } from "@/components/record/Record";
 import RecordSums, { type SumRow } from "@/components/record/RecordSums";
@@ -61,7 +63,7 @@ export async function generateMetadata({ params }: { params: Promise<{ nid: stri
 }
 
 const moneyNote = (c: ContractDetail) => c.amountStatus === "converted" && c.valueRonExact !== null
-  ? <>Echivalent verificat în SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs {c.currencyRate}</>
+  ? <>Echivalent verificat în SEAP: <strong><Lei value={c.valueRonExact} /></strong> · curs {c.currencyRate}</>
   : !["ron", "converted", "legacy_ron"].includes(c.amountStatus)
     ? <>Valoarea în lei nu e verificată ({c.amountStatus === "legacy_unknown" ? "înregistrare istorică fără unitate confirmată" : c.amountStatus === "inconsistent" ? "sume sau monede neconcordante în sursă" : "date monetare incomplete"}); nu intră în totalurile în lei.</>
     : null;
@@ -88,7 +90,7 @@ function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean):
   const said = (note: ReactNode): ReactNode | ModePart => framework && sumsSayTotals ? (note ? { only: "esential", node: note } : null) : note;
   const totals = said(totalsNote(c));
   const state = contractValueState(c);
-  if (state === "amount") return { amount: `${formatExactDecimal(c.contractValueExact!)} ${currency}`, label: valueLabel(c, true), notes: [moneyNote(c), totals] };
+  if (state === "amount") return { amount: <Lei value={c.contractValueExact!} unit={currency} />, label: valueLabel(c, true), notes: [moneyNote(c), totals] };
   if (state === "foreign") return {
     amount: <span className="record-amount-words">Valoare în {c.currency}, <span className="record-nowrap">neconvertită <InfoMark title="Neconvertită" text={`SEAP o dă în ${c.currency}, fără curs confirmat; n-o convertim în lei${totalsNote(c) ? "." : " și nu intră în totaluri."}`} /></span></span>,
     label: valueLabel(c, false), notes: [totals],
@@ -99,7 +101,8 @@ function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean):
   };
 }
 
-const fx = (value: string) => `${formatExactDecimal(value)} lei`;
+/** A sum to the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026). */
+const fx = (value: string) => <Lei value={value} />;
 
 /**
  * Declared call-offs over their framework (owner, 8 November 2026): what SEAP holds is shown as declared, with how many
@@ -149,7 +152,7 @@ export default async function ContractPage({ params, searchParams }: { params: P
   const tedNo = x.ted?.publicationNumber ?? (c.tedNoticeNo ? tedPublicationNumber(c.tedNoticeNo) : null);
   const tedHref = x.ted?.url ?? (tedNo ? tedNoticeUrl(tedNo) : null);
   const multiWinner = c.winners.length > 1 || c.nWinners > 1;
-  const splitLabel = consortiumShareLabel(c.nWinners, c.splitFromRonExact ? `${formatExactDecimal(c.splitFromRonExact)} lei` : null);
+  const splitLabel = consortiumShareLabel(c.nWinners, c.splitFromRonExact ? leiRounded(c.splitFromRonExact) : null);
   const currency = c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)";
   const authority = c.authority ? <EntityName id={c.authority.entityId} role="authority">{cleanName(c.authority.name)}</EntityName> : <span>Instituție neprecizată</span>;
   const winnerNames = c.winners.map((w, i) => <span key={w.entityId}>{i > 0 && (i === c.winners.length - 1 ? " și " : ", ")}<EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></span>);
@@ -173,7 +176,7 @@ export default async function ContractPage({ params, searchParams }: { params: P
         name: <EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName>,
         place: countyLabel(w.county),
         lines: [
-          multiWinner && w.shareRonExact != null && <><Term hold="line" tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
+          multiWinner && w.shareRonExact != null && <><Term hold="line" tip id="consortiu">Cotă estimată</Term>: <Lei value={w.shareRonExact} />{splitLabel ? ` (${splitLabel})` : ""}</>,
           c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
             Încă {others === 1 ? "o înregistrare" : countWords(others, "înregistrare", "înregistrări")} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
           ...pairLines(pair),
@@ -196,7 +199,7 @@ export default async function ContractPage({ params, searchParams }: { params: P
   if (award) sums.push({ key: "aw", label: <>Atribuită în anunț <Term tip id="valoare-atribuita" /></>, scope: <>toate cele {noticeHref ? <Link prefetch={false} href={noticeHref}>{noticeRecords}</Link> : noticeRecords}</>, value: fx(award) });
   const own = c.financialKind === "framework" ? "Acest acord-cadru: plafonul" : c.financialKind === "calloff" ? "Această comandă" : c.financialKind === "amendment" ? "Acest act adițional" : "Acest contract";
   sums.push({ key: "own", main: true, label: own, scope: c.financialKind === "framework" ? "separat de totaluri" : c.financialKind === "amendment" ? "nu se adaugă la totaluri" : null,
-    value: c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${currency}` : <span className="record-quiet">{contractValueState(c) === "foreign" ? "în valută, neconvertită" : "nepublicată"}</span> });
+    value: c.contractValueExact != null ? <Lei value={c.contractValueExact} unit={currency} /> : <span className="record-quiet">{contractValueState(c) === "foreign" ? "în valută, neconvertită" : "nepublicată"}</span> });
   let sumsNote: ReactNode = null;
   if (fw) {
     const times = overCeiling(fw.declaredRon, fw.ceilingRon, fw.topRon), reduced = countedBelow(fw.calloffsRon, fw.declaredRon);
@@ -216,9 +219,9 @@ export default async function ContractPage({ params, searchParams }: { params: P
     const f = calloffOf, times = f ? overCeiling(f.declaredRon, f.ceilingRon, f.topRon) : null;
     if (!f || !times) return null;
     const repeats = f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : overCeilingSignal ? "" : overCeilingWhy;
-    const counted = countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : "";
+    const counted = countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${leiRounded(c.splitFromRonExact)}: comenzile acordului sunt reduse proporțional până la plafon.` : "";
     const text = overCeilingSignal ? `${repeats}${counted}`.trim()
-      : `Comenzile lui declarate în SEAP (${formatInt(f.calloffs)}) însumează ${formatExactDecimal(f.declaredRon!)} lei, de ${times} ori plafonul de ${formatExactDecimal(f.ceilingRon!)} lei.${repeats}${counted}`;
+      : `Comenzile lui declarate în SEAP (${formatInt(f.calloffs)}) însumează ${leiRounded(f.declaredRon!)}, de ${times} ori plafonul de ${leiRounded(f.ceilingRon!)}.${repeats}${counted}`;
     return text || null;
   })();
   // Esențial keeps two facts of the award (owner, 18 November 2026): how many bid, when the number is published, and a
@@ -275,8 +278,8 @@ export default async function ContractPage({ params, searchParams }: { params: P
         {sums.length > 1 && <RecordSums title={sumsTitle} rows={sums} note={sumsNote} only="complet" />}
         <Facts facts={[
           // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
-          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? <> · <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>un singur ofertant</Term></> : ""}</>
-            : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>Un singur ofertant</Term> : <span className="record-quiet">Număr nepublicat</span>,
+          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? <> · <Term tip hold="line" title="O singură ofertă" text={SINGLE_BIDDER_TIP}>o singură ofertă</Term></> : ""}</>
+            : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="O singură ofertă" text={SINGLE_BIDDER_TIP}>O singură ofertă</Term> : <span className="record-quiet">Număr nepublicat</span>,
             only: offersPublished ? undefined : "complet" },
           x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED", only: "complet" },
           procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure, only: "complet" },
@@ -286,7 +289,7 @@ export default async function ContractPage({ params, searchParams }: { params: P
           calloffOf && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${calloffOf.frameworkNatId}`}>{cleanName(calloffOf.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
             {calloffWarn && <small className="record-warn">{calloffWarn}</small>}</>, wide: calloffWarn !== null, only: calloffWarn ? undefined : "complet" },
           // How the documents were recognised is said once, beside the documents list (owner, 17 November 2026).
-          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a></>, wide: true, only: "complet" },
+          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${countWords(x.cnsc.complaints, "document", "documente")} de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a></>, wide: true, only: "complet" },
         ]} />
         <SeapDetails only="complet" facts={[
           !republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },

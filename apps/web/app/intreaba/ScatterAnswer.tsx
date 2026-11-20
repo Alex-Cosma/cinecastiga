@@ -223,16 +223,16 @@ export function ScatterGhost({ spec }: { spec: AskSpec }) {
           <span className="sc-who">
             <span className="sc-name"><G.Line inline w={`${GHOST_NAMES[i % GHOST_NAMES.length]}ch`} /></span>
             <small><G.Line w="46%" /></small>
-            {/* Its signals' tags: one line, two on a phone. */}
-            <span className="qb-tags"><span className="qb-tag g-quiet"><G.Line inline w="14ch" /></span><span className="g-phone"><span className="qb-tag g-quiet"><G.Line inline w="30ch" /></span></span></span>
+            {/* No tag line: the patterns are on the score's pill (owner, 20 November 2026). */}
           </span>
           <span className="sc-val qb-num"><G.Line inline w="9ch" /></span>
           <span className="sc-cri sc-risk"><span className="cri-pill g-quiet"><G.Line inline w="6ch" /></span><small><G.Line inline w="7ch" /></small></span>
           <span className="qb-rec sc-rec g-quiet"><G.Line inline w="16ch" /></span>
         </>} />
       </ol>
-      <div className="qb-listfoot g-quiet" inert>
-        <span className="qb-row"><span className="qb-rest"><G.Line inline w="26ch" /></span></span>
+      {/* The real foot: the entity pager (pages since 19 November 2026, not „Arată încă”), its position still a line. */}
+      <div className="qb-listfoot sc-listfoot g-quiet" inert>
+        <nav className="ent-pager"><button type="button" aria-disabled>‹ anterioare</button><span className="ent-pager-pos"><G.Line inline w="13ch" /></span><button type="button" aria-disabled>următoare ›</button></nav>
         <KitLink className="qb-secondary" link={{ label: flag ? "Vezi înregistrările cu semnalul" : "Vezi înregistrările celor din listă", glyph: "→", onClick: () => undefined }} />
       </div>
       <p className="sc-more"><span className="qb-link"><G.Line inline w="22ch" /></span></p>
@@ -686,8 +686,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       {/* The whole list under its column filters (owner, 19 November 2026): the applied ones as chips, a funnel on
           each column above the rows. A stored answer or a small group has its rows alone, paged. */}
       {list.server && <FilterBand columns={list.columns} state={list.filters.state} labels={list.filters.labels} onChange={(next) => { list.filters.replace(next); list.setPage(1); }} />}
-      {/* The funnels are Complet's (lib/view-mode.ts); the pages and an applied filter's chip are in both modes. */}
-      {list.server && <div className="sc-cols" role="group" aria-label="Filtre pe coloane" data-only="complet">
+      {/* The funnels, the pages and an applied filter's chip are in both modes (owner, 20 November 2026, decision E). */}
+      {list.server && <div className="sc-cols" role="group" aria-label="Filtre pe coloane">
         <span className="sc-col-who">
           <span className="th-filter">{firm ? "Firmă" : "Instituție"}{funnel("nume")}</span>
           <span className="th-filter">Județ{funnel("judet")}</span>
@@ -734,7 +734,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {rows.length > 0 && <KitLink className="qb-secondary" link={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : `Vezi cele ${countWords(visible.reduce((n, r) => n + r.nDas, 0), "înregistrare", "înregistrări")}`, glyph: "→",
           onClick: () => records({ entityIds: visible.map((r) => r.entityId), ...(live ? { flag: live } : {}) }, live ? `semnalul „${lower(live)}” · profilurile din listă` : "profilurile din listă", !live) }} />}
       </div>
-      <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
+      <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">→</span></Link></p>
     </section> : data.historic ? historicLine
       : <p className="qb-empty-note sc-none">{flag ? `Niciun profil din grup cu 20 de achiziții directe nu are semnalul „${lower(flag)}”.` : "Niciun profil din grup nu are destule achiziții directe pentru listă."}</p>}
 

@@ -287,7 +287,7 @@ const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
 };
 /**
  * P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul", on every row with an entity of its own; a firm around
- * an institution on the network also "Radiografia instituției ↗" (final network §3.6). The entity's page is its name,
+ * an institution on the network also "Radiografia instituției →" (final network §3.6). The entity's page is its name,
  * a link wherever it appears (owner, 2 November 2026), so the menu does not repeat it.
  */
 const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) =>

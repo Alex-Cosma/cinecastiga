@@ -1,4 +1,5 @@
 import type { PriceGroup } from "@seap/db";
+import { roCount } from "./ro-count";
 
 /**
  * Unit prices, the parts both the server pages and the browser use: where a multiple of the median sits on the strip,
@@ -61,11 +62,8 @@ export function formatLei(n: number): string {
   return `${whole.format(Math.round(n))} lei`;
 }
 
-/** „19 produse”, „21 de produse”: Romanian puts „de” before 20–99 in the last two digits (and 0, 100, 200…). */
-export function countWord(n: number, one: string, many: string): string {
-  if (n === 1) return one;
-  return n % 100 >= 20 || n % 100 === 0 ? `${whole.format(n)} de ${many}` : `${whole.format(n)} ${many}`;
-}
+/** „19 produse”, „21 de produse”, „0 produse”: the site's one rule (lib/ro-count.ts). */
+export const countWord = roCount;
 
 /**
  * „24 de prețuri peste dublu”, „un preț peste dublu”, „niciun preț peste dublu” (owner, 11 November 2026: not „piste”);

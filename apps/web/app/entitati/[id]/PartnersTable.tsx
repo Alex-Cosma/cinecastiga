@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { formatRon, formatInt, cleanName } from "@/lib/format";
+import { formatRon, cleanName } from "@/lib/format";
 import { useTip } from "../../intreaba/use-tip";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
@@ -12,7 +12,7 @@ import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import Pager from "./Pager";
 import TableLink from "./TableLink";
-import { countWords } from "@/lib/ask/answer-text";
+import { countWords, wholeShare } from "@/lib/ask/answer-text";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
@@ -65,7 +65,7 @@ export default function PartnersTable({
     <div>
       {tip.el}
       <p className={`hint${stale ? " g-stale" : ""}`} role="status">
-        {stale ? <>{formatInt(shownTotal)} parteneri</> : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri</>}
+        {stale ? countWords(shownTotal, "partener", "parteneri") : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : countWords(total, "partener", "parteneri")}
       </p>
       {loading && rows.length === 0 ? <PartnersGhost /> :
       <div className={`bars ent-partners${paged ? " is-paged" : ""}${stale ? " g-stale" : ""}`} aria-busy={loading} inert={stale || undefined} data-chart>
@@ -82,7 +82,7 @@ export default function PartnersTable({
               <div className="bar-fill cm-x" style={{ width: `${Math.min(100, p.pct * 100)}%`, "--i": i } as CSSProperties} />
             </div>
             <div className="bar-val">
-              <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
+              <span className="v">{formatRon(p.totalRon)} · {wholeShare(p.pct)}</span>
             </div>
             <div className="bar-go">
               {/* The partner's records in the table below, on this page (UX audit Z5-12); one word for them (Z5-07). */}

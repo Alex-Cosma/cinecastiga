@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAwardNoticeDetail, type AwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { leiRounded } from "@/lib/lei";
 import { awardUrl } from "@/lib/elicitatie";
 import { isGenericTitle, lotTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "@/lib/record-labels";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
@@ -13,6 +14,7 @@ import { tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
 import InfoMark from "@/components/InfoMark";
 import { GLOSSARY } from "@/lib/glossary";
 import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
@@ -85,11 +87,12 @@ export default async function NoticePage({ params, searchParams }: {
   const none = n.nLots === 0;
   const headline = cleanName(headlineOf(n));
   const procedure = procedureLabel(n.procedureType);
-  // Exact sums on a record's page (UX audit Z7-11), as on the contract and the acquisition.
-  const lei = (value: string) => `${formatExactDecimal(value)} lei`;
+  // Sums to the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026), as on the contract and the
+  // acquisition.
+  const lei = (value: string) => <Lei value={value} />;
   const e = n.exact;
   const offers = e.lowestOffer != null && e.highestOffer != null && Number(e.highestOffer) > 0
-    ? (Number(e.lowestOffer) === Number(e.highestOffer) ? lei(e.lowestOffer) : `${lei(e.lowestOffer)} – ${lei(e.highestOffer)}`) : null;
+    ? (Number(e.lowestOffer) === Number(e.highestOffer) ? lei(e.lowestOffer) : <>{lei(e.lowestOffer)} – {lei(e.highestOffer)}</>) : null;
   const awarded = e.award != null && Number(e.award) > 0 ? e.award : null;
   // The contracts found against the value the notice declares, when both count the same things (Z7-09).
   const gapNote = noticeGapNote(e);
@@ -110,7 +113,7 @@ export default async function NoticePage({ params, searchParams }: {
           // "nu e plată" once on the page, beside the figure (Z7-08, Z7-09).
           // The ceilings' sum is in the label's "?", which already says they are separate (owner, 17 November 2026).
           label: <>Contracte și comenzi identificate{e.total != null && <> <span className="record-not-paid">· nu e plată</span></>} {e.frameworks != null
-            ? <Term tip title={GLOSSARY["comenzi-identificate"].title} text={`${GLOSSARY["comenzi-identificate"].text} Plafoane de acord-cadru publicate: ${lei(e.frameworks)}.`} />
+            ? <Term tip title={GLOSSARY["comenzi-identificate"].title} text={`${GLOSSARY["comenzi-identificate"].text} Plafoane de acord-cadru publicate: ${leiRounded(e.frameworks)}.`} />
             : <Term tip id="comenzi-identificate" />}</>,
         }}
         meta={[

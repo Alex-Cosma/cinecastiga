@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EntityHit } from "@/lib/search";
 import { LINKED_LABEL } from "@/lib/entity-successors";
-import { formatRon } from "@/lib/format";
+import { countyLabel, formatRon } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 import { useLastOpen, useLeaving } from "../../components/motion/leave";
 
@@ -153,7 +153,7 @@ export default function EntityTypeahead({
               <span className="sd-meta">
                 {h.linked ? <span className="sd-linked">{LINKED_LABEL[h.linked]} · </span> : null}
                 {h.roles.map((r) => ROLE_RO[r] ?? r).join(" · ")}
-                {h.county ? ` · ${h.county}` : ""}
+                {h.county ? ` · ${countyLabel(h.county)}` : ""}
                 {h.registryName ? ` · în registru: ${h.registryName}` : ""}
                 {h.cui ? ` · CUI ${h.cui}` : ""}
                 {h.total > 0 ? ` · ${formatRon(h.total)}` : ""}

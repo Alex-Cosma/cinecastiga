@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
+import Lei from "@/components/Lei";
+import { leiRounded } from "@/lib/lei";
 import DiscoverPager from "@/components/discover/DiscoverPager";
 import AlsoTag from "./AlsoTag";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
@@ -43,7 +45,11 @@ export interface CaseRow {
 
 export const CASE_TABLE_PAGE = 10;
 
+/** A gap to the ceiling keeps its bani: „−0,40 lei” under it is the point of the row (Decision A rounds amounts, not gaps). */
 const lei = (v: number) => `${formatExactDecimal(String(Math.round(v * 100) / 100))} lei`;
+/** An acquisition's value or a ceiling: to the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026). */
+const bani = (v: number) => Math.round(v * 100) / 100;
+const amount = (v: number) => leiRounded(bani(v)) ?? "—";
 
 export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }: {
   rows: readonly CaseRow[];
@@ -145,15 +151,15 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                 <td className="c-date">{r.date ? formatCalendarDate(r.date) : "fără dată"}</td>
                 {kind === "above" ? <td className="c-bar">
                   <span className="c-lab" aria-hidden="true"><span>plafon {formatInt(Math.round(r.ceiling))}</span><b>+{lei(r.diff)}</b></span>
-                  <span className="c-meter" tabIndex={0} role="img" aria-label={`${lei(r.value)}${r.estimate ? " (valoarea estimată)" : ""}, cu ${lei(r.diff)} peste plafonul de ${lei(r.ceiling)}`}>
+                  <span className="c-meter" tabIndex={0} role="img" aria-label={`${amount(r.value)}${r.estimate ? " (valoarea estimată)" : ""}, cu ${lei(r.diff)} peste plafonul de ${amount(r.ceiling)}`}>
                     {/* The part up to the ceiling and the excess grow as one bar. */}
                     <span className="c-track cm-x cm-tw" style={{ width: `${whole * 100}%`, "--i": i } as CSSProperties}><i style={{ width: `${(r.ceiling / Math.max(1, r.value)) * 100}%` }} /><b /></span>
-                    <span className="sgc-tip r" aria-hidden="true"><b>{lei(r.value)}{r.estimate ? ", valoarea estimată" : ""}</b><span>plafonul: {lei(r.ceiling)}, fără TVA</span><span>cu {lei(r.diff)} peste</span></span>
+                    <span className="sgc-tip r" aria-hidden="true"><b>{amount(r.value)}{r.estimate ? ", valoarea estimată" : ""}</b><span>plafonul: {amount(r.ceiling)}, fără TVA</span><span>cu {lei(r.diff)} peste</span></span>
                   </span>
                 </td>
                   // Just under: every bar would be full; the sum left under the ceiling says it.
-                  : <td className="c-bar c-gap"><b>−{lei(r.diff)}</b><span>plafon {lei(r.ceiling)}</span></td>}
-                <td className="num c-val">{lei(r.value)}{r.estimate && <small>estimată</small>}</td>
+                  : <td className="c-bar c-gap"><b>−{lei(r.diff)}</b><span>plafon {amount(r.ceiling)}</span></td>}
+                <td className="num c-val"><Lei value={bani(r.value)} />{r.estimate && <small>estimată</small>}</td>
                 <td className="c-act">
                   {r.seap && <a className="c-seap" href={r.seap} target="_blank" rel="noreferrer" aria-label="Deschide în SEAP">SEAP<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4 2.5h5.5V8M9.5 2.5 3 9" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></a>}
                   <ClipButton kind="signal" refId={r.id} label={`${clipPrefix} · ${cleanName(r.partnerName)}`} compact />

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SourceEvidence } from "@/lib/source-evidence";
-import { evidenceLinks, formatEvidenceAmount } from "@/lib/ask/evidence";
+import { evidenceLinks } from "@/lib/ask/evidence";
+import Lei from "./Lei";
 import { countWords } from "@/lib/ask/answer-text";
 import { cleanName, formatCalendarDate, formatInt } from "@/lib/format";
 import { groupSourceRecords, sharedTitleStart, sourcePage } from "@/lib/source-groups";
@@ -15,10 +16,11 @@ import "./source-evidence.css";
  * The records behind a finding (a signal's sources, a Radiografie pattern's), owner 7 November 2026: one row per
  * record, a consortium contract's halves under one contract; each row opens its own page here first (a direct
  * acquisition /achizitii, a contract /contracte), with SEAP and TED beside it as the external sources. Dates
- * dd.mm.yyyy, values exact, in lei, recorded and not payments.
+ * dd.mm.yyyy, values in lei to the leu with the exact amount on hover or tap (Decision A, owner, 20 November 2026),
+ * recorded and not payments.
  */
 
-const amount = (value: string) => formatEvidenceAmount(value, true).replace(/ lei$/, "");
+const amount = (value: string) => <Lei value={value} unit={false} />;
 
 /** What every record of a selection has in common (one institution, one notice, one CPV): said once above its table. */
 function commonFacts(records: SourceEvidence["records"]) {
@@ -93,7 +95,7 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
     {(title !== null || total || save) && <div className="source-evidence-intro">
       <div>
         {title !== null && <h2>{title}</h2>}
-        {total && <p className="source-evidence-count">{countWords(evidence.sourceCount, "înregistrare", "înregistrări")}{grouped && ` în ${countWords(groups.length, contractsOnly ? "contract" : "rând", contractsOnly ? "contracte" : "rânduri")}`} · <strong>{formatEvidenceAmount(evidence.totalExact, true)}</strong></p>}
+        {total && <p className="source-evidence-count">{countWords(evidence.sourceCount, "înregistrare", "înregistrări")}{grouped && ` în ${countWords(groups.length, contractsOnly ? "contract" : "rând", contractsOnly ? "contracte" : "rânduri")}`} · <strong><Lei value={evidence.totalExact} /></strong></p>}
       </div>
       {save && <div className="source-evidence-save"><ClipButton kind={kind} refId={refId} spec={spec} label={evidence.title} /><SourceCaptureTip /></div>}
     </div>}
@@ -127,14 +129,14 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
           <td className="se-parties" data-label={same.authority ? "Câștigătorul" : "Instituție și furnizor"}>
             {!same.authority && <span className="se-party"><span className="se-role">Instituția</span>{row.authority ? <EntityName id={row.authorityId} role="authority">{cleanName(row.authority)}</EntityName> : "Neidentificată"}</span>}
             {group.records.map((r, i) => <span className="se-party" key={`${r.supplierId ?? r.supplier}:${i}`}>
-              {(!same.authority || winners > 1) && <span className="se-role">{winners > 1 ? (group.records.length > 1 ? `Câștigătorul ${i + 1} din ${winners}` : `Unul din ${winners} câștigători`) : row.src === "da" ? "Furnizorul" : "Câștigătorul"}</span>}
+              {(!same.authority || winners > 1) && <span className="se-role">{winners > 1 ? (group.records.length > 1 ? `Câștigătorul ${i + 1} din ${winners}` : `Unul din ${countWords(winners, "câștigător", "câștigători")}`) : row.src === "da" ? "Furnizorul" : "Câștigătorul"}</span>}
               {r.supplier ? <EntityName id={r.supplierId} role="supplier">{cleanName(r.supplier)}</EntityName> : "Neidentificat"}
-              {winners > 1 && <span className="se-share"> · cotă {r.originalValueExact === null ? "nepublicată" : `${amount(r.valueExact)} lei`}</span>}
+              {winners > 1 && <span className="se-share"> · cotă {r.originalValueExact === null ? "nepublicată" : <Lei value={r.valueExact} />}</span>}
             </span>)}
           </td>
           <td data-label="Data">{row.date ? formatCalendarDate(row.date.slice(0, 10)) : "Neprecizată"}</td>
           <td className="num" data-label="Valoare · lei">{group.missingValue && group.records.length === 1 ? "Valoare lipsă" : amount(group.valueExact)}
-            {winners > 1 && <span className="se-note">{group.records.length >= winners ? `${formatInt(winners)} cote egale` : group.records.length > 1 ? `${formatInt(group.records.length)} cote din ${formatInt(winners)}` : "cota firmei"}</span>}
+            {winners > 1 && <span className="se-note">{group.records.length >= winners ? `${countWords(winners, "cotă egală", "cote egale")}` : group.records.length > 1 ? `${countWords(group.records.length, "cotă", "cote")} din ${formatInt(winners)}` : "cota firmei"}</span>}
             {group.missingValue && group.records.length > 1 && <span className="se-note">fără cotele nepublicate</span>}</td>
         </tr>;
       })}

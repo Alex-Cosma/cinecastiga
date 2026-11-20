@@ -1,4 +1,5 @@
 import type { MatrixRow, SliceRow } from "./radiografie";
+import { MONTH_SHORT } from "./ask/filters/words";
 export type Zoom = {
     k: number;
     x: number;
@@ -10,6 +11,8 @@ export function zoomAt(z: Zoom, factor: number, x: number, y: number): Zoom { co
 export const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 /** Contract rows whose source date precedes the archive are undated (empty). */
 export const rxDate = (s: string) => s ? s.slice(0, 10).split("-").reverse().join(".") : "dată sursă improbabilă";
+/** „mar. 2024”: a month on a chart's axis, in the site's month words, never the ISO „2024-03” (audit, 20 November 2026). */
+export const rxMonth = (s: string) => { const [y, m] = s.slice(0, 7).split("-"); return `${MONTH_SHORT[Number(m) - 1] ?? m} ${y}`; };
 /** Year span; an empty or zero end means no dated record supports it. */
 export function yearRange(from: string | number, to: string | number): string {
     const a = from ? String(from) : "", b = to ? String(to) : "";

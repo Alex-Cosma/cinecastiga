@@ -64,8 +64,8 @@ describe("record labels", () => {
   });
   it("says the gap between the contracts found and the notice's value only when both count the same things", () => {
     const e = { total: "568985433.5", award: "502664194.82", frameworks: null, everyValue: "568985433.5" };
-    expect(noticeGapNote(e)).toBe("Contractele găsite însumează 568.985.433,50 lei, cu 66.321.238,68 lei mai mult. Diferența nu e explicată în sursă.");
-    expect(noticeGapNote({ ...e, total: "400000000", everyValue: "400000000" })).toBe("Contractele găsite însumează 400.000.000 lei, cu 102.664.194,82 lei mai puțin. Diferența nu e explicată în sursă.");
+    expect(noticeGapNote(e)).toBe("Contractele găsite însumează 568.985.434 lei, cu 66.321.239 lei mai mult. Diferența nu e explicată în sursă.");
+    expect(noticeGapNote({ ...e, total: "400000000", everyValue: "400000000" })).toBe("Contractele găsite însumează 400.000.000 lei, cu 102.664.195 lei mai puțin. Diferența nu e explicată în sursă.");
     expect(noticeGapNote({ ...e, frameworks: "1000" })).toBeNull();
     expect(noticeGapNote({ ...e, everyValue: "600000000" })).toBeNull();
     expect(noticeGapNote({ ...e, total: "503000000", everyValue: "503000000" })).toBeNull();

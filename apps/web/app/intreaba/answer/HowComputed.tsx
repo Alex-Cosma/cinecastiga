@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Term from "../../../components/Term";
+import { DoneCheck } from "../../../components/motion/Done";
 
 /**
  * „Cum am calculat” (owner, 19 November 2026): how this question was read, in a box that floats over the page instead
@@ -24,7 +25,7 @@ export default function HowComputed({ notes, sql }: { notes: readonly string[]; 
     try { await navigator.clipboard.writeText(sql); } catch { result = "failed"; }
     setCopied(result);
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setCopied(null), 2400);
+    timer.current = window.setTimeout(() => setCopied(null), result === "done" ? 1600 : 2400);
   };
   return <p className="cq-how" data-only="complet">
     <Term tip hold="line" className="cq-how-tag" title="Cum am calculat" text={<>
@@ -32,7 +33,7 @@ export default function HowComputed({ notes, sql }: { notes: readonly string[]; 
       <span className="cq-how-n">Regulile oricărui răspuns (surse, plafoane, ce intră în totaluri) sunt în <Link href="/metodologie#totaluri">Ghid</Link>.</span>
       {sql && <span className="cq-how-n cq-how-act">
         <button type="button" className="cq-how-copy" onClick={() => void copy()}>
-          {copied === "done" ? "Interogarea SQL e copiată" : copied === "failed" ? "Nu am putut copia" : "Copiază interogarea SQL"}
+          {copied === "done" ? <><DoneCheck />Copiat</> : copied === "failed" ? "Nu am putut copia" : "Copiază interogarea SQL"}
         </button>
         <span className="d-sr-only" role="status">{copied === "done" ? "Interogarea SQL a fost copiată." : copied === "failed" ? "Interogarea SQL nu a putut fi copiată." : ""}</span>
       </span>}

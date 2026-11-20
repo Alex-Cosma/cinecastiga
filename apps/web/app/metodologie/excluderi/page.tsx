@@ -2,7 +2,8 @@ import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {EXCLUSION_REASONS,getContractExclusions,getExclusionInstitutions,type ExclusionGroup} from '@/lib/contract-exclusions';
 import {coverageDate} from '@/lib/coverage';
-import {formatExactDecimal,formatInt} from '@/lib/format';
+import {formatInt} from '@/lib/format';
+import Lei from '@/components/Lei';
 import {countWords} from '@/lib/ask/answer-text';
 import EntityName from '@/components/EntityName';
 import CompletOnly from '@/components/mode/CompletOnly';
@@ -88,7 +89,7 @@ function Group({group:g,single,titled}:{group:ExclusionGroup;single:boolean;titl
     <table className="rank"><thead><tr><th scope="col">Contract / publicație</th><th scope="col">Data contractului</th><th scope="col" className="num">Valoarea sursă (lei)</th><th scope="col">Sursa oficială</th></tr></thead>
      <tbody>{g.members.map(m=><tr key={m.id}>
       <td><Link prefetch={false} href={`/contracte/${m.publicId}`}>{m.title??'Contract fără titlu'}</Link><div className="note">Nr. {m.number??'necunoscut'} · ID {m.publicId}</div></td>
-      <td data-label="Data contractului">{coverageDate(m.date)}</td><td className="num" data-label="Valoarea sursă (lei)">{formatExactDecimal(m.value)}</td>
+      <td data-label="Data contractului">{coverageDate(m.date)}</td><td className="num" data-label="Valoarea sursă (lei)"><Lei value={m.value} unit={false}/></td>
       <td data-label="Sursa oficială"><a href={`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${m.noticeId}`} target="_blank" rel="noopener noreferrer">Vezi în SEAP <span aria-hidden="true">↗</span></a></td>
      </tr>)}</tbody>
     </table>

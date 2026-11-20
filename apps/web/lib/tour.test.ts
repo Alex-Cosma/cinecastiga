@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TOUR_DOTS, TOUR_SEEN_SHARE, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden } from "./tour";
+import { FLAG_META } from "./flags";
+import { TOUR_DOTS, TOUR_SEEN_SHARE, TOUR_SIGNAL_CODES, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden } from "./tour";
 
 const roads = TOUR_TOPICS.find((topic) => topic.key === "drumuri")!;
 
@@ -96,5 +97,10 @@ describe("the welcome tour (owner, 12 November 2026)", () => {
     const all = TOUR_TOPICS.flatMap((topic) => topic.cpv2);
     expect(new Set(all).size).toBe(all.length);
     expect(TOUR_TOPICS).toHaveLength(8);
+  });
+
+  it("names its example signals with the site's own pattern names (audit of 20 November 2026)", () => {
+    expect(TOUR_SIGNAL_EXAMPLES.map(([name]) => name)).toEqual(TOUR_SIGNAL_CODES.map((code) => FLAG_META[code]!.label ?? FLAG_META[code]!.title));
+    for (const [name] of TOUR_SIGNAL_EXAMPLES) expect(name).not.toMatch(/Chiar sub plafon|Un singur ofertant|Apropiate în timp/);
   });
 });

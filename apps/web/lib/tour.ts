@@ -4,6 +4,8 @@
  * The parts that need no document: the subjects a visitor chooses from, how a county's figures are read, the
  * question the tour leaves in the home page's search field, and what marks the tour as seen.
  */
+import { flagLabel } from "./flags";
+
 export interface TourTopic {
   key: string;
   /** On the choice. */
@@ -118,15 +120,19 @@ export const TOUR_SIGNAL_DOTS: readonly number[] = [23, 47, 68, 112, 131, 155, 1
 
 /**
  * Example signals for those dots. Illustrative on purpose: a tour must not pin a pattern on a named institution
- * (signals are leads, not proof). The names are the site's own pattern names.
+ * (signals are leads, not proof). The names are the site's own pattern names, read from FLAG_META (audit of 20
+ * November 2026: the tour had kept retired names), so a reader finds them again on /semnale.
  */
-export const TOUR_SIGNAL_EXAMPLES: readonly (readonly [name: string, text: string])[] = [
-  ["Adunate, trec de plafon", "24 de achiziții mici la aceeași firmă, pentru același fel de lucru, în același an. Fiecare e sub plafon; împreună îl depășesc."],
-  ["O firmă are mare parte din valoare", "O singură firmă are 71% din valoarea achizițiilor directe ale unei instituții."],
-  ["Chiar sub plafon", "Patru achiziții de câte 268.000 lei, la 2.120 lei sub plafonul de 270.120 lei."],
-  ["Un singur ofertant", "O licitație la care s-a depus o singură ofertă."],
-  ["Apropiate în timp", "Trei achiziții pentru același lucru, la aceeași firmă, în aceeași săptămână."],
-];
+export const TOUR_SIGNAL_CODES = ["da_split", "da_concentration", "da_round", "award_single_bid", "da_year_end"] as const;
+const TOUR_SIGNAL_TEXT: Record<(typeof TOUR_SIGNAL_CODES)[number], string> = {
+  da_split: "24 de achiziții mici la aceeași firmă, pentru același fel de lucru, în același an. Fiecare e sub plafon; împreună îl depășesc.",
+  da_concentration: "O singură firmă are 71% din valoarea achizițiilor directe ale unei instituții.",
+  da_round: "Multe achiziții de câte 265.000–270.000 lei, chiar sub plafonul de 270.120 lei.",
+  award_single_bid: "O licitație mare la care s-a depus o singură ofertă.",
+  da_year_end: "O instituție a contractat în decembrie aproape jumătate din valoarea achizițiilor directe ale anului.",
+};
+export const TOUR_SIGNAL_EXAMPLES: readonly (readonly [name: string, text: string])[] =
+  TOUR_SIGNAL_CODES.map((code) => [flagLabel(code), TOUR_SIGNAL_TEXT[code]] as const);
 
 /** The question the tour types and leaves in the home page's search field. */
 export function tourQuery(topic: TourTopic, countyLabel: string): string {

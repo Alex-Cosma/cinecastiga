@@ -1395,7 +1395,7 @@
   .cq-answer .dist-n em { font-size: 11px; }
   .cq-answer .qb-nrow-val small, .cq-answer .qb-nrow-years small, .cq-answer .qb-arow-val small { font-size: 12px; }
   .cq-answer .cmp-year-label { font-size: 12px; }
-  .cq-answer .cmp-risk small, .cq-answer .cmp-flags span, .cq-answer .cmp-share small, .cq-answer .cmp-mirror-a, .cq-answer .cmp-mirror-b { font-size: 12px; }
+  .cq-answer .cmp-risk small, .cq-answer .cmp-flags > .cmp-flag, .cq-answer .cmp-share small, .cq-answer .cmp-mirror-a, .cq-answer .cmp-mirror-b { font-size: 12px; }
   .cq-answer .ec-legend { font-size: 12px; }
   .cq-answer .sc-label { font-size: 12px; }
 }

@@ -263,7 +263,7 @@ function StripsBlock() {
 const SYSTRA_ACTIONS: RowAction[] = [
   { id: "rec", label: "Vezi înregistrările", glyph: "→", onSelect: () => undefined },
   { id: "out", label: "Scoate din calcul", glyph: "−", onSelect: () => undefined, className: "is-hover" },
-  { id: "page", label: "Fișa firmei", glyph: "↗", href: "#kd-sec-12" },
+  { id: "page", label: "Fișa firmei", glyph: "→", href: "#kd-sec-12" },
 ];
 
 export function AnswerSections() {
@@ -300,7 +300,7 @@ export function AnswerSections() {
           {firms.slice(0, shown).map(firm => <AnswerRow key={firm.id} name={firm.name} value={formatRon(firm.value)} share={`${((firm.value / total) * 100).toLocaleString("ro-RO", { maximumFractionDigits: 1 })}%`} records={{ label: recordsWords(firm.records), onClick: () => setSaid(`Înregistrările firmei ${firm.name} s-ar deschide în sertarul de surse.`) }} facts={firm.id === "f2" ? [{ text: "în asociere" }] : firm.id === "f4" ? [{ text: "1 contract: 66%", tone: "caveat" }] : []} actions={[
               { id: "rec", label: "Vezi înregistrările", glyph: "→", onSelect: () => setSaid(`Înregistrările firmei ${firm.name} s-ar deschide în sertarul de surse.`) },
               { id: "out", label: "Scoate din calcul", glyph: "−", ...(excluded.length >= MAX_EXCLUDED ? { disabled: "Cel mult 5 excluderi." } : {}), onSelect: () => setExcluded(ids => [...ids, firm.id]) },
-              { id: "page", label: "Fișa firmei", glyph: "↗", href: "#kd-sec-12" },
+              { id: "page", label: "Fișa firmei", glyph: "→", href: "#kd-sec-12" },
             ]} />)}
         </AnswerList>
         <TotalLine conditions={exclusion ? [exclusion] : []}>Din <span className="qb-num">{formatRon(total)}</span>, câștigați de {countWords(firms.length, "firmă", "firme")}</TotalLine>
@@ -318,7 +318,7 @@ export function AnswerSections() {
       <DetailCard autoFocus={false} title="Comuna Sageata" meta={`Primărie de comună · ${placeWords(20, 82, "semnale")}`} facts={[{ label: "Achiziții directe", value: "21,0 mil. lei" }, { label: "Risc", value: "73 din 100 · puternic" }]} lines={[
         { tag: { text: "adunate, trec de plafon", tone: "signal" }, text: "2018–2019", records: { label: recordsWords(9) } },
         { tag: { text: "mulți bani contractați în decembrie", tone: "signal" }, text: "2022", records: { label: recordsWords(48) } },
-      ]} actions={[{ label: "Vezi cele 9 cu semnalul", glyph: "→" }, { label: "Unde se situează?", glyph: "›" }, { label: "Fișa instituției", glyph: "↗", href: "#kd-sec-13" }]} onClose={() => undefined} />
+      ]} actions={[{ label: "Vezi cele 9 cu semnalul", glyph: "→" }, { label: "Unde se situează?", glyph: "›" }, { label: "Fișa instituției", glyph: "→", href: "#kd-sec-13" }]} onClose={() => undefined} />
       <Live>
         <p className="kd-text">Caută o firmă din lista de la §12 („probă 07”): locul ei nu filtrează lista. „Arată fișa” mută focusul pe titlul fișei; Escape sau × o închide și întoarce focusul.</p>
         <Locate label="Unde e o firmă?" results={finder.results} loading={finder.loading} onSearch={finder.search} onPick={result => { setQuery({ id: result.id, name: result.name }); setCard(false); }} found={query ? { name: query.name, place: foundRank >= 0 ? placeWords(foundRank + 1, firms.length, "valoare") : "nu intră în listă: e scoasă din calcul" } : null} />

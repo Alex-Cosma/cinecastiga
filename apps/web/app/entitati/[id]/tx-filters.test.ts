@@ -58,7 +58,9 @@ describe("the records table", () => {
   });
 
   it("puts a single bidder among a row's leads, wraps long signals and turns rows into cards below 1000 px", () => {
-    expect(table).toContain('<span className="flag-badge sm neutral" title="O singură ofertă raportată în sursă">1 ofertant</span>');
+    // „O singură ofertă”, short on the tag, explained on hover or a tap (audit of 20 November 2026), never by a native title.
+    expect(table).toContain('<Term tip hold="box" className="flag-badge sm neutral" title="O singură ofertă" text={SINGLE_BID_TIP}>1 ofertă</Term>');
+    expect(table).not.toMatch(/<span className="(?:flag-badge|ask-srctag|cons-line|c-no)[^"]*"[^>]* title=/);
     expect(table).not.toContain("c-bid");
     expect(css).toContain(".ent-tx td.c-flags .flag-badge{white-space:normal");
     expect(css).toContain(".ent-tx th.col-value{width:140px}");

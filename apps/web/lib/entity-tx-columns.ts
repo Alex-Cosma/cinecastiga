@@ -23,7 +23,7 @@ export const rowFlag = (code: string): boolean => FLAG_META[code]?.subject === "
 
 const SIGNAL_LABELS: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Object.keys(FLAG_META).filter(rowFlag).map((code) => [code, flagRecordLabel(code)])),
-  [SINGLE_BIDDER]: "1 ofertant",
+  [SINGLE_BIDDER]: "1 ofertă",
   [NO_SIGNAL]: "fără semnal",
 };
 

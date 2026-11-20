@@ -1,7 +1,7 @@
 import { FLAG_META } from "./flags";
 import { COUNTIES } from "./counties";
 import type { RiskGroupSort, Role } from "./marts";
-import { formatInt } from "./format";
+import { roCount } from "./ro-count";
 import { parseRoleParam } from "./role-param";
 import { RISK_CRITERIA } from "./risk-score";
 import { signalCaseColumns, signalRiskColumns } from "./signal-columns";
@@ -10,7 +10,7 @@ import type { FilterState, TableColumns } from "./table-filters/types";
 
 /** Badge text for the number of distinct signal types on an entity page ("1 tip", "2 tipuri"). */
 export function signalTypeCountLabel(n: number): string {
-  return n === 1 ? "1 tip" : `${formatInt(n)} tipuri`;
+  return roCount(n, "1 tip", "tipuri");
 }
 
 export const SIGNAL_PAGE_SIZE = 10;

@@ -7,7 +7,7 @@ import { menuButtonKey, menuKey } from "../builder/keyboard";
  * P7, the "⋯" menu of an answer row (WAI menu button): the actions on one
  * entity of the answer. "Vezi înregistrările →", "Scoate din calcul −" (the
  * entity leaves the selection: the total changes and the total line says
- * "fără X"), "Detaliază ›", "Radiografia instituției ↗". The button opens the menu on
+ * "fără X"), "Detaliază ›", "Radiografia instituției →". The button opens the menu on
  * its first item (click, Enter, Space, ↓) or its last (↑); inside, ↑/↓ wrap
  * round, Home/End, a letter jumps; Escape closes and focus returns to the
  * button, Tab closes and moves on, a press outside closes. A disabled action
@@ -17,11 +17,11 @@ import { menuButtonKey, menuKey } from "../builder/keyboard";
 export interface RowAction {
   id: string;
   label: string;
-  /** R8: → records, − leaves the calculation, › another answer, ↗ another page, ▾ a window (the builder's "⋯ › Selecție avansată"); none for a plain action („Copiază linkul”). */
+  /** R8: → records or another page of the site, − leaves the calculation, › another answer, ↗ only a page outside the site (owner decision B, 20 November 2026), ▾ a window (the builder's "⋯ › Selecție avansată"); none for a plain action („Copiază linkul”). */
   glyph?: "→" | "−" | "›" | "↗" | "▾";
   /** A second line that says what the action gives („Un link scurt, de lipit oriunde”); a disabled action's reason takes its place. */
   note?: string;
-  /** A page of the site (↗); otherwise onSelect. */
+  /** A page of the site (→); otherwise onSelect. */
   href?: string;
   onSelect?: () => void;
   /** Shown but not usable; the reason is its second line. */

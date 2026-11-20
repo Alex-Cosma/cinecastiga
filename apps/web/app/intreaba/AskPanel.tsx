@@ -2357,18 +2357,21 @@ function TableBlock({
     tip?: ReactNode;
   }) =>
     paged ? (
+      // Sorting is a button in the header, its state on the header (keyboard and screen readers), as in the entity
+      // records table; the (?) beside it opens its explanation and does not sort.
       <th
+        scope="col"
         className={(num ? "num" : "") + " sortable"}
-        // The (?) opens its explanation; it does not sort the column.
-        onClick={(event) => { if (!(event.target as Element).closest(".term")) sortBy(k); }}
-        title="sortează"
+        aria-sort={sort === k ? (dir === "desc" ? "descending" : "ascending") : "none"}
       >
-        {label}
-        {sort === k ? (dir === "desc" ? " ▾" : " ▴") : ""}
+        <button type="button" className="th-sort" onClick={() => sortBy(k)}>
+          {label}
+          {sort === k && <> <span className={`mo-sort-arrow${dir === "asc" ? " is-up" : ""}`} aria-hidden="true">▾</span></>}
+        </button>
         {tip && <> {tip}</>}
       </th>
     ) : (
-      <th className={num ? "num" : undefined}>{label}{tip && <> {tip}</>}</th>
+      <th scope="col" className={num ? "num" : undefined}>{label}{tip && <> {tip}</>}</th>
     );
   if (rows.length === 0)
     return <p className="ask-empty">Niciun rezultat pentru aceste filtre.</p>;

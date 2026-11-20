@@ -5,7 +5,8 @@ import { FLAG_META, flagFindingLabel } from "@/lib/flags";
 import { GLOSSARY } from "@/lib/glossary";
 import { CALLOFFS_MAYBE_ERROR, riskEvidenceLine } from "@/lib/risk-presentation";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
-import { formatExactDecimal, formatInt } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
+import { leiRounded } from "@/lib/lei";
 import { recordCaveat } from "@/lib/record-labels";
 import type { PairContext, RecordFlag } from "@/lib/record-types";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -72,7 +73,7 @@ export function RecordHead({ title, heading, context, lot, lotLabel = "Lot", lot
     <p className="record-meta">{items.map((item, i) => isModePart(item) ? <span key={i} data-only={item.only}>{item.node}</span> : <span key={i}>{item}</span>)}</p>
     <div className="record-actions">
       {actions}
-      {!!signals && <a className="record-signal-chip" href="#semnale">{signals === 1 ? "1 semnal" : `${formatInt(signals)} semnale`} <span aria-hidden="true">↓</span></a>}
+      {!!signals && <a className="record-signal-chip" href="#semnale">{countWords(signals, "semnal", "semnale")} <span aria-hidden="true">↓</span></a>}
     </div>
   </header>;
 }
@@ -139,7 +140,8 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
             {href && <Link href={href} data-only={link}>{firms ? "Cazul firmei" : "Toate cazurile instituției"}</Link>}
             {/* One click from a signal to its rule (UX audit Z7-05); the anchors open the rule in the guide. */}
             {meta && <Link href={`/metodologie#${f.code}`} prefetch={false} data-only={link}>Regula <span aria-hidden="true">→</span></Link>}
-            {caveat && <details><summary>De ce nu e o dovadă</summary><p>{caveat}</p></details>}
+            {/* Floats over the page (owner, 20 November 2026; before: a fold that pushed it down). */}
+            {caveat && <Term tip hold="line" className="record-why" title="De ce nu e o dovadă" text={caveat}>De ce nu e o dovadă</Term>}
           </div>
         </li>;
       })}
@@ -193,8 +195,8 @@ export function pairLines(pair: PairContext | null | undefined): ReactNode[] {
   }
   const s = pair.size;
   if (s && (s.employees !== null || s.turnoverRon !== null)) {
-    const parts = [s.employees !== null ? `${formatInt(s.employees)} ${s.employees === 1 ? "angajat" : "angajați"}` : null,
-      s.turnoverRon !== null ? `cifră de afaceri ${formatExactDecimal(s.turnoverRon)} lei` : null].filter(Boolean);
+    const parts = [s.employees !== null ? countWords(s.employees, "angajat", "angajați") : null,
+      s.turnoverRon !== null ? `cifră de afaceri ${leiRounded(s.turnoverRon)}` : null].filter(Boolean);
     out.push(<>{parts.join(" · ")} în {s.year} <span className="record-quiet">· bilanț MF</span></>);
   }
   return out;

@@ -1,12 +1,14 @@
 "use client";
 
 import { arrive } from "../../../../components/motion/outline";
+import { DoneCheck, useFlag } from "../../../../components/motion/Done";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
+import HowNote from "@/components/HowNote";
 import EntityName from "@/components/EntityName";
 import EntityPager from "../Pager";
 import EntityCrumb from "../EntityCrumb";
@@ -19,7 +21,9 @@ import "@/app/intreaba/builder/filters-kit.css";
 import { countWords } from "@/lib/ask/answer-text";
 import { glossaryEntry } from "@/lib/glossary";
 import { cleanName, countyLabel } from "@/lib/format";
-import { formatEvidenceAmount, sumDecimalStrings } from "@/lib/ask/evidence";
+import { sumDecimalStrings } from "@/lib/ask/evidence";
+import Lei from "@/components/Lei";
+import { leiRounded } from "@/lib/lei";
 import type { Dataset } from "@/lib/ask/spec";
 import type { ConnectionEntity, ConnectionPartner, ConnectionRole, ConnectionsResponse } from "@/lib/connections-shared";
 import { connectionEvidenceSpec, type ConnectionEvidenceSelection, type ConnectionEvidencePair } from "@/lib/connection-evidence-shared";
@@ -495,12 +499,14 @@ function PeriodButton({ scope, onApply }: { scope: Scope; onApply: (years: { yea
  * pinned version and identities, so the link reopens exactly what is shown; the long address when one cannot be made.
  */
 function CopyLink({ path }: { path: string }) {
-  const [said, setSaid] = useState("");
-  useEffect(() => { if (!said) return; const timer = setTimeout(() => setSaid(""), 2500); return () => clearTimeout(timer); }, [said]);
+  // „✓ Copiat” on the button for 1.6 s, read by the live region beside it (DESIGN M-08); a failure stays in words.
+  const [copied, raiseCopied] = useFlag();
+  const [failed, setFailed] = useState(false);
   return <>
     <button type="button" className="cx-copy" onPointerDown={() => prepareShortLink(path)}
-      onClick={() => { copyShortLink(path).then(() => setSaid("Link copiat"), () => setSaid("Linkul nu a putut fi copiat")); }}>Copiază linkul</button>
-    <span className="cx-copied" role="status">{said}</span>
+      onClick={() => { copyShortLink(path).then(() => { setFailed(false); raiseCopied(); }, () => setFailed(true)); }}>{copied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
+    <span className="cx-copied" role="status">{failed ? "Linkul nu a putut fi copiat" : ""}</span>
+    <span className="d-sr-only" role="status">{copied ? "Linkul este în clipboard." : ""}</span>
   </>;
 }
 
@@ -725,7 +731,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
         const n = r === role ? (v.top ? count : null) : other.data?.pagination.totalPartners ?? null;
         const words = n === null ? "" : countWords(n, r === "authority" ? "furnizor" : "instituție", r === "authority" ? "furnizori" : "instituții");
         const href = `/entitati/${entityId}/legaturi?${query({ rol: r === "authority" ? "autoritate" : "furnizor", ...scope })}`;
-        return <Link key={r} href={href} aria-current={r === role ? "page" : undefined}>{r === "authority" ? "Ca instituție" : "Ca firmă"}<span className="n">{words}</span></Link>;
+        return <Link key={r} href={href} aria-current={r === role ? "page" : undefined}>{r === "authority" ? "Cumpără · autoritate" : "Vinde · furnizor"}<span className="n">{words}</span></Link>;
       })}
     </nav>}
     <header className="cx-head">
@@ -733,7 +739,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
         <h1>Cum sunt legate?</h1>
         {v.top && empty ? null
           : v.top && onePartner
-          ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · {formatEvidenceAmount(onePartner.totalExact)}{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
+          ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · <Lei value={onePartner.totalExact} />{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
           : v.top
           ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
           : <Ghost as="p" className={`cx-lede${base.error && !held ? " g-still" : ""}`} name="cx-lede" wait="client"><G.Line w="20em" /><G.Line w="6em" only="phone" /></Ghost>}
@@ -770,7 +776,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
         {!empty && <section className="cx-dock" ref={dock} aria-label="Legătura aleasă" tabIndex={-1}>
           {!vp ? (pickPending ? <DockGhost /> : <p className="cx-dock-hint">Alege {isAuthority ? "un furnizor" : "o instituție"} din flux sau din listă.</p>) : !v.peer ? <div className="cx-dock-one"><div className="cx-dock-text">
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>{isAuthority ? "a cumpărat de la" : "a vândut către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
-            <div className="cx-dock-facts"><span className="amt">{formatEvidenceAmount(vp.partner.totalExact)}</span>
+            <div className="cx-dock-facts"><span className="amt"><Lei value={vp.partner.totalExact} /></span>
               <span>{recordLabel(records(vp.partner))} · {vp.partner.firstDate ? `${date(vp.partner.firstDate)} – ${date(vp.partner.lastDate)}` : "fără date"}</span>
               {rankWords ? <span className="rank">{rankWords}</span> : waitingSecond && <RankGhost />}</div></div>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>{sourceLabel(records(vp.partner))}</button>
@@ -780,11 +786,11 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>și</span><b><EntityName id={v.peer.entity.id} role={v.peer.entity.role}>{name(v.peer.entity)}</EntityName></b>
               <span>{isAuthority ? "cumpără de la" : "vând către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
             <div className="cx-legs">{[{ item: vp.partner, a: vp.root }, { item: v.peer, a: v.peer.entity }].map(({ item, a }, index) => (
-              <div className="cx-leg" key={index}><h3>{legTitle(a, vp.partner.entity)}</h3><p className="amt">{formatEvidenceAmount(item.totalExact)}</p>
+              <div className="cx-leg" key={index}><h3>{legTitle(a, vp.partner.entity)}</h3><p className="amt"><Lei value={item.totalExact} /></p>
                 <p>{recordLabel(records(item))} · {item.firstDate ? `${date(item.firstDate)} – ${date(item.lastDate)}` : "fără date"}</p>
                 <button type="button" onClick={() => setSources({ selection: selectionFor([pairs[index]!]), title: legTitle(a, vp.partner.entity) })}>{sourceLabel(records(item))}</button></div>))}</div>
             {/* The caveat joins the line's (?) (owner, 17 November 2026; before: a sentence before „Împreună”). */}
-            <p className="cx-dock-note">Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · {formatEvidenceAmount(sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact]))} <Term tip title="De știut" text={<>{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. <b>{glossaryEntry("consortiu").title}:</b> {glossaryEntry("consortiu").text}</>} /></p>
+            <p className="cx-dock-note">Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · <Lei value={sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact])} /> <Term tip title="De știut" text={<>{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. <b>{glossaryEntry("consortiu").title}:</b> {glossaryEntry("consortiu").text}</>} /></p>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>Sursele ambelor legături</button>
               <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
               <CopyLink path={addressOf(vp, v.peer, v.scope)} />
@@ -828,11 +834,12 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
       </div>}
     </>}
 
-    <details className="cx-method"><summary>Ce arată aceste legături și ce date includem?</summary><p>Legăturile descriu achiziții înregistrate între o autoritate și un furnizor. Un partener comun este un punct de pornire pentru documentare; nu dovedește o relație de proprietate sau o neregulă.</p><p>Includem achiziții directe cu valoare pozitivă de cel mult 2.000.000 lei și cote de contract cu valoare pozitivă, conform selecției standard a aplicației. Pragul de 2.000.000 lei este o regulă de filtrare a valorilor suspecte, nu un prag legal. Înregistrările fără valoare eligibilă nu intră în acest ecran.</p><p>Contractele se numără separat de cotele atribuite furnizorilor. Când valorile pe membri lipsesc, aplicația împarte valoarea contractului între câștigători. TED completează sursele, fără a adăuga din nou valoarea contractului.</p><p>Perioada se aplică datei de finalizare. Fără limite de an includem și înregistrările fără dată; cu limite, acestea nu pot fi încadrate și sunt excluse. În flux, lățimea fiecărei benzi e valoarea ei; ponderile din dreapta sunt din tot ce înregistrează partenerul ales.</p>
-      {!!v.base?.excluded.rowCount && <p>{number(v.base.excluded.rowCount)} înregistrări eligibile, în valoare de {formatEvidenceAmount(v.base.excluded.totalExact)}, au un partener neidentificat sau aceeași identitate la ambele capete și nu apar în listă.</p>}
-      {!!v.second?.excluded.rowCount && <p>Pentru partenerul selectat, încă {number(v.second.excluded.rowCount)} înregistrări eligibile au un partener neidentificat sau aceeași identitate la ambele capete.</p>}
-      <p>{v.base?.checkpoint.validatedAt ? `Versiunea consultată a fost verificată tehnic la ${new Date(v.base.checkpoint.validatedAt).toLocaleDateString("ro-RO")}. Aceasta nu este data colectării achizițiilor.` : "Legăturile se încarcă doar dintr-o versiune verificată a datelor."} <Link href="/metodologie#acoperire">Surse, acoperire și limite</Link></p>
-    </details>
+    {/* The method note floats over the page (owner, 20 November 2026; before: a fold that pushed it down). */}
+    <HowNote title="Ce arată aceste legături și ce date includem" className="cx-method"><span className="how-n">Legăturile descriu achiziții înregistrate între o autoritate și un furnizor. Un partener comun este un punct de pornire pentru documentare; nu dovedește o relație de proprietate sau o neregulă.</span><span className="how-n">Includem achiziții directe cu valoare pozitivă de cel mult 2.000.000 lei și cote de contract cu valoare pozitivă, conform selecției standard a aplicației. Pragul de 2.000.000 lei este o regulă de filtrare a valorilor suspecte, nu un prag legal. Înregistrările fără valoare eligibilă nu intră în acest ecran.</span><span className="how-n">Contractele se numără separat de cotele atribuite furnizorilor. Când valorile pe membri lipsesc, aplicația împarte valoarea contractului între câștigători. TED completează sursele, fără a adăuga din nou valoarea contractului.</span><span className="how-n">Perioada se aplică datei de finalizare. Fără limite de an includem și înregistrările fără dată; cu limite, acestea nu pot fi încadrate și sunt excluse. În flux, lățimea fiecărei benzi e valoarea ei; ponderile din dreapta sunt din tot ce înregistrează partenerul ales.</span>
+      {!!v.base?.excluded.rowCount && <span className="how-n">{countWords(v.base.excluded.rowCount, "înregistrare eligibilă", "înregistrări eligibile")}, în valoare de {leiRounded(v.base.excluded.totalExact)}, au un partener neidentificat sau aceeași identitate la ambele capete și nu apar în listă.</span>}
+      {!!v.second?.excluded.rowCount && <span className="how-n">Pentru partenerul selectat, încă {countWords(v.second.excluded.rowCount, "înregistrare eligibilă", "înregistrări eligibile")} au un partener neidentificat sau aceeași identitate la ambele capete.</span>}
+      <span className="how-n">{v.base?.checkpoint.validatedAt ? `Versiunea consultată a fost verificată tehnic la ${new Date(v.base.checkpoint.validatedAt).toLocaleDateString("ro-RO")}. Aceasta nu este data colectării achizițiilor.` : "Legăturile se încarcă doar dintr-o versiune verificată a datelor."} <Link href="/metodologie#acoperire">Surse, acoperire și limite</Link></span>
+    </HowNote>
     {fetching && <FloatStatus>{held ? "Se încarcă legăturile…" : "Se încarcă lista…"}</FloatStatus>}
     {sources && <EvidenceDrawer spec={connectionEvidenceSpec(sources.selection)} connection={sources.selection} title={sources.title} onClose={() => setSources(null)} />}
   </div>;

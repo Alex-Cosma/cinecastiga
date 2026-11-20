@@ -26,7 +26,7 @@ import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import InfoMark from "@/components/InfoMark";
 import { countyKnown } from "@/lib/counties";
 import { entityCountryLabel } from "@/lib/ted";
-import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl, withoutRole } from "@/lib/signals-shared";
@@ -42,6 +42,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { GLOSSARY } from "@/lib/glossary";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
 import TxTable from "./TxTable";
@@ -317,7 +318,7 @@ export default async function EntityPage({
                 return (
                   <Link key={r} href={q(base, { rol: r === "supplier" ? "furnizor" : "autoritate", p: undefined })}
                     aria-current={r === role ? "page" : undefined}
-                    title={counts ? `${ROLE_LABEL[r]}: ${formatInt(counts.nDa + counts.nCt)} înregistrări` : ROLE_LABEL[r]}>
+                    title={counts ? `${ROLE_LABEL[r]}: ${countWords(counts.nDa + counts.nCt, "înregistrare", "înregistrări")}` : ROLE_LABEL[r]}>
                     <span>{r === "authority" ? "Cumpără · autoritate" : "Vinde · furnizor"}</span>
                     {counts && <span className="n">{formatInt(counts.nDa + counts.nCt)}</span>}
                   </Link>
@@ -375,11 +376,12 @@ export default async function EntityPage({
             ) : null}
             {cuiUncorroborated ? (
               // The CUI's own warning goes with the CUI (both or neither).
-              <span data-only="complet" title={registryCollision
+              // A warning on the identity explains itself on hover or a tap, never by a native title (audit of 20 November 2026).
+              <span data-only="complet"><Term tip hold="line" title="Număr necoroborat cu ONRC" text={registryCollision
                 ? "La verificarea manuală, ONRC înregistrează acest număr la o altă firmă decât cea din SEAP. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."
                 : "Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."}>
                 număr necoroborat cu ONRC
-              </span>
+              </Term></span>
             ) : null}
           </div>
         </div>
@@ -444,7 +446,7 @@ export default async function EntityPage({
                 {scoreFound.map((code) => <span key={code} className="ent-how-n">
                   <b>+{formatInt(points[code] ?? 0)}</b> · <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link> · {riskFact(code, row.scoreParts[code]!, role)}
                 </span>)}
-                {scoreMissing > 0 && <span className="ent-how-n">{scoreMissing === 1 ? "Un alt tipar din scor nu apare" : `Alte ${formatInt(scoreMissing)} tipare din scor nu apar`} la {role === "authority" ? "această instituție" : "această firmă"}.</span>}
+                {scoreMissing > 0 && <span className="ent-how-n">{scoreMissing === 1 ? "Un alt tipar din scor nu apare" : `Alte ${countWords(scoreMissing, "tipar", "tipare")} din scor nu apar`} la {role === "authority" ? "această instituție" : "această firmă"}.</span>}
               </> : <span className="ent-how-n">Niciun tipar din scor nu apare la {role === "authority" ? "această instituție" : "această firmă"}.</span>}>
                 <b data-band={band}>{riskScoreText(row.score)}</b>
               </Term>
@@ -590,7 +592,7 @@ export default async function EntityPage({
                     data-only={othersOnly} data-esential-empty={linked(r) ? undefined : "1"}>
                     {r.nOtherFirms > 0 && r.personKey ? (
                       <a href={personFirmsUrl(r.personKey, cleanName(r.personName))}>
-                        {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} →
+                        {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${countWords(r.nOtherFirms, "firmă", "firme")}`} →
                       </a>
                     ) : null}
                     {r.nOtherOnrcOnly > 0 && (
@@ -598,7 +600,7 @@ export default async function EntityPage({
                         {r.nOtherFirms > 0 ? " + " : ""}
                         {r.nOtherOnrcOnly === 1
                           ? "o firmă fără achiziții publice"
-                          : `${formatInt(r.nOtherOnrcOnly)} firme fără achiziții publice`}
+                          : `${countWords(r.nOtherOnrcOnly, "firmă", "firme")} fără achiziții publice`}
                       </span>
                     )}
                     {r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 && "—"}
@@ -646,12 +648,13 @@ export default async function EntityPage({
               was reported as wrong; this list is what stayed out, each with its reason. */}
           <p>{VALUE_REVIEW_RULE} {aboveCap.count === 1 ? "Acesta a rămas afară." : "Acestea au rămas afară."} Valori integrale din SEAP, nu plăți.
             {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
-          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th><th scope="col">De ce e ținut afară</th></tr></thead><tbody>
+          {/* On a phone each contract is a card (rank-stack, audit 20 November 2026): nothing scrolls sideways. */}
+          <div className="ask-tablewrap rank-stack"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th><th scope="col">De ce e ținut afară</th></tr></thead><tbody>
             {aboveCap.rows.map((c) => <tr key={c.natId}>
-              <td><Link prefetch={false} href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
-              <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
-              <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
-              <td>{heldValueReason(c)}</td>
+              <td><Link prefetch={false} href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {countWords(c.nWinners, "câștigător", "câștigători")}</span> : null}</td>
+              <td data-label="Semnat">{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
+              <td className="num" data-label="Valoare (lei)"><Lei value={c.valueRonExact} unit={false} /></td>
+              <td className="rank-full" data-label="De ce e ținut afară">{heldValueReason(c)}</td>
             </tr>)}
           </tbody></table></div>
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
@@ -670,7 +673,7 @@ export default async function EntityPage({
             {holderTwin.birthYear && (
               <span className="county"> {birthNote({ birthYear: holderTwin.birthYear, birthLocality: holderTwin.locality ? cleanName(holderTwin.locality) : null })}</span>
             )}
-            {" · "}{holderTwin.firms === 1 ? "administrator la o firmă" : `administrator la ${formatInt(holderTwin.firms)} firme`}
+            {" · "}{holderTwin.firms === 1 ? "administrator la o firmă" : `administrator la ${countWords(holderTwin.firms, "firmă", "firme")}`}
             {" · "}<span className="county">potrivire doar după nume</span>
           </p>
         </section>
@@ -682,9 +685,9 @@ export default async function EntityPage({
           total's (?) and in the footer. The score's parts are on the score, at the top. */}
       <p className="ent-how" data-only="complet">
         <Term tip hold="line" title="Ce includ cifrele" text={<>
-          {txCounts.nCt > 0 && <span className="ent-how-n">{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.</span>}
+          {txCounts.nCt > 0 && <span className="ent-how-n">{countWords(txCounts.nContracts, "contract distinct apare", "contracte distincte apar")} în {countWords(txCounts.nCt, "înregistrare", "înregistrări")} contract–furnizor.</span>}
           <span className="ent-how-n">Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.</span>
-          {txCounts.excludedDa > 0 && <span className="ent-how-n">{formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.</span>}
+          {txCounts.excludedDa > 0 && <span className="ent-how-n">{txCounts.excludedDa === 1 ? "O achiziție directă cu valoare nulă, nepozitivă sau peste plafon este separată" : `${countWords(txCounts.excludedDa, "", "achiziții directe")} cu valori nule, nepozitive sau peste plafon sunt separate`} de total.</span>}
           {aboveCap.count > 0 && <span className="ent-how-n">Contractele de peste 1 mld. lei ținute afară nu intră în totaluri și nici în lista partenerilor; sunt listate sub tabel, fiecare cu motivul.</span>}
           {cuiUncorroborated && <span className="ent-how-n">{registryCollision
             ? <>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual diferența. Nu afișăm pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</>

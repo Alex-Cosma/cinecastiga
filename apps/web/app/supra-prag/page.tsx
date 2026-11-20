@@ -177,7 +177,7 @@ export default async function SupraPragPage({
           <div className="stat">
             <div className="n">{formatInt(stats.total)}</div>
             <div className="l">rezultate de loturi TED <Term tip title={GLOSSARY["rezultat-lot-ted"].title} text={<>{GLOSSARY["rezultat-lot-ted"].text}{" "}
-              {stats.notices != null ? `${formatInt(stats.notices)} anunțuri. ` : ""}{stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte.` : ""}</>} /></div>
+              {stats.notices != null ? `${countWords(stats.notices, "anunț", "anunțuri")}. ` : ""}{stats.unknownCompetition != null ? `${countWords(stats.unknownCompetition, "rezultat", "rezultate")} fără număr de oferte.` : ""}</>} /></div>
           </div>
           {statLinks.map((f) => <div className="stat" key={f.key}>
             <RegionLink scroll className={`tp-stat-link${f.on ? " on" : ""}`} href={f.href} aria-current={f.on ? "true" : undefined}
@@ -188,7 +188,7 @@ export default async function SupraPragPage({
           </div>)}
         </div>
         {stats.legacyAmounts == null || stats.legacyAmounts > 0 ? <p className="note">
-          {stats.legacyAmounts != null ? `${formatInt(stats.legacyAmounts)} rezultate așteaptă verificarea tipului valorii. ` : "Clasificarea valorilor este în curs de actualizare. "}
+          {stats.legacyAmounts != null ? `${stats.legacyAmounts === 1 ? "1 rezultat așteaptă" : `${countWords(stats.legacyAmounts, "rezultat", "rezultate")} așteaptă`} verificarea tipului valorii. ` : "Clasificarea valorilor este în curs de actualizare. "}
           Aceste sume sunt marcate separat și nu intră în comparația valorilor RON.
         </p> : null}
         {/* The country chips stay as the summary (4 November 2026), on one labelled row: the first six (three on a phone)
@@ -264,7 +264,7 @@ export default async function SupraPragPage({
                       ? <Term tip hold="box" className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]!.title} text={TED_LABEL[a.label]!.hint}>{TED_LABEL[a.label]!.title}</Term>
                       : <span className="ted-label seap">{a.label}</span>}
                     {a.tendersReceived === 1
-                      ? <Term tip hold="box" className="badge warn" title="1 ofertă primită" text="O licitație la care s-a depus o singură ofertă, potrivit TED.">{competitionLabel(a.tendersReceived)}</Term>
+                      ? <Term tip hold="box" className="badge warn" title="O singură ofertă" text="O licitație la care s-a depus o singură ofertă, potrivit TED.">{competitionLabel(a.tendersReceived)}</Term>
                       : <span className="badge">{competitionLabel(a.tendersReceived)}</span>}
                     {a.euFunded ? <span className="badge">fonduri UE</span> : null}
                     {/* On a phone the procedure is one more pill here, its column hidden (Z6-29). */}

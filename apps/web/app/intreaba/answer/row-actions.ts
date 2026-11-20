@@ -12,7 +12,7 @@ import type { RowAction } from "./RowMenu";
  * entity leaves the selection; disabled with its reason at five, on a link's
  * "SAU" or another page's selection), "Detaliază ›" (a flow's domain, one
  * CPV level down) and, on the network around an institution, that
- * institution's "Radiografia ↗". The entity's page is its name, a link
+ * institution's "Radiografia →". The entity's page is its name, a link
  * (owner, 2 November 2026). An action without its handler (or the centre's
  * id) is left out.
  */
@@ -32,7 +32,7 @@ export function entityRowActions(spec: AskSpec, _row: EntityRow, on: { records?:
     }
     if (id === "deeper" && on.deeper) actions.push({ id, label: "Detaliază", glyph: "›", onSelect: on.deeper });
     // The network's institution in the centre (final network §3.6): its radiography, where this firm's place among its suppliers shows.
-    if (id === "radiography" && centre) actions.push({ id, label: "Radiografia instituției", glyph: "↗", href: `/entitati/${centre}/radiografie` });
+    if (id === "radiography" && centre) actions.push({ id, label: "Radiografia instituției", glyph: "→", href: `/entitati/${centre}/radiografie` });
   }
   return actions;
 }

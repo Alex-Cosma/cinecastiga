@@ -8,9 +8,6 @@
 /* Zero specificity: every button below sets its own type. */
 :where(.pxs) button{font:inherit;cursor:pointer}
 :where(.pxs) button:disabled{cursor:default;opacity:.55}
-.pxs-crumb{margin:0;font-size:13px;color:var(--muted)}
-.pxs-crumb a{font-weight:600;color:var(--accent);text-decoration:none}
-.pxs-crumb a:hover{text-decoration:underline;text-underline-offset:3px}
 .pxs-head h1{margin:8px 0 0;font:700 36px/1.1 var(--display);letter-spacing:-.025em;text-wrap:balance}
 .pxs-lede{margin:6px 0 0;max-width:none;font-size:15.5px;color:var(--ink2)}
 .pxs-lede b{color:var(--ink);font-weight:600}
@@ -118,12 +115,8 @@
 .pxs-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
 .pxs-pager span .pxs-link{font-size:13px}
 .pxs-pager span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.pxs-method{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink2)}
-.pxs-method :is(summary,.pxs-method-s){display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
-.pxs-method summary::-webkit-details-marker{display:none}
-.pxs-method summary svg{transition:transform var(--fast) var(--ease)}
-.pxs-method[open] summary svg{transform:rotate(90deg)}
-.pxs-method p{max-width:none;margin:10px 0 0}
+/* The method's two notes: dotted words whose boxes float over the page (components/how-note.css, owner 20 November 2026). */
+.pxs-method-sep{color:var(--faint)}
 /* the ghost of the first answer: a decorative bell of dots on the axis, quiet replicas of the controls */
 .pxs-g-band{position:absolute;top:34px;bottom:30px;left:31%;width:26%;background:var(--sunk)}
 .pxs-g-dot{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%}
@@ -156,7 +149,7 @@ span.pxs-src{display:inline-flex;align-items:center}
   .pxs-row .pxs-track{display:none}
   .pxs-facts dd{font-size:15px}
 }
-@media (prefers-reduced-motion:reduce){.pxs-band,.pxs-dot,.pxs-focal,.pxs-method summary svg{transition:none}}
+@media (prefers-reduced-motion:reduce){.pxs-band,.pxs-dot,.pxs-focal{transition:none}}
 
 /* ---- UX audit, 16 November 2026 ---- */
 /* Z4-27: the title's name without the source's capitals, two lines at most; the whole of it on hover, focus or a tap. */
@@ -189,14 +182,10 @@ span.pxs-src{display:inline-flex;align-items:center}
 .pxs-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:5px}
 .pxs-seg button[aria-pressed="true"]:focus-visible{outline-color:var(--on-accent)}
 /* Z4-42: three plain sentences, the technical text behind its own fold. */
-.pxs-method-more{margin-top:10px}
-.pxs-method-more>summary{display:inline-flex;align-items:center;min-height:32px;cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
-.pxs-method-more>summary::-webkit-details-marker{display:none}
-@media (max-width:640px){.pxs-chip,.pxs-method-more>summary{min-height:44px}}
+@media (max-width:640px){.pxs-chip{min-height:44px}}
 /* Phones: the amount takes the width it needs (a fixed 92 px let „47,0 mil. lei” run under „Surse”). */
 @media (max-width:640px){.pxs-row{grid-template-columns:26px minmax(0,1fr) auto auto}}
-/* Phones: 44 px targets for the way back, the segments and a row's sources. */
+/* Phones: 44 px targets for the segments and a row's sources (the way back is EntityCrumb). */
 @media (max-width:640px){
-  .pxs-crumb a{display:inline-flex;align-items:center;min-height:44px;margin-block:-12px}
   .pxs-seg button,.pxs-src{min-height:44px}
 }

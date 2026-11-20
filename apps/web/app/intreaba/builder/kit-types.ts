@@ -63,9 +63,10 @@ export interface KitOption {
 export interface KitRestRow { label: string; count?: string; after?: string; tip?: KitTip }
 
 /**
- * A link of the answer, by where it leads (R8): "→" opens the records, "›"
- * another answer in Întreabă, "↗" another page of the site. A page is an
- * href; the records drawer and another answer are the caller's onClick.
+ * A link of the answer, by where it leads (R8): "→" opens the records or
+ * another page of the site, "›" another answer in Întreabă; "↗" only a page
+ * outside the site, in a new tab (owner decision B, 20 November 2026). A page
+ * is an href; the records drawer and another answer are the caller's onClick.
  */
 export interface KitLink {
   label: string;

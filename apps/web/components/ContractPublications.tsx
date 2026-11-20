@@ -2,7 +2,9 @@ import Link from 'next/link';
 import {Fragment} from 'react';
 import EntityName from './EntityName';
 import {awardUrl} from '@/lib/elicitatie';
-import {formatExactDecimal,formatCalendarDate,cleanName} from '@/lib/format';
+import {formatCalendarDate,cleanName} from '@/lib/format';
+import {countWords} from '@/lib/ask/answer-text';
+import Lei from './Lei';
 import './contract-publications.css';
 
 export interface ContractPublication {
@@ -27,9 +29,9 @@ export default function ContractPublications({publications,currentId,countedOnce
  const opened=publications.find(p=>p.natId===currentId);
  const older=!!(opened&&current&&signature(opened)!==signature(current));
  return <aside className="contract-publications" aria-label="Istoricul publicațiilor contractului">
-   <p><strong>{revised?'Contract actualizat în SEAP.':`Același contract, ${publications.length} publicații SEAP.`}</strong>{' '}
+   <p><strong>{revised?'Contract actualizat în SEAP.':`Același contract, ${countWords(publications.length,'publicație','publicații')} SEAP.`}</strong>{' '}
      {countedOnce?'În statistici folosim o singură dată ultima versiune verificată.':'Ultima versiune verificată nu contribuie la totalurile statistice curente.'}
-     {current?.valueRon!=null&&<> <strong>{formatExactDecimal(current.valueRon)} lei</strong>.</>}</p>
+     {current?.valueRon!=null&&<> <strong><Lei value={current.valueRon}/></strong>.</>}</p>
    {older&&current&&<p className="contract-publication-previous">Privești o versiune anterioară. <Link prefetch={false} href={`/contracte/${current.natId}`}>{countedOnce?'Deschide versiunea folosită în statistici':'Deschide ultima versiune verificată'}</Link>.</p>}
    {/* The history itself exists only in Complet (owner, 18 November 2026); the lines above qualify the amount and stay. */}
    <details open={older||undefined} data-only="complet">
@@ -45,7 +47,7 @@ export default function ContractPublications({publications,currentId,countedOnce
       <div className="contract-publication-record">
        <div className="contract-publication-heading"><span>{p.publishedOn?<time dateTime={p.publishedOn}>{formatCalendarDate(p.publishedOn)}</time>:'Dată neprecizată'}</span>
         {p.canonical&&<strong className="contract-publication-current">{countedOnce?'Versiunea din statistici':'Ultima versiune verificată'}</strong>}</div>
-       {p.valueRon!=null&&<strong className="contract-publication-value">{formatExactDecimal(p.valueRon)} lei</strong>}
+       {p.valueRon!=null&&<strong className="contract-publication-value"><Lei value={p.valueRon}/></strong>}
        <span className="note">{index===0?'Prima versiune pe care o avem':changes.length?changes.join(' · '):'Aceleași date contractuale'} · {p.noticeNo??'Anunț de atribuire'} · ID {p.noticeId}</span>
        {Boolean(p.supplierNames?.length)&&<span className="contract-publication-suppliers">{p.supplierNames!.map((name,i)=><Fragment key={p.supplierIds?.[i]??i}>{i>0&&' · '}<EntityName id={p.supplierIds?.[i]} role="supplier">{cleanName(name)}</EntityName></Fragment>)}</span>}
        {changes.includes('Titlu modificat')&&<span>{p.title}</span>}

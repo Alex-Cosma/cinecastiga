@@ -85,6 +85,9 @@
   .d-search-results b,.d-search-results .d-search-all,.d-search-dialog>p,.d-investigation-invite p:not(.eyebrow){font-size:12px}
 }
 @media(max-width:380px){.hdr-right .user-nav a[href="/login"]:after{font-size:12px}}
+/* 381–400 px (iPhone 390/393): „Autentificare” pushed the controls under the brand (a 143 px header); „Intră” keeps one
+   row there too, as under 380 px (audit 20 November 2026). The link's name stays „Autentificare” for a screen reader. */
+@media(min-width:381px) and (max-width:400px){.hdr-right .user-nav a[href="/login"]{font-size:0;width:31px;text-align:center}.hdr-right .user-nav a[href="/login"]:after{content:"Intră";font-size:12px}}
 @media(min-width:901px){
   .hdr-right .user-nav{font-size:13px}
   .d-global-search{font-size:12px}
@@ -126,6 +129,10 @@
 .term-tip.info-mark{vertical-align:middle}
 .term-tip.info-mark>.term-trigger{display:inline-grid;place-items:center;width:24px;height:24px;min-height:0;border-radius:6px;color:var(--muted);text-decoration:none;transition:color var(--fast) var(--ease),background var(--fast) var(--ease)}
 .term-tip.info-mark>.term-trigger>.term-mark{display:none}
+/* A record's amount to the leu (components/Lei.tsx, Decision A, 20 November 2026): the dotted line alone says the exact
+   amount is there, no "?" beside every number; above a row's stretched link (a /semnale row opens its case). */
+.lei-exact>.term-trigger>.term-mark{display:none}
+.lei-exact{position:relative;z-index:1}
 .term-tip.info-mark>.term-trigger:hover,.term-tip.info-mark.term-shown>.term-trigger{color:var(--accent-ink);background:var(--accent-soft)}
 .info-mark-i{display:block;width:16px;height:16px;overflow:visible}
 .info-mark .term-trigger:is(:hover,:focus-visible) .info-mark-dot,.info-mark.term-shown .info-mark-dot{animation:info-hop 560ms var(--ease) both}

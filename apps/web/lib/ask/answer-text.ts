@@ -3,7 +3,8 @@
  * line of an answer, the "rest" row of a ranking and the auto-run decision.
  * Pure functions (no React, no database), shared by the answer and its tests.
  */
-import { formatInt, formatRon } from "../format";
+import { formatRon } from "../format";
+import { roCount } from "../ro-count";
 
 const pct1 = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const pct0 = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
@@ -13,10 +14,7 @@ const pct0 = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
  * Romanian numerals take "de" when the last two digits are 00 or 20–99.
  */
 export function countWords(n: number, one: string, many: string): string {
-  if (n === 1) return `1 ${one}`;
-  const lastTwo = Math.abs(Math.trunc(n)) % 100;
-  const de = n !== 0 && (lastTwo === 0 || lastTwo >= 20);
-  return `${formatInt(n)} ${de ? "de " : ""}${many}`;
+  return roCount(n, `1 ${one}`, many);
 }
 
 /**
@@ -29,6 +27,16 @@ export function formatShare(share: number): string {
   if (percent > 0 && percent < 0.1) return "sub 0,1%";
   if (percent >= 99.95 && percent < 100) return "peste 99,9%";
   return `${pct1.format(percent)}%`;
+}
+
+/**
+ * A share (0.403) as a whole percent, "40%", for rows beside an amount: a part that rounds to nothing reads "<1%",
+ * never "0%" next to a non-zero amount (UX audit Z4-24 on /harta; the entity's partners, 20 November 2026).
+ */
+export function wholeShare(share: number): string {
+  if (!Number.isFinite(share)) return "—";
+  if (share > 0 && share < 0.005) return "<1%";
+  return `${Math.round(share * 100)}%`;
 }
 
 /** A whole-number percentage change with a sign: "+12%", "−8%". */

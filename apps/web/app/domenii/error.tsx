@@ -14,7 +14,7 @@ export default function DomainsError({ reset }: { error: Error & { digest?: stri
     <section className="dm-hero"><div>
       <h1 className="dm-error-title">Nu am putut încărca domeniile.</h1>
       <div className="dm-error-actions">
-        <button type="button" className="dm-button" onClick={() => startTransition(() => { router.refresh(); reset(); })}>Încearcă din nou</button>
+        <button type="button" className="dm-button" onClick={() => startTransition(() => { router.refresh(); reset(); })}>Reîncearcă</button>
         <Link href="/domenii" className="dm-button dm-secondary">Deschide anul implicit</Link>
         <Link href="/intreaba" className="dm-button dm-secondary">Construiește o întrebare →</Link>
       </div>

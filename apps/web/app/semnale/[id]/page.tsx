@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { cache, type ReactNode } from "react";
+import { cache, isValidElement, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
 import InfoMark from "@/components/InfoMark";
 import FirmCard from "@/components/record/FirmCard";
 import { LinkList, RecordHead, RecordPage, RecordSection, ShareList, Sources, type RecordValue, type Source } from "@/components/record/Record";
@@ -13,14 +14,13 @@ import { countWords } from "@/lib/ask/answer-text";
 import { awardUrl } from "@/lib/elicitatie";
 import { FLAG_META, FLAG_ORDER, flagFindingLabel, flagLabel } from "@/lib/flags";
 import { GLOSSARY } from "@/lib/glossary";
-import { cleanName, countyLabel, formatExactDecimal, formatRon } from "@/lib/format";
+import { cleanName, countyLabel, formatRon } from "@/lib/format";
 import { tedNoticeUrl } from "@/lib/record-context";
 import { procedureLabel } from "@/lib/record-labels";
 import { awardValueLabel, noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "@/lib/risk-presentation";
 import { readCaseTarget } from "@/lib/signal-case";
 import { caseUnitWords } from "@/lib/signal-case-words";
 import { readSignalPageData, type SignalPageData } from "@/lib/signal-page";
-import { baniDecimal } from "@/lib/signal-money";
 import { joinWords, partyShares, ratioNumber, shareWords } from "@/lib/signal-page-words";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { groupSourceRecords } from "@/lib/source-groups";
@@ -61,8 +61,13 @@ function decimalOf(value: unknown): string | null {
   return /^-?\d+(\.\d+)?$/.test(text) ? text : null;
 }
 const numOf = (value: unknown): number | null => { const d = decimalOf(value); return d === null ? null : Number(d); };
-/** A sum in lei; a derived one with more than two decimals (shares, sums over years) in bani (lib/signal-money.ts). */
-const lei = (value: unknown) => { const d = decimalOf(value); return d === null ? "valoare necunoscută" : `${formatExactDecimal(baniDecimal(d))} lei`; };
+/**
+ * A sum in lei, to the leu; the exact amount (a derived one with more than two decimals in bani, lib/signal-money.ts)
+ * on hover or tap (Decision A, owner, 20 November 2026).
+ */
+const lei = (value: unknown): ReactNode => { const d = decimalOf(value); return d === null ? "valoare necunoscută" : <Lei value={d} />; };
+/** Whether a head's amount is this sum (the records' total said once, owner 17 November 2026). */
+const isSum = (amount: ReactNode, value: unknown) => isValidElement(amount) && (amount.props as { value?: unknown }).value === decimalOf(value);
 const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const Party = ({ party, role }: { party: { id: string | null; name: string } | null | undefined; role: "authority" | "supplier" }) =>
@@ -206,7 +211,7 @@ function Shares({ d }: { d: SignalPageData }) {
   return <RecordSection id="parti" title={<>{title} <Term tip title="Ce se numără" text={`${counts} ${GLOSSARY.consortiu.title}: ${GLOSSARY.consortiu.text.charAt(0).toLowerCase()}${GLOSSARY.consortiu.text.slice(1)}`} /></>}>
     <ShareList label={title} rows={shares.slice(0, SHOWN).map((s) => ({
       key: s.id ?? s.name, name: <Party party={s} role={side} />, share: s.share, shareText: shareWords(s.share),
-      detail: <>{formatExactDecimal(s.valueExact)} lei · {d.code === "net_shared_admin" ? countWords(s.count, "înregistrare", "înregistrări") : countWords(s.count, "contract", "contracte")}</>,
+      detail: <><Lei value={s.valueExact} /> · {d.code === "net_shared_admin" ? countWords(s.count, "înregistrare", "înregistrări") : countWords(s.count, "contract", "contracte")}</>,
     }))} />
     {rest.length > 0 && <p className="record-shares-more">Și încă {countWords(rest.length, side === "authority" ? "instituție" : "furnizor", side === "authority" ? "instituții" : "furnizori")}, cu {shareWords(rest.reduce((a, s) => a + s.share, 0))} împreună: toate în tabelul de mai jos.</p>}
   </RecordSection>;
@@ -300,7 +305,7 @@ export default async function SignalPage({ params, searchParams }: {
           17 November 2026). The call-offs keep theirs: their head is the declared sum, not the records'. */}
       <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} pageSize={SIGNAL_RECORDS_PAGE} essential kind="signal" refId={id} heading={null} save={false} titles={d.titles}
         notes={lots.notes} notesOpen={false} common={{ extra: lots.common, authorityId: d.entity?.role === "authority" ? d.entity.id : d.code === "net_shared_admin" ? d.partner?.id ?? null : null }}
-        total={d.code === "award_calloffs_over_ceiling" || head.value?.amount !== lei(d.source.totalExact)} />
+        total={d.code === "award_calloffs_over_ceiling" || !isSum(head.value?.amount, d.source.totalExact)} />
     </RecordSection>
 
     {/* The entity's other signals: a second way onward, Complet's (owner, 18 November 2026); its page lists them. */}
@@ -308,7 +313,8 @@ export default async function SignalPage({ params, searchParams }: {
       <LinkList items={others.map(([code, n]) => ({ key: code, href: signalUrl(parseSignalState({ tip: code, rol: role, ent: d.entity!.id })), label: flagLabel(code), count: caseUnitWords(code, n) }))} />
     </RecordSection></div>}
 
-    {meta?.caveat && <details className="record-caveat"><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
+    {/* Floats over the page (owner, 20 November 2026; before: a fold that pushed it down). */}
+    {meta?.caveat && <p className="record-caveat"><Term tip hold="line" className="record-why" title="De ce nu e o dovadă" text={meta.caveat}>De ce nu e o dovadă</Term></p>}
 
     {sourcesLeft ? sourcesBlock : <div data-only="complet">{sourcesBlock}</div>}
   </RecordPage>;

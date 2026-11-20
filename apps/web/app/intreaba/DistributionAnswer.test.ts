@@ -70,7 +70,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("says what the score is made of: each pattern's points and fact, how many of the group have it", () => {
     const shown = text(render(VASLUI_LIST));
-    expect(shown).toContain(`Din ce se formează riscul ${CRITERION_LABEL.da_split} 18 grupuri · 11% din valoare +44 30 din 38 Vezi cazurile ↗`);
+    expect(shown).toContain(`Din ce se formează riscul ${CRITERION_LABEL.da_split} 18 grupuri · 11% din valoare +44 30 din 38 Vezi cazurile →`);
     expect(shown).toContain(`${CRITERION_LABEL.da_round} 37 de achiziții la 96–100% din plafon · așteptat ~14 +10 12 din 38`);
     expect(shown).toContain(`${CRITERION_LABEL.da_above_ceiling} fără tipar 3 din 38`);
     // The patterns it has first, by their points; the national mark beside a chosen group.
@@ -166,12 +166,13 @@ describe("an answer stored before (distribution-2, the criteria)", () => {
     expect(markup).toContain("aici ar fi COMUNA RUSETU");
   });
 
-  it("anchors the group's and the criteria's (?) on their rows; a link to another page is ↗; a retired criterion shows its code", () => {
+  it("anchors the group's and the criteria's (?) on their rows; a link to another page of the site is →; a retired criterion shows its code", () => {
     const markup = render(BUZAU_LIST);
     expect(markup).toContain('class="dist-group qb-tipwrap"');
     expect(markup).toMatch(/<h3 class="qb-tipwrap">Criteriu cu criteriu/);
-    expect(text(markup)).toContain("Vezi cazurile ↗");
-    expect(text(markup)).not.toContain("Vezi cazurile →");
+    // Owner decision B (20 November 2026): „↗” only for a page outside the site.
+    expect(text(markup)).toContain("Vezi cazurile →");
+    expect(text(markup)).not.toContain("Vezi cazurile ↗");
     expect(markup).toMatch(/<button type="button" class="qb-link dist-all">Arată toate cele 29<\/button>/);
     expect(text(markup)).toContain("3 din 5 criterii");
     expect(text(markup)).toContain("da_rapid");

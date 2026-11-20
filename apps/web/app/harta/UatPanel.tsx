@@ -5,6 +5,7 @@ import { G } from "@/components/ghost/Ghost";
 import { cancelNavPending } from "@/components/ghost/client";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import EntityName from "@/components/EntityName";
+import { countWords, wholeShare } from "@/lib/ask/answer-text";
 import { entityHref } from "@/lib/entity-href";
 import type { MapUatResponse } from "@/lib/map-capita-shared";
 import { useTip } from "../intreaba/use-tip";
@@ -40,12 +41,12 @@ function short(value: number): string {
 }
 const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
 /** A share as the rows write it: „<1%” for a part that rounds to nothing (UX audit Z4-24: 50 mii lei of 49,7 mil. read „0%”). */
-const share = (part: number, whole: number) => (whole > 0 && part > 0 && part / whole < 0.005 ? "<1%" : `${pct(part, whole)}%`);
+const share = (part: number, whole: number) => (whole > 0 ? wholeShare(part / whole) : "0%");
 /** „UAT-uri” with a hyphen that does not break the line (UX audit Z4-23). */
 const NB = (text: string) => text.replace(/-/g, "\u2011");
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const ordinal = (n: number) => (n === 1 ? "primul" : `al ${n}-lea`);
-const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
+const withDe = countWords;
 /**
  * What a UAT is set against (owner, 16 November 2026, UX audit Z4-09): the average of the county's town halls, without
  * the county council, and the words say so; București's sectors against the sectors' average.

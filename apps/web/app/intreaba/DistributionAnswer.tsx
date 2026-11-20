@@ -12,7 +12,7 @@ import {
   CRITERION_LABEL, CRITERION_RULE, PEER_MEMBERS_PAGE, PEER_MINIMUM, PROFILE_MIN_DAS, barMembersQuery, coverageWords, peerCountWords, peerGroupValue, peerWindowTip,
   scoreBandOf, scoreBandWords, similarRuleName, writePeerTicks, type PeerRowId, type ScoreBand,
 } from "../../lib/ask/peer-groups-shared";
-import { RISK_BAND_CLASS, RISK_BAND_MIN, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
 import { parseSignalState, signalUrl } from "../../lib/signals-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -282,7 +282,7 @@ function ScoreStrip({ d, members, noun, name }: { d: DistributionDataV3; members
       <span><i className="dist-dot risk-slab" />slab</span>
       <span><i className="dist-dot risk-mid" />moderat</span>
       <span><i className="dist-dot risk-high" />pronunțat</span>
-      <span><i className="dist-dot risk-none" />fără tipar</span>
+      <span><i className="dist-dot risk-none" />{RISK_BAND_WORD.none}</span>
     </p>
   </section>;
 }
@@ -317,7 +317,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   const { field, lowN, all: histN } = splitLowBands(hist);
   const peak = Math.max(...field.map((h) => h.n), 1);
   const lowHere = Boolean(own && own.to < 10);
-  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === LOW_BAND.to ? `${noun(n)} fără semnal în scor (sub 10)` : b.from === 0 && b.to === 0 ? `${noun(n)} fără niciun tipar (0)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
+  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === LOW_BAND.to ? `${noun(n)} fără semnal în scor (sub 10)` : b.from === 0 && b.to === 0 ? `${noun(n)} ${RISK_BAND_WORD.none} (0)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
   const showAll = () => {
     setAll(true);
     // The first row unfolded takes the focus (the entity's row and the first seven stay above it).
@@ -403,7 +403,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
             <span className={`dist-part-pts${part ? " is-met" : ""}`}>{part ? `+${formatInt(points[c.code as RiskCriterion] ?? 0)}` : "fără tipar"}</span>
             <span className="dist-crit-bar" aria-hidden="true"><span className={`cm-tw ${partsMotion.enter("cm-x")}`} style={{ width: `${share * 100}%`, "--i": i } as CSSProperties} />{!national && <i className="cm-tw" style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
-            {part && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(f.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
+            {part && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(f.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">→</span></a>}
           </li>;
         })}
       </ul>
@@ -527,7 +527,7 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
             <span className={`dist-crit-own${met ? " is-met" : ""}`}><i aria-hidden="true" />{met ? "da" : "nu"}</span>
             <span className="dist-crit-bar" aria-hidden="true"><span className={`cm-tw ${critMotion.enter("cm-x")}`} style={{ width: `${share * 100}%`, "--i": i } as CSSProperties} />{!national && <i className="cm-tw" style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
-            {met && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(focal.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
+            {met && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(focal.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">→</span></a>}
           </li>;
         })}
       </ul>

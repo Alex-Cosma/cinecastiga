@@ -2,7 +2,7 @@
    avatar while something does (Z8-33). Styled after the header's own links; the menu opens under the avatar. */
 .user-menu{position:relative;display:inline-flex}
 .user-nav .user-menu>.avatar-link{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:2px;border:0;border-radius:999px;background:none;cursor:pointer;color:inherit;font:inherit}
-.user-nav .user-menu>.avatar-link:hover .avatar,.user-nav .user-menu>.avatar-link[aria-expanded=true] .avatar{transform:scale(1.08);box-shadow:0 0 0 3px var(--accent-soft)}
+.user-nav .user-menu>.avatar-link:hover .avatar,.user-nav .user-menu>.avatar-link[aria-expanded=true] .avatar{box-shadow:0 0 0 3px var(--accent-soft)}
 .user-nav .user-menu>.avatar-link:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
 .avatar-dot{position:absolute;top:0;right:0;width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 2px var(--paper)}
 .user-menu-list{position:absolute;right:0;top:calc(100% + 8px);z-index:80;min-width:220px;padding:6px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:0 10px 28px rgba(20,40,30,.14);display:grid;gap:2px}

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRiseOnMore } from "../../../components/motion/rows";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
+import Lei from "@/components/Lei";
 import AlsoTag from "./AlsoTag";
 import { formatCalendarDate, formatInt } from "@/lib/format";
 import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SHOWN, type RecordRow, type RecordSort, type RecordSortKey } from "@/lib/record-rows";
@@ -84,7 +85,7 @@ export default function RecordList({ rows, empty, total, source }: {
             {r.also.map((c) => <AlsoTag key={c} label={c} />)}
             {r.party && <small className="sgc-cp"><EntityName id={r.party.id} role={r.party.role}>{r.party.name}</EntityName></small>}
           </span>
-          <span className="sgc-val">{r.valueText}</span>
+          <span className="sgc-val">{r.valueExact ? <Lei value={r.valueExact} /> : r.valueText}</span>
           <span className="sgc-src">
             {r.seap && <a href={r.seap} target="_blank" rel="noreferrer">SEAP ↗</a>}
             {r.ted && <a href={r.ted} target="_blank" rel="noreferrer">TED ↗</a>}

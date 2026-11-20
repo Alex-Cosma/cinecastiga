@@ -2,6 +2,7 @@ import { countWords } from "../../lib/ask/answer-text";
 import type { DrillRow } from "../../lib/ask/compile";
 import { formatEvidenceAmount, type EvidenceFilters, type EvidenceScope, type EvidenceStatus } from "../../lib/ask/evidence";
 import type { AskSpec } from "../../lib/ask/spec";
+import { leiRounded } from "../../lib/lei";
 
 /*
  * The records drawer's words that depend on its figures (owner, 2 November 2026): on a phone the record comes
@@ -31,12 +32,13 @@ export function dateSpan(from: string | null, to: string | null): string | null 
 }
 
 /**
- * The selection's one-line card at every width (UX audit Z3-03): „28 de înregistrări”, „235.150,00 lei”,
+ * The selection's one-line card at every width (UX audit Z3-03): „28 de înregistrări”, „235.150 lei” (to the leu,
+ * Decision A, 20 November 2026; the exact sum is under „Cum ajungem la acest rezultat”),
  * „05.01–30.12.2024”, shown joined by „ · ”. A phone leaves the count out: its title already says it.
  */
 export function summaryParts(total: number, value: string, from: string | null, to: string | null): string[] {
   const dates = dateSpan(from, to);
-  return [records(total), formatEvidenceAmount(value), ...(dates ? [dates] : [])];
+  return [records(total), leiRounded(value) ?? "—", ...(dates ? [dates] : [])];
 }
 
 /** A record's domain line only says something when it is not its title again (Z3-03: „Servicii de cadastru” twice). */
@@ -57,7 +59,7 @@ export function countyFixed(spec: Pick<AskSpec, "filters">, scope?: Pick<Evidenc
 }
 
 /**
- * A record's value in its stored precision, when the amount listed (rounded to bani) does not already say it:
+ * A record's value in its stored precision, when the amount's own tip (to the ban, components/Lei.tsx) does not already say it:
  * more decimals than shown, or a consortium's share. Null otherwise: the pair is left out.
  */
 export function recordExactValue(row: Pick<DrillRow, "valueExact" | "nWinners">): string | null {

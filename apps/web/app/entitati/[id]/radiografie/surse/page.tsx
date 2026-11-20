@@ -6,10 +6,11 @@ import EntityName from "@/components/EntityName";
 import RevealNames from "@/components/RevealNames";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import Term from "@/components/Term";
+import Lei from "@/components/Lei";
 import { RecordHead, RecordPage, RecordSection, Sources, type RecordValue } from "@/components/record/Record";
 import { countWords } from "@/lib/ask/answer-text";
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
-import { cleanName, formatCalendarDate, formatExactDecimal } from "@/lib/format";
+import { cleanName, formatCalendarDate } from "@/lib/format";
 import { ghostHold } from "@/lib/ghost-hold";
 import { validateRadiografieSelection } from "@/lib/radiografie-evidence";
 import { readRadiografieSources, type RadiografieSourcesData } from "@/lib/radiografie-page";
@@ -54,7 +55,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   return { title: `${what} · ${cleanName(data.authority.name)}` };
 }
 
-const lei = (value: string | null | undefined) => value == null ? "valoare necunoscută" : `${formatExactDecimal(value)} lei`;
+/** To the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026). */
+const lei = (value: string | null | undefined) => value == null ? "valoare necunoscută" : <Lei value={value} />;
 const yearsWords = (y0: string | null, y1: string | null) => !y0 ? null : !y1 || y0 === y1 ? y0 : `${y0}–${y1}`;
 
 interface Head { title: ReactNode; parties: ReactNode; value: RecordValue; meta: ReactNode[]; caveat: string }
@@ -145,7 +147,8 @@ export default async function RadiografieSourcesPage({ params, searchParams }: {
     <RecordSection id="inregistrari" title={data.pattern ? "Contractele tiparului" : "Achizițiile adunate"}>
       <SourceEvidenceView evidence={evidence} href={`/entitati/${id}/radiografie/surse?${query}`} page={page} kind="radiografie" refId={id} spec={boundSelection} heading={null} save={false} titles={data.titles} />
     </RecordSection>
-    <details className="record-caveat"><summary>De ce nu e o dovadă</summary><p>{head.caveat}</p></details>
+    {/* Floats over the page (owner, 20 November 2026; before: a fold that pushed it down). */}
+    <p className="record-caveat"><Term tip hold="line" className="record-why" title="De ce nu e o dovadă" text={head.caveat}>De ce nu e o dovadă</Term></p>
     <Sources sources={[
       { href: `/entitati/${id}/radiografie`, label: `Radiografia: ${cleanName(data.authority.name)}` },
       { href: "/metodologie#radiografie", label: "Cum se citește Radiografia" },

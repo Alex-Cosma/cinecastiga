@@ -1,7 +1,7 @@
 import type { SuggestResponse } from "@/app/api/suggest/route";
 import { COUNTIES } from "./counties";
 import { askHref } from "./discovery-links";
-import { cleanName } from "./format";
+import { cleanName, countyLabel } from "./format";
 import type { IntentResult, PlaceMatch } from "./intent/types";
 import type { EntityHit } from "./search";
 import { fold } from "./topic-search/shared";
@@ -65,7 +65,7 @@ function current(input: SuggestionInput) {
   return i && fold(i.text).trim() === fold(input.text).trim() ? input.intent! : null;
 }
 
-function countyLabel(name: string) {
+function countyPlace(name: string) {
   return name === "București" ? "Municipiul București" : `Județul ${name}`;
 }
 
@@ -161,7 +161,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     if (whole && fold(rest).split(/[^a-z0-9]+/).filter(Boolean).some((w) => INSTITUTION.test(w))) continue;
     const fits = (name: string) => (whole ? fold(name).split(/[^a-z0-9]+/).filter(Boolean).join(" ") === key : fold(name).startsWith(key));
     // Only names that start with the typed word ("buzau" → Buzău, not Sita Buzăului).
-    if (key.length >= 3) for (const name of COUNTIES) if (fits(name)) placeRow(`county:${fold(name)}`, countyLabel(name), "Ce cumpără instituțiile din județ", rest, countyLabel(name));
+    if (key.length >= 3) for (const name of COUNTIES) if (fits(name)) placeRow(`county:${fold(name)}`, countyPlace(name), "Ce cumpără instituțiile din județ", rest, countyPlace(name));
     // After other words, a locality comes only from the interpreter (rows above, official name with diacritics).
     for (const u of whole && i ? [] : vocab?.uat ?? []) {
       if (u.tip === "sector" || !fits(u.name)) continue;
@@ -177,7 +177,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     push(authority ? "authorities" : "suppliers", {
       id: `entity:${e.id}`,
       label: cleanName(e.name),
-      detail: [authority ? "pagina instituției" : "pagina firmei", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
+      detail: [authority ? "pagina instituției" : "pagina firmei", countyLabel(e.county), e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
       href: `/entitati/${e.id}`,
       icon: authority ? "building" : "network",
     });

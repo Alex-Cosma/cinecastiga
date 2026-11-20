@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatDecimal, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun } from "./answer-text";
+import { breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatDecimal, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, wholeShare } from "./answer-text";
 
 describe("Romanian counts", () => {
   it("agrees in number and adds 'de' from 20 on", () => {
@@ -29,6 +29,10 @@ describe("Romanian numbers", () => {
     expect(formatShare(0.9995)).toBe("peste 99,9%");
     expect(formatShare(0.9994)).toBe("99,9%");
     expect(formatShare(1)).toBe("100,0%");
+    expect(wholeShare(0.001)).toBe("<1%");
+    expect(wholeShare(0)).toBe("0%");
+    expect(wholeShare(0.006)).toBe("1%");
+    expect(wholeShare(0.64)).toBe("64%");
     expect(formatDecimal(0.4, 2)).toBe("0,40");
     expect(formatChange(12.4)).toBe("+12%");
     expect(formatChange(-8)).toBe("−8%");

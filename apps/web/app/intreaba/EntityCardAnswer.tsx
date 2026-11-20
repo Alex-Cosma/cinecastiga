@@ -9,7 +9,8 @@ import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-tex
 import { leadOverSecond, podiumRest, riskPlaces, type LegacyTies, type Podium, type PodiumFact, type RiskPlace, type RiskRanking } from "../../lib/ask/entity-card-shared";
 import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
-import { FLAG_META, flagLabel } from "../../lib/flags";
+import { flagLabel } from "../../lib/flags";
+import { signalTagTip } from "../../lib/ask/signal-tips";
 import { askLink, leaderAlone, leaderAloneSpecs } from "../../lib/ask/source-spec";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -408,7 +409,11 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
       )}
       {card.flags.length > 0 && (
         <div className="ask-fchips">
-          {card.flags.map((f) => <span key={f} className="ask-fchip" title={FLAG_META[f]?.short}>{flagLabel(f)}</span>)}
+          {card.flags.map((f) => {
+            // Each tag explains itself on hover or a tap (owner, 15 November 2026), never by a native title.
+            const tip = signalTagTip(f, card.role === "supplier" ? "supplier" : "authority");
+            return tip ? <Term tip hold="box" key={f} className="ask-fchip" title={tip.title} text={tip.text}>{flagLabel(f)}</Term> : <span key={f} className="ask-fchip">{flagLabel(f)}</span>;
+          })}
         </div>
       )}
       {historical && <p className="ask-methnote">

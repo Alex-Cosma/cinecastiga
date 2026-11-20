@@ -14,9 +14,9 @@
   .explore-compact .qb-shortcuts { display:none; }
   .explore-compact .qb-apply { width:100%; }
 }
-:root[data-theme=dark] .explore-compact .question-builder { --qb-ink:var(--ink); --qb-muted:var(--ink-secondary); --qb-green:var(--accent); --qb-line:var(--line); --qb-surface:var(--surface); --qb-soft:var(--accent-soft); --qb-warm:var(--amber-soft); }
+:root[data-theme=dark] .explore-compact .question-builder { --qb-ink:var(--ink); --qb-muted:var(--muted); --qb-green:var(--accent); --qb-line:var(--line); --qb-surface:var(--surface); --qb-soft:var(--accent-soft); --qb-warm:var(--amber-soft); }
 @media(prefers-color-scheme:dark) {
-:root:not([data-theme=light]) .explore-compact .question-builder { --qb-ink:var(--ink); --qb-muted:var(--ink-secondary); --qb-green:var(--accent); --qb-line:var(--line); --qb-surface:var(--surface); --qb-soft:var(--accent-soft); --qb-warm:var(--amber-soft); }
+:root:not([data-theme=light]) .explore-compact .question-builder { --qb-ink:var(--ink); --qb-muted:var(--muted); --qb-green:var(--accent); --qb-line:var(--line); --qb-surface:var(--surface); --qb-soft:var(--accent-soft); --qb-warm:var(--amber-soft); }
 }
 .cq-save-question { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:49px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:500 14px/1.6 var(--font-body); cursor:pointer; }
 .cq-save-question svg { width:17px; height:17px; flex-shrink:0; }
@@ -26,9 +26,9 @@
 .explore-compact .cq-save-dialog { width:460px; max-width:calc(100vw - 32px); max-height:calc(100dvh - 32px); overflow:auto; padding:28px; margin:auto; border:1px solid var(--line); border-radius:13px; background:var(--surface); color:var(--ink); }
 .cq-save-dialog::backdrop { background:rgb(10 25 17 / 55%); }
 .explore-compact .cq-save-dialog h2 { margin:0 0 12px; font:600 26px/1.25 var(--font-display); }
-.explore-compact .cq-save-dialog p { margin:0 0 22px; font:400 14px/1.6 var(--font-body); color:var(--ink-secondary); }
+.explore-compact .cq-save-dialog p { margin:0 0 22px; font:400 14px/1.6 var(--font-body); color:var(--ink2); }
 .cq-save-dialog label { display:flex; flex-direction:column; gap:8px; font-size:14px; font-weight:500; }
-.cq-save-dialog input { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px; background:var(--paper); color:var(--ink); font:400 16px/1.5 var(--font-body); caret-color:var(--accent); }
+.cq-save-dialog input { width:100%; min-width:0; min-height:44px; padding:10px 12px; border:1px solid var(--line2); border-radius:7px; background:var(--paper); color:var(--ink); font:400 16px/1.5 var(--font-body); caret-color:var(--accent); }
 .cq-save-dialog-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; }
 .cq-save-dialog-actions button { min-height:44px; padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:500 14px/1.5 var(--font-body); cursor:pointer; }
 .cq-save-dialog-actions button:hover:not(:disabled) { background:var(--sunk); }
@@ -42,17 +42,17 @@
   .explore-compact .cq-save-dialog { padding:22px; }
 }
 .cq-catalogue-tabs { display:flex; gap:24px; border-bottom:1px solid var(--line); margin:0 0 18px; flex-shrink:0; }
-.cq-catalogue-tabs button { padding:10px 0; min-height:44px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--ink-secondary); font:500 14px/1.5 var(--font-body); cursor:pointer; }
+.cq-catalogue-tabs button { padding:10px 0; min-height:44px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--ink2); font:500 14px/1.5 var(--font-body); cursor:pointer; }
 .cq-catalogue-tabs [aria-selected=true] { color:var(--accent); border-bottom-color:var(--accent); }
-.explore-compact .cq-loaded-question { margin:0 0 16px; color:var(--ink-secondary); font-size:13px; max-width:none; overflow-wrap:anywhere; }
+.explore-compact .cq-loaded-question { margin:0 0 16px; color:var(--ink2); font-size:13px; max-width:none; overflow-wrap:anywhere; }
 .cq-saved-list { min-height:240px; color:var(--ink); }
 .explore-compact .cq-saved-list p { font:400 14px/1.7 var(--font-body); max-width:70ch; margin:12px 0 20px; }
 .cq-saved-list a { color:var(--accent); text-underline-offset:3px; }
 .cq-saved-row { display:flex; align-items:center; justify-content:space-between; gap:20px; width:100%; padding:18px 12px; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--ink); text-align:left; cursor:pointer; }
 .cq-saved-row>span { min-width:0; }
 .cq-saved-row strong { display:block; font:600 16px/1.5 var(--font-body); overflow-wrap:anywhere; }
-.cq-saved-summary { display:block; margin-top:4px; color:var(--ink-secondary); font:400 13px/1.65 var(--font-body); overflow-wrap:anywhere; }
-.cq-saved-row small { display:block; margin-top:8px; color:var(--ink-secondary); font-size:12px; }
+.cq-saved-summary { display:block; margin-top:4px; color:var(--ink2); font:400 13px/1.65 var(--font-body); overflow-wrap:anywhere; }
+.cq-saved-row small { display:block; margin-top:8px; color:var(--ink2); font-size:12px; }
 .cq-saved-row svg { width:18px; height:18px; flex-shrink:0; color:var(--accent); }
 .cq-saved-row:hover:not(:disabled):not([aria-disabled=true]) { background:var(--accent-soft); }
 .cq-saved-row:disabled { cursor:wait; opacity:.65; }
@@ -91,6 +91,6 @@
 /* Dialog input colors follow the theme; the external catalogue button is unchanged. */
 .explore-compact .qb-dialog .qb-picker-search { background:var(--sunk); border-color:var(--line); }
 .explore-compact .qb-dialog .qb-picker-search input { color:var(--ink); }
-.explore-compact .qb-dialog .qb-picker-search input::placeholder { color:var(--ink-secondary); }
-.explore-compact .qb-dialog .qb-picker-note { color:var(--ink-secondary); }
+.explore-compact .qb-dialog .qb-picker-search input::placeholder { color:var(--ink2); }
+.explore-compact .qb-dialog .qb-picker-note { color:var(--ink2); }
 .explore-compact .cq-save-dialog .cq-copy-note { margin:12px 0 0; font-size:13px; }

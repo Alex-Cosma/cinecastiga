@@ -1,0 +1,10 @@
+/* A method note's dotted words (components/HowNote.tsx): the look of the entity page's „Ce includ cifrele” (entity.css). */
+.how-note{margin:26px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
+.how-note>.term>.term-trigger{min-height:32px;padding:4px 0;color:var(--muted);font:inherit;text-align:left;cursor:help}
+.how-note>.term>.term-trigger:hover,.how-note>.term.term-shown>.term-trigger{color:var(--ink2)}
+.how-n{display:block;margin-top:7px}
+.how-n:first-of-type{display:inline;margin-top:0}
+.term-def :is(.how-n,.tip-li,.tip-p) a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:640px){.how-note>.term>.term-trigger{min-height:44px}}
+/* Its ghost (a route's loading.tsx): the words, quiet, with their dotted line. */
+.how-ghost{display:inline-block;padding:4px 0;border-bottom:1px dotted var(--faint)}

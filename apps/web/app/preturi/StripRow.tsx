@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import EntityName from "@/components/EntityName";
 import { G } from "@/components/ghost/Ghost";
 import type { PriceLead, StripLeads } from "@/lib/unit-prices";
-import { formatLei, formatQuantity, formatRatio, formatUnitPrice, leadHref } from "@/lib/unit-prices-shared";
+import { countWord, formatLei, formatQuantity, formatRatio, formatUnitPrice, leadHref } from "@/lib/unit-prices-shared";
 
 /** What a strip's rows are asked by: the strip's own product, pack, year, county and order, as on /preturi. */
 export interface StripQuery { family: string; pack: string; year: number | null; county: string | null; byRatio: boolean; per: string }
@@ -29,7 +29,7 @@ function LeadRow({ lead, query, suppliers }: { lead: PriceLead; query: StripQuer
     <span className="pr-lead-price"><b>{formatUnitPrice(lead.price)}</b> {query.per}<small>mediana {formatUnitPrice(lead.median)}</small></span>
     <span className="pr-lead-x">{formatRatio(lead.ratio)}</span>
     {/* The quantity is a second-level fact: Complet's (owner, 18 November 2026); the zone CSS closes the grid. */}
-    <span className="pr-lead-qty" data-only="complet">{formatQuantity(lead.quantity, query.per)}<small>{lead.awards === 1 ? "o achiziție" : `${lead.awards} achiziții`}</small></span>
+    <span className="pr-lead-qty" data-only="complet">{formatQuantity(lead.quantity, query.per)}<small>{countWord(lead.awards, "o achiziție", "achiziții")}</small></span>
     <span className="pr-lead-lei">{formatLei(lead.excess)}<small>peste mediană</small></span>
     <span className="pr-lead-sup">{named.length ? <>{named.map((id, i) => <Fragment key={id}>{i > 0 && ", "}<EntityName id={id} role="supplier">{suppliers[id]}</EntityName></Fragment>)}{lead.supplierIds.length > 2 && ` și încă ${lead.supplierIds.length - 2}`}</> : "—"}</span>
     <Link className="pr-lead-open" href={leadHref(query.family, query.pack, query.year, lead)} prefetch={false} aria-label={`Liniile: ${lead.name}, ${lead.year}`}>Liniile</Link>
@@ -70,7 +70,7 @@ function StripLeadRows({ query, expected }: { query: StripQuery; expected: numbe
   }, [url, attempt]);
 
   if (load.state === "error") return <p className="pr-load-error" role="alert">Rândurile nu au putut fi încărcate.
-    {" "}<button type="button" className="pr-retry" onClick={() => setAttempt((a) => a + 1)}>Încearcă din nou</button></p>;
+    {" "}<button type="button" className="pr-retry" onClick={() => setAttempt((a) => a + 1)}>Reîncearcă</button></p>;
   if (load.state === "loading") return <ul className="pr-leads" data-ghost="client" aria-busy="true">
     <li className="g-sr" role="status">Se încarcă prețurile peste dublu…</li>
     <GhostRows n={Math.min(expected, 5)} />
