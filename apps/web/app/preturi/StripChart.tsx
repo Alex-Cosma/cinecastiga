@@ -6,7 +6,7 @@ import { AXIS_FROM, AXIS_TO, axisPos, countWord, formatLei, formatQuantity, form
 /**
  * The strip of a product (owner, 11 November 2026: hover and click on the dots and the chart). The marks are those of
  * the list and the product page: the median and twice the median as rules, the bands, the
- * largest leads as dots, the largest by lei named. Pointing at a dot shows its lead; a click opens its lines on the
+ * largest leads as dots, the first in the list's order named. Pointing at a dot shows its lead; a click opens its lines on the
  * product page. Pointing anywhere else on the strip reads the axis there: the price, its multiple of the median and,
  * under the product's histogram, how many institutions bought at about that price.
  *
@@ -40,7 +40,7 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
   /** The pointer of the press under way, and the dot whose card was already up when it began (a touch shows first). */
   const press = useRef<{ type: string; shown: string | null }>({ type: "mouse", shown: null });
   const peak = bins ? Math.max(1, ...bins) : 1;
-  // The dots come in the leads' one order (lei above the median first): the named ones are the first, an institution
+  // The dots come in the list's order (the largest multiple by default): the named ones are the first, an institution
   // once, by its largest year (polish M11, 20 November 2026: one name stacked three times read as a glitch).
   const tagged = useMemo(() => {
     const seen = new Set<string>();
@@ -121,7 +121,7 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
     {dots.map((d) => {
       const k = keyOf(d);
       return <a key={k} href={href(d)} data-dot={k} tabIndex={product && k === activeKey ? 0 : -1} aria-hidden={product ? undefined : true}
-        className={`pr-dot cm-fade cm-late${tagged.includes(d) ? " pr-dot-named" : ""}${d.ratio > 8 ? " pr-dot-over" : ""}${tip && keyOf(tip) === k ? " is-on" : ""}`}
+        className={`pr-dot cm-fade cm-late${d.ratio > 8 ? " pr-dot-over" : ""}${tip && keyOf(tip) === k ? " is-on" : ""}`}
         style={{ left: `${axisPos(d.ratio)}%` }}
         aria-label={`${d.name}, ${d.year}: ${formatUnitPrice(d.price)} ${per}, ${ratioWords(d.ratio)}, ${formatLei(d.excess)} peste mediană. Deschide liniile.`}
         onPointerEnter={(e) => { if (e.pointerType === "mouse") { setRuler(null); setTip(d); } }}

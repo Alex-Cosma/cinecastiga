@@ -95,11 +95,11 @@ export interface PriceStrip {
   thin: boolean;
   /** Leads in the county filter (all counties without one), their lei above the median and their largest multiple. */
   leads: number; excess: number; maxRatio: number | null; mixed: boolean;
-  /** The largest leads by lei above the median (at most STRIP_DOTS), out of `dotsTotal` (= `leads`). */
+  /** The largest leads in the list's order (the largest multiple by default; at most STRIP_DOTS), out of `dotsTotal` (= `leads`). */
   dots: StripDot[]; dotsTotal: number;
-  /** Every lead's multiple of the median (two decimals, largest lei first), for a density mark: no names. */
+  /** Every lead's multiple of the median (two decimals, in the list's order), for a density mark: no names. */
   leadRatios: number[];
-  /** The lead the strip names: the largest by lei above the median (`dots[0]`), the same for the same address. */
+  /** The lead the strip names: the first in the list's order (`dots[0]`), the same for the same address. */
   named: StripDot | null;
 }
 
@@ -211,8 +211,10 @@ export async function getPricePage(state: PriceState): Promise<PricePage> {
   for (const g of spreads) {
     const family = priceFamilyBySlug(g.family);
     if (!family) continue;
-    // Already in the leads' one order (lei above the median first).
-    const all = byGroup.get(`${g.family}|${g.pack}`) ?? [];
+    // In the leads' one order (lei above the median first); by the largest multiple when the list is ordered by it, so
+    // the dots, the institution the row names and the rows it opens agree (owner, 21 November 2026).
+    const inOrder = byGroup.get(`${g.family}|${g.pack}`) ?? [];
+    const all = state.order === "multiplu" ? [...inOrder].sort((a, b) => b.ratio - a.ratio) : inOrder;
     strips.push({ ...stripOf(g, family, year), leads: all.length, excess: all.reduce((s, l) => s + l.excess, 0),
       maxRatio: all.length ? Math.max(...all.map((l) => l.ratio)) : null, dots: all.slice(0, STRIP_DOTS), dotsTotal: all.length,
       leadRatios: all.map((l) => round2(l.ratio)), named: all[0] ?? null });

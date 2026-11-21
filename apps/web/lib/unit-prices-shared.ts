@@ -134,12 +134,13 @@ export function medianWords(lo: number, hi: number, per: string, year: number | 
 
 // ── the address of a view ──────────────────────────────────────────────────
 export type PriceOrder = "dublu" | "multiplu" | "lei";
-/** The list opens by the lei above the median (owner, 11 November 2026). */
-export const DEFAULT_PRICE_ORDER: PriceOrder = "lei";
+/** The list opens by the largest multiple of the median, Esențial's only order (owner, 21 November 2026; before: the
+ * lei above the median, 11 November 2026). */
+export const DEFAULT_PRICE_ORDER: PriceOrder = "multiplu";
 export const PRICE_ORDERS: { value: PriceOrder; label: string }[] = [
+  { value: "multiplu", label: "Cel mai mare multiplu" },
   { value: "lei", label: "Lei peste mediană" },
   { value: "dublu", label: "Cele mai multe peste dublu" },
-  { value: "multiplu", label: "Cel mai mare multiplu" },
 ];
 
 export interface PriceState { year: number | null; group: PriceGroup | null; product: string | null; county: string | null; order: PriceOrder }

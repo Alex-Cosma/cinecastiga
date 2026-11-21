@@ -45,9 +45,10 @@ describe("unit prices: the strip and the words", () => {
   });
 
   it("keeps the default order out of the address and pins one institution in one year", () => {
-    const state = { year: null, group: null, product: null, county: null, order: "lei" as const };
+    // The largest multiple is the default (owner, 21 November 2026).
+    const state = { year: null, group: null, product: null, county: null, order: "multiplu" as const };
     expect(priceHref(state)).toBe("/preturi");
-    expect(priceHref(state, { order: "multiplu", county: "Cluj" })).toBe("/preturi?judet=Cluj&ordine=multiplu");
+    expect(priceHref(state, { order: "lei", county: "Cluj" })).toBe("/preturi?judet=Cluj&ordine=lei");
     expect(leadHref("lapte", "", 2019, { authorityId: "2134596", year: 2019 })).toBe("/preturi/lapte?an=2019&deschis=2134596-2019#institutie-2134596-2019");
   });
 });

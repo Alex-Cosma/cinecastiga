@@ -9,7 +9,7 @@ import StripRow from "./StripRow";
 /**
  * Banda prețurilor (owner, 11 November 2026): one strip per product and pack on a shared "times the median" axis.
  * The median is the forest rule, twice the median the dashed rule; the pale band holds eight buyers in ten, the dark
- * band the middle half; the largest leads by lei above the median are risk dots, the first named.
+ * band the middle half; the largest leads in the list's order (the largest multiple by default) are risk dots, the first named.
  * A strip opens into its largest leads, loaded then (StripRow).
  */
 export function StripAxis() {
@@ -39,7 +39,7 @@ export function StripLegend({ bins = false, dots, prices }: { bins?: boolean; do
 
 function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: number; county: string | null; order: PriceOrder; quiet?: boolean }) {
   const title = s.packLabel ? `${s.name}, ${s.packLabel}` : s.name;
-  // The lead the strip names: the largest by lei above the median (the same for the same address).
+  // The lead the strip names: the first in the list's order, the largest multiple by default (the same for the same address).
   const named = s.named;
   const m = medianWords(s.medianLo, s.medianHi, s.per, s.year);
   const median = `${m.label}: ${m.value}`;
