@@ -153,6 +153,8 @@ describe('OJ S sequencing',()=>{
   expect(tedReverifications([failed],'2026-10-19')).toEqual([]);
   expect(tedReverifications([failed,v('2026-10-16','complete')],'2026-10-17')).toEqual([]);
   expect(tedReverifications([failed,v('2026-10-16','pending')],'2026-10-17')).toEqual([]);
+  // An unstable search page is a failed verification too, searched again the next day.
+  expect(tedReverifications([v(day,'failed','TED: verificare imposibilă: paginare instabilă (anunț repetat între pagini).')],'2026-10-16')).toEqual([{ojs,day}]);
   expect(tedReverifications([v(day,'failed','TED: structura căutării nu este validă.')],'2026-10-16')).toEqual([]);
   expect(tedReverifications([v(day,'complete')],'2026-10-16')).toEqual([]);
  });

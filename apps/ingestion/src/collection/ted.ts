@@ -73,7 +73,7 @@ function planTedList(t:Task,value:unknown,previous:PageResult[]):TaskPlan{
  const numbers=notices.map(n=>n?.['publication-number']);
  if(numbers.some(n=>typeof n!=='string'||!PUBLICATION.test(n)))throw Error('TED: rezultat fără număr de publicare valid.');
  const identities=numbers as string[],before=previous.flatMap(p=>p.identities??[]);
- if(new Set([...before,...identities]).size!==before.length+identities.length)throw new TedVerificationError('TED: paginare instabilă (anunț repetat între pagini); verificarea zilei rămâne de refăcut.');
+ if(new Set([...before,...identities]).size!==before.length+identities.length)throw new TedVerificationError('TED: verificare imposibilă: paginare instabilă (anunț repetat între pagini).');
  for(const n of notices){
   const date=n['publication-date'],type=n['notice-type'];
   if(typeof date==='string'&&date.slice(0,10)!==day)throw Error('TED: anunț din afara zilei solicitate.');
