@@ -103,14 +103,17 @@ function planTedPackage(t:Task,value:unknown):TaskPlan{
  if(v.status!==200||!Array.isArray(v.candidates))throw Error(`TED: pachetul OJ S ${ojsLabel(ojs)} a răspuns HTTP ${v.status}.`);
  const day=tedPackageDay(v.filename,ojs);
  if(!v.xmlFiles)throw Error(`TED: pachetul OJ S ${ojsLabel(ojs)} nu conține fișiere XML.`);
- const docs=[],identities:string[]=[];let otherCountry=0,otherType=0;
+ const docs=[],identities:string[]=[];let otherCountry=0,otherType=0,unreadable=0;
  // Not archived, kept for the day verification: publication number and reason only.
  const pub=(name:string)=>{const m=/(?:^|\/)0*(\d+)_(\d{4})\.xml$/i.exec(name);return m?`${m[1]}-${m[2]}`:name.slice(-60);};
  const notArchived:{publication:string;reason:string;rouTags?:string[]}[]=(v.misses??[]).map(m=>({publication:pub(m.name),reason:m.countryMarker?'prefiltru-tip':'prefiltru-țară',rouTags:m.rouTags}));
  for(const c of v.candidates){
   let n:ReturnType<typeof extractTedNotice>;
-  try{n=extractTedNotice(c.xml);}catch{throw Error(`TED: fișierul ${c.name} din OJ S ${ojsLabel(ojs)} nu poate fi citit.`);}
-  if(!n.noticeType)throw Error(`TED: fișierul ${c.name} din OJ S ${ojsLabel(ojs)} nu poate fi citit (fără tip de anunț).`);
+  // A file that cannot be read is that notice's gap, not the stream's stop (owner, 21 November 2026: one file of OJ S
+  // 144/2026 without a notice type held TED from 8 to 21 November). It is counted and named in notArchived; when it is a
+  // Romanian award the TED search finds, the day verification fails for that issue alone (TedVerificationError).
+  try{n=extractTedNotice(c.xml);}catch{unreadable++;notArchived.push({publication:pub(c.name),reason:'necitibil'});continue;}
+  if(!n.noticeType){unreadable++;notArchived.push({publication:pub(c.name),reason:'necitibil (fără tip de anunț)'});continue;}
   if(n.noticeType!==TED_NOTICE_TYPE){otherType++;notArchived.push({publication:pub(c.name),reason:`tip ${n.noticeType}`});continue;}
   const publication=n.publicationNumber;
   if(!publication||!PUBLICATION.test(publication))throw Error(`TED: fișierul ${c.name} nu are număr de publicare valid.`);
@@ -126,7 +129,7 @@ function planTedPackage(t:Task,value:unknown):TaskPlan{
  // The next issue is queued by advanceTedPackages, TED_PACKAGE_SPACING_MS after this one finished.
  // Scanned on the attempt's day: a re-downloaded issue gets its own verification.
  const children=[tedVerifyTask(t.batch_id,ojs,day,t.params.tedScan!.slice(0,10))];
- return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType,notArchived:notArchived.slice(0,200),prefilter:TED_PREFILTER_VERSION} as PageResult,docs,children};
+ return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType,unreadable,notArchived:notArchived.slice(0,200),prefilter:TED_PREFILTER_VERSION} as PageResult,docs,children};
 }
 
 /** On the last page of a day verification: the search's exact population must equal the

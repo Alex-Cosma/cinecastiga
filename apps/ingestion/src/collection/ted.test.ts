@@ -2,6 +2,7 @@ import {describe,expect,it} from 'vitest';
 import {planResponse,task,type PageResult} from './plan.js';
 import {gazetteOjs,nextOjs,ojsLabel,TED_PAGE_SIZE,tedPackageCandidates,tedPackageDay,tedPackageTask,tedReverifications,tedVerifyTask,type TedAttempt,type TedPackageFetch} from './ted.js';
 import {readTedDailyPackage} from '../scrape/ted/package.js';
+import {extractTedNotice} from '../normalize/ted.js';
 import {tedDailyPackage,tedNoticeXml} from '../test/ted-package-fixture.js';
 
 const day='2026-10-15',ojs='202600200',scan='2026-10-15T09';
@@ -54,8 +55,17 @@ describe('TED collection tasks',()=>{
   expect(()=>planResponse(pkgTask,v,[],day)).toThrow(/alt număr de publicare/);
   expect(()=>planResponse(pkgTask,{status:200,filename:'20261015_2026200.tar.gz',files:1,xmlFiles:0,candidates:[]},[],day)).toThrow(/nu conține fișiere XML/);
   expect(()=>planResponse(pkgTask,{status:500,filename:null},[],day)).toThrow(/HTTP 500/);
-  const broken=await fetched(['1-2026']);broken.candidates![0]!.xml='<ContractAwardNotice><efac:Publication>';
-  expect(()=>planResponse(pkgTask,broken,[],day)).toThrow(/nu poate fi citit/);
+  // An unreadable file is that notice's gap, named for the day verification; the stream goes on (21 November 2026).
+  const broken=await fetched(['1-2026','2-2026']);broken.candidates![0]!.xml='<ContractAwardNotice><efac:Publication>';
+  const read=planResponse(pkgTask,broken,[],day).result as PageResult&{unreadable:number;notArchived:{publication:string;reason:string}[]};
+  expect(read).toMatchObject({total:1,identities:['2-2026'],unreadable:1});
+  expect(read.notArchived).toContainEqual({publication:'1-2026',reason:'necitibil (fără tip de anunț)'});
+  // A namespace prefix on the root is the same notice.
+  const xml=tedNoticeXml({publication:'5-2026',ojs,day});
+  expect(extractTedNotice(xml.replace(/<ContractAwardNotice\b/,'<can:ContractAwardNotice xmlns:can="urn:oasis:names:specification:ubl:schema:xsd:ContractAwardNotice-2"').replace('</ContractAwardNotice>','</can:ContractAwardNotice>')).noticeType).toBe(extractTedNotice(xml).noticeType);
+  expect(extractTedNotice(xml).noticeType).toBe('can-standard');
+  const garbled=await fetched(['1-2026']);garbled.candidates![0]!.xml='<<<';
+  expect(planResponse(pkgTask,garbled,[],day).result).toMatchObject({total:0,unreadable:1});
   // A structurally different notice type that matched the text pre-filter is counted, not archived.
   const modif=await fetched([]);modif.candidates=[{name:'x/00000003_2026.xml',xml:tedNoticeXml({publication:'3-2026',ojs,day,type:'can-modif'}).replace('</ContractAwardNotice>','<!-- >can-standard< --></ContractAwardNotice>')}];
   expect(planResponse(pkgTask,modif,[],day)).toMatchObject({docs:[],result:{total:0,otherType:1}});

@@ -269,7 +269,9 @@ function unchangedWinnerMapping(root: Node, ext: Node, lots: TedLot[]): boolean 
 
 export function extractTedNotice(xml: string): TedNotice {
   const doc = parser.parse(xml) as Node;
-  const root = (doc["ContractAwardNotice"] ?? {}) as Node;
+  // The root by its local name: a namespace prefix on it („can:ContractAwardNotice”) is the same notice.
+  const rootKey = Object.keys(doc).find((key) => /(^|:)ContractAwardNotice$/.test(key));
+  const root = (rootKey ? doc[rootKey] : {}) as Node;
   const ext = findEformsExt(root) ?? ({} as Node);
 
   // Organizations index: ORG id → { cui, name, nuts }.
