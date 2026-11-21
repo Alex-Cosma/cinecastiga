@@ -25,10 +25,6 @@ pnpm --filter web dev --port 3000
 
 Clone-ul nu conține baza de date. Configurația locală (`apps/web/.env.local`) folosește secrete noi, generate local; nu se copiază nimic din producție. Dezvoltarea obișnuită nu face cereri către surse.
 
-## Contribuții
-
-Lucrează pe un branch propriu: un push pe `main` publică site-ul după CI.
-
 ## Licență
 
 [GPL-3.0](LICENSE).
