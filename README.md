@@ -1,23 +1,34 @@
 # cinecâștigă?
 
-Aplicație de explorare și investigare a achizițiilor publice din România, disponibilă la <https://cinecastiga.ro>. Rezultatele trebuie să poată fi urmărite până la înregistrările și sursele SEAP/TED care le compun. Semnalele sunt piste de verificare; valorile contractelor nu reprezintă plăți dovedite.
+Aplicație de explorare a achizițiilor publice din România, disponibilă la <https://cinecastiga.ro>. Fiecare rezultat trebuie să poată fi urmărit până la înregistrările publice SEAP/SICAP și TED care îl compun. Semnalele sunt piste de verificare, nu dovezi; valorile contractelor nu sunt plăți.
 
-## Începe aici
+## Structură
 
-- **Dezvoltator nou:** [handover](docs/handover/README.md), apoi [pornire locală](docs/handover/03-development.md).
-- **Asistent LLM:** citește [AGENTS.md](AGENTS.md) și folosește [promptul de inițializare](docs/handover/MODEL-START.md). Nu toate instrumentele încarcă automat AGENTS.md.
-- **Date locale:** [restaurarea pachetului public](docs/handover/04-database-transfer.md) și [starea pachetului verificat](docs/handover/TRANSFER-STATUS.md).
-- **Arhitectură și produs:** [harta codului](docs/handover/02-architecture.md), [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md).
-- **Operațiuni și priorități:** [producție](docs/handover/05-operations.md), [stare și backlog](docs/handover/06-status-and-roadmap.md).
+- `apps/web`: site-ul (Next.js).
+- `apps/ingestion`: importul datelor publice, normalizarea, calculele și semnalele.
+- `packages/db`: schema PostgreSQL și migrațiile; `packages/domain`, `packages/scraper-clients`: tipuri și clienții surselor publice.
+- `infra`: serviciile locale (`infra/docker-compose.yml`) și imaginile de producție.
 
-## Ce primești prin clone
+Produsul și identitatea vizuală: [PRODUCT.md](PRODUCT.md), [DESIGN.md](DESIGN.md). Reguli pentru asistenți de cod: [AGENTS.md](AGENTS.md).
 
-Codul, migrațiile, testele, instrucțiunile și scripturile de restaurare sunt în Git. **Baza cu date publice se transferă separat**, momentan prin pachetul `handover-local-20260930` de pe stick. Conturile și secretele se creează local. Clone-ul singur nu oferă datele necesare unei explorări reale; instalarea verificată folosește dump-ul cu istoricul migrațiilor, nu o bază goală.
+## Pornire locală
 
-Stack: Node 22, pnpm 9.4.0, Next.js, PostgreSQL 16 și Meilisearch 1.16. Ghidul local include comenzile pentru servicii, restore într-o bază nouă, configurare, indexare, cont și pornirea web. Dezvoltarea obișnuită nu necesită SSH la producție sau cereri către SEAP.
+Cerințe: Node 22, pnpm 9.4.0, Docker cu Compose.
 
-Lucrează pe un branch propriu: push-ul pe `main` poate declanșa deploy. Scripturile datate de reparare/publicare sunt istoric operațional, nu pași de instalare.
+```sh
+corepack enable && corepack prepare pnpm@9.4.0 --activate
+pnpm install --frozen-lockfile
+POSTGRES_PORT=127.0.0.1:5432 MEILI_PORT=127.0.0.1:7700 docker compose -f infra/docker-compose.yml up -d --wait
+pnpm --filter @seap/db --filter @seap/domain --filter @seap/scraper-clients build
+pnpm --filter web dev --port 3000
+```
 
-## Actualitatea documentației
+Clone-ul nu conține baza de date. Configurația locală (`apps/web/.env.local`) folosește secrete noi, generate local; nu se copiază nimic din producție. Dezvoltarea obișnuită nu face cereri către surse.
 
-Documentație consolidată la **1 octombrie 2026**; ultima verificare de producție consemnată este din **30 septembrie, seara**. [Raportul lansării](docs/implementation/release-20260930.md) confirmă publicarea încheiată; [checkpointul](docs/handover/continuation-20261001.md) păstrează contextul de reluare. Aceste documente nu sunt un monitor live. Copia locală pentru coleg are un baseline mai vechi decât producția, explicat în manifest și handover.
+## Contribuții
+
+Lucrează pe un branch propriu: un push pe `main` publică site-ul după CI.
+
+## Licență
+
+[GPL-3.0](LICENSE).

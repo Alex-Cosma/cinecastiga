@@ -1,17 +1,14 @@
 # Working in this repository
 
-Start with [docs/handover/README.md](docs/handover/README.md). It links the current product decisions, architecture, local setup, public database transfer, production operations and known limitations. Read the relevant feature document before changing its semantics. `HANDOFF.md` contains a long chronology; dated older "pending"/"not deployed" notes may be superseded.
+The internal documentation (product decisions, architecture notes, operations, dated procedures) lives in a private repository. With access, its checkout is `agents-work/internal/` (git-ignored here); start with `agents-work/internal/docs/handover/README.md`. Paths such as `docs/…` in code comments refer to it.
 
-The consolidated [11 October handover](docs/handover/20261011/README.md) includes the product/code map, financial semantics, current proxy/document policies and exact unfinished repair state. Check its status page before publishing `fix/contract-reporting-integrity-20261011`; the local cohort rehearsal is not a completed production repair. The owner approved all ceilings separate and temporary, explicit exclusion of uncertain identities; see the 12 October policy report.
-
-- This is an existing, deployed Romanian procurement investigation product. Preserve exact source transparency, private investigation access and frozen evidence. Signals are leads, not proof of wrongdoing; contract amounts are not payments.
-- UI work follows `PRODUCT.md` and `DESIGN.md`; reuse the existing Romanian interface, themes and source workflows.
-- Inspect `git status` and preserve other contributors' work. Prefer a feature branch for collaboration. A push to `main` automatically deploys after CI; do not use it as a scratch branch.
-- Side work goes in `agents-work/` at the repository root, never in a folder next to the repository: scratch scripts, downloads, notes, screenshots, clones and git worktrees (`git worktree add agents-work/worktrees/<name> -b <branch>`). Git and Docker ignore it, so nothing there is committed or shipped.
-- Node22+, pnpm9.4.0, PostgreSQL16, Meilisearch1.16. Build workspace packages before using their dist exports. See `docs/handover/03-development.md` for verified commands.
-- Use a new local database for restore and isolated `seap_test_*` databases for write fixtures. Do not run test seed/truncate scripts on real data. Keep migration history with restored databases; do not invent a baseline or edit historical checksums.
-- Default development uses no source traffic: no collector, source document worker or nightly scheduler. Archived documents remain usable. Local configuration uses new secrets and a new account, never copied production sessions/keys.
-- Production shared request budget, quiet window, retries, maintenance and publication gates are documented in `docs/handover/05-operations.md`. Delays are operator settings: inspect the target environment rather than restoring a historical value from documentation. An ordinary code task does not imply permission to alter them or rerun a historical repair.
-- Dated scripts in `scripts/operations/` are preserved incident procedures, not onboarding commands. Check current state and authorization before any live mutation.
-- Run checks relevant to the change; distinguish passing units from skipped database tests. Report which environment was verified. Update the relevant documentation when behavior changes.
-- Never commit `.env`, passwords, SSH keys, database dumps, private account/case data or browser session state.
+- This is a deployed Romanian public-procurement exploration site. Preserve exact source transparency and frozen evidence. Signals are leads, not proof of wrongdoing; contract amounts are not payments.
+- UI work follows `PRODUCT.md` and `DESIGN.md`; reuse the existing Romanian interface and themes.
+- Inspect `git status` and preserve other contributors' work. Work on a branch: a push to `main` deploys after CI.
+- Side work goes in `agents-work/` at the repository root (git- and Docker-ignored): scratch scripts, downloads, notes, screenshots, clones and worktrees.
+- Node 22+, pnpm 9.4.0, PostgreSQL 16, Meilisearch 1.16. Build workspace packages before using their dist exports.
+- Write fixtures only in isolated `seap_test_*` databases; never run test seed/truncate scripts on real data. Never run a bare `vitest run` in `apps/ingestion`: integration tests need an explicit test database.
+- Keep migration history; never edit an applied migration or its checksum.
+- Default development makes no source requests: no collector, document worker or nightly scheduler.
+- Run the checks relevant to the change and report which environment was verified.
+- Never commit `.env`, passwords, keys, database dumps, private account or case data, browser session state, or internal operations notes.

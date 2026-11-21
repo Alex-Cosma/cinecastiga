@@ -44,3 +44,16 @@ infra/prod/dumps/
 
 # Local identity-repair regression bytecode
 /scripts/identity-repair/__pycache__/
+
+# Internal documentation, notes, mockups and dated operations procedures live in the private repository
+# (moved 21 November 2026); design and planning tool folders stay local.
+/docs/
+/HANDOFF.md
+/mockups/
+/scripts/operations/
+/scripts/identity-repair/
+/scripts/document-pilot/
+/scripts/handover/
+/infra/prod/README.md
+.specd/
+.impeccable/
