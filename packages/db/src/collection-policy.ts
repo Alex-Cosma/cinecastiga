@@ -28,7 +28,7 @@ const TED_PUBLICATION=/^\d{1,8}-\d{4}$/;
 /** OJ S issue: year + issue number zero-padded to 5 digits (e.g. 202600200). */
 export const TED_OJS=/^(\d{4})(\d{5})$/;
 /** The least time between two OJ S daily package downloads (owner's setting, 21 November 2026). */
-export const TED_PACKAGE_SPACING_MS=3_600_000;
+export const TED_PACKAGE_SPACING_MS=120_000;
 /** TED (EU Official Journal) goes through the same request gate as SEAP, for only these two exact resources: the
  * search API (day verification) and one OJ S daily package. Single notices come from the daily package. */
 export const TED_SEARCH_URL='https://api.ted.europa.eu/v3/notices/search';

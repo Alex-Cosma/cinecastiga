@@ -114,16 +114,16 @@ describe('OJ S sequencing',()=>{
   expect(next([a('202600200','complete',true),a('202600201','failed',null,10*60_000)])).toEqual([]);
   expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour)])).toEqual(['202600201']);
  });
- it('waits an hour after any package download before the next one (owner, 3 November 2026)',()=>{
-  expect(next([a('202600200','complete',true,59*60_000)])).toEqual([]);
-  expect(next([a('202600199','complete',true),a('202600200','complete',true,60*60_000)])).toEqual(['202600201']);
-  expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour),a('202600150','complete',true,5*60_000)])).toEqual([]);
+ it('waits two minutes after any package download before the next one (owner, 21 November 2026; an hour from 3 November)',()=>{
+  expect(next([a('202600200','complete',true,119_000)])).toEqual([]);
+  expect(next([a('202600199','complete',true),a('202600200','complete',true,120_000)])).toEqual(['202600201']);
+  expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour),a('202600150','complete',true,60_000)])).toEqual([]);
  });
  it('downloads again, oldest first and one per window, issues read with an older pre-filter',()=>{
   const done=[a('202600123','complete',true,3*hour),a('202600124','complete',true,3*hour),a('202600127','complete',true)];
   expect(tedPackageCandidates({attempts:done,nowMs:now,year:2026,redownload:['202600124','202600123']})).toEqual(['202600123']);
   expect(tedPackageCandidates({attempts:[...done,a('202600123','complete',true,61*60_000)],nowMs:now,year:2026,redownload:['202600124']})).toEqual(['202600124']);
-  expect(tedPackageCandidates({attempts:[...done,a('202600128','complete',true,5*60_000)],nowMs:now,year:2026,redownload:['202600123']})).toEqual([]);
+  expect(tedPackageCandidates({attempts:[...done,a('202600128','complete',true,60_000)],nowMs:now,year:2026,redownload:['202600123']})).toEqual([]);
   expect(tedPackageCandidates({attempts:done,nowMs:now,year:2026,redownload:[]})).toEqual(['202600128']);
  });
  it('retries the seed issue when nothing was archived yet',()=>{
