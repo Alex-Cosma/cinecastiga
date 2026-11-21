@@ -1,3 +1,4 @@
+import {ACCEPTED_AUTHORITY_CUI} from '@seap/db';
 import {canonicalCui} from './cui.js';
 import {normalizeName} from './name.js';
 
@@ -11,17 +12,7 @@ import {normalizeName} from './name.js';
  * read-only production scan of 21 October 2026 (core contracts where that CUI's owner is the
  * authority of the award); ONRC links neither firm to the buyer. Evidence and exposure:
  * docs/handover/20261011/data-and-calculations.md. */
-export const ACCEPTED_AUTHORITY_CUI:readonly {sicapId:number;sourceCui:string;supplierCui:string;evidence:string}[]=[
- {sicapId:189411,sourceCui:'1590236',supplierCui:'35534516',evidence:'LA FANTANA 2025621; Registrul Auto Roman 2027820 is the authority of 25 of its contracts'},
- {sicapId:101507,sourceCui:'4541092',supplierCui:'7586277',evidence:'COMINF 2082032; Spitalul Clinic de Recuperare Iasi 2146265 is the authority of 342 of its contracts'},
- {sicapId:38659,sourceCui:'3321234',supplierCui:'7012045',evidence:'CANBERRA PACKARD 2115557; IFIN-HH 2121912 is the authority of 17 of its contracts'},
- {sicapId:28306,sourceCui:'3321234',supplierCui:'22677832',evidence:'HISTERESIS 2119134; IFIN-HH 2121912 is the authority of 105 of its contracts'},
- {sicapId:21783,sourceCui:'3321234',supplierCui:'15595373',evidence:'APEL LASER 2120897; IFIN-HH 2121912 is the authority of 59 of its contracts'},
- {sicapId:13864,sourceCui:'3321234',supplierCui:'16997760',evidence:'Euro Techsys 2123363; IFIN-HH 2121912 is the authority of 7 of its contracts'},
- {sicapId:9739,sourceCui:'3321234',supplierCui:'10274437',evidence:'ROMTEK ELECTRONICS 2124923; IFIN-HH 2121912 is the authority of 4 of its contracts'},
- {sicapId:7355,sourceCui:'13328043',supplierCui:'211717',evidence:'Energobit 2125957; Transelectrica 2146462 is the authority of 7 of its contracts'},
- {sicapId:109982,sourceCui:'37832160',supplierCui:'6243289',evidence:'THEDA MAR 2077507; CM Strazi, Poduri si Pasaje Bucuresti 2010434 is the authority of 11 of its contracts'},
-];
+export { ACCEPTED_AUTHORITY_CUI };
 export const REVIEWED_WINNER_RULE='reviewed-winner-20261008';
 export const ACCEPTED_AUTHORITY_CUI_RULE='accepted-authority-cui-20261021';
 function acceptedAuthorityCui(sicapId:number|null,cui:string) {

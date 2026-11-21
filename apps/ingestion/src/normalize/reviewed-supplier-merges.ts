@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { REVIEWED_SUPPLIER_MERGES, type DbSql, type ReviewedSupplierMerge } from "@seap/db";
 import { identityOf } from "./da-supplier-vat.js";
 
 /**
@@ -34,58 +34,8 @@ type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
 
 export const REVIEWED_SUPPLIER_MERGE_REASON = "reviewed-supplier-merge";
 
-export interface ReviewedSupplierMerge {
-  sourceId: string;
-  targetId: string;
-  /** core.entities.name_normalized of the source when it was reviewed. */
-  sourceName: string;
-  /** Valid CUI of the target when it was reviewed. */
-  targetCui: string;
-  evidence: string;
-}
-
-export const REVIEWED_SUPPLIER_MERGES: readonly ReviewedSupplierMerge[] = [
-  { sourceId: "2277024", targetId: "2123842", sourceName: "telecomunicatii cfr", targetCui: "15034095",
-    evidence: "id RO15034059 (digits swapped), Bucharest; ONRC 15034095 = Telecomunicatii C.F.R. SA, only CUI with this name" },
-  { sourceId: "2276441", targetId: "2123842", sourceName: "telecomunicatii cfr", targetCui: "15034095",
-    evidence: "no id, Bucharest; ONRC 15034095 = Telecomunicatii C.F.R. SA, only CUI with this name" },
-  { sourceId: "2276257", targetId: "2125531", sourceName: "tancrad", targetCui: "8006670",
-    evidence: "id 0800667669 (garbled 8006670), Galati; ONRC 8006670 = TANCRAD SRL, only CUI with this name" },
-  { sourceId: "2277014", targetId: "2085724", sourceName: "new recycling", targetCui: "22793039",
-    evidence: "id 2279039 (one digit missing), Brasov; ONRC 22793039 = NEW-RECYCLING SRL, only CUI with this name" },
-  { sourceId: "2276364", targetId: "2121221", sourceName: "constructus", targetCui: "3704221",
-    evidence: "no id, Alba; ONRC 3704221 = CONSTRUCTUS SRL, only CUI with this name" },
-  { sourceId: "2277867", targetId: "2127928", sourceName: "hidroconstructia", targetCui: "1556820",
-    evidence: "no id, Bucharest; ONRC 1556820 = HIDROCONSTRUCTIA SA, only CUI with this name" },
-  { sourceId: "2278070", targetId: "1993244", sourceName: "willkommen technik", targetCui: "39755315",
-    evidence: "id RO39755319 (last digit), Bucharest; ONRC 39755315 = WILLKOMMEN TECHNIK S.R.L., only CUI with this name" },
-  { sourceId: "2277828", targetId: "2127831", sourceName: "iasicon", targetCui: "1957821",
-    evidence: "no id, Iasi; ONRC 1957821 = IASICON SA, only CUI with this name" },
-  { sourceId: "2278519", targetId: "2081115", sourceName: "teo trans consulting", targetCui: "16572866",
-    evidence: "no id; ONRC 16572866 = TEO TRANS CONSULTING SRL, only CUI with this name" },
-  { sourceId: "2278500", targetId: "2081115", sourceName: "teo trans consulting", targetCui: "16572866",
-    evidence: "no id, Bucharest; ONRC 16572866 = TEO TRANS CONSULTING SRL, only CUI with this name" },
-  { sourceId: "2277836", targetId: "2111316", sourceName: "enel energie", targetCui: "22000460",
-    evidence: "id 220000460 (extra zero), Bucharest; ONRC 22000460 = PPC ENERGIE S.A., the renamed Enel Energie" },
-  { sourceId: "2277821", targetId: "2068958", sourceName: "pegani construct", targetCui: "32537801",
-    evidence: "no id, Valcea; ONRC 32537801 = PEGANI CONSTRUCT S.R.L., only CUI with this name" },
-  { sourceId: "2276194", targetId: "2127802", sourceName: "exco transport systems", targetCui: "2626508",
-    evidence: "no id; ONRC 2626508 = EXCO TRANSPORT SYSTEMS SRL, only CUI with this name" },
-  { sourceId: "2280420", targetId: "2127802", sourceName: "exco transport systems", targetCui: "2626508",
-    evidence: "no id; ONRC 2626508 = EXCO TRANSPORT SYSTEMS SRL, only CUI with this name" },
-  { sourceId: "2278307", targetId: "2062018", sourceName: "integra guard", targetCui: "31003163",
-    evidence: "id RO310003163 (extra zero), Bucharest; ONRC 31003163 = INTEGRA GUARD SRL, only CUI with this name" },
-  { sourceId: "2277268", targetId: "2162616", sourceName: "livcorvet", targetCui: "11512405",
-    evidence: "id 115122405 (extra digit), Gorj; ONRC 11512405 = LIVCORVET SRL, only CUI with this name" },
-  { sourceId: "2276912", targetId: "2078658", sourceName: "getica 95 com", targetCui: "7562758",
-    evidence: "id 7560758 (one digit), Buzau; ONRC 7562758 = GETICA 95 COM SRL, only CUI with this name" },
-  { sourceId: "2277925", targetId: "2027480", sourceName: "ekonational distribution", targetCui: "32510288",
-    evidence: "id RO35210288 (digits swapped), Prahova; ONRC 32510288 = EKONATIONAL DISTRIBUTION SRL, only CUI with this name" },
-  { sourceId: "2278582", targetId: "2073313", sourceName: "rard construct", targetCui: "31463080",
-    evidence: "id RO3163080 (one digit missing), Neamt; ONRC 31463080 = RARD CONSTRUCT SRL, only CUI with this name" },
-  { sourceId: "2276444", targetId: "2071229", sourceName: "nova power gas", targetCui: "18680651",
-    evidence: "id RO18670651 (one digit); ONRC 18680651 = NOVA POWER & GAS S.A. / AMGAZ FURNIZARE SRL, only CUI with this name" },
-];
+export { REVIEWED_SUPPLIER_MERGES };
+export type { ReviewedSupplierMerge };
 
 export type ReviewedSupplierMergeSkipReason =
   | "source_missing"

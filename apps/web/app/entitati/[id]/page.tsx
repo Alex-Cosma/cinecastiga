@@ -38,6 +38,7 @@ import { lastMonthWords } from "@/lib/ask/historic";
 import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import { successorOf } from "@/lib/entity-successors";
+import { correctionAnchor } from "@/lib/seap-corrections";
 import { getSuccessorTarget } from "@/lib/entity-successor-target";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -175,6 +176,7 @@ export default async function EntityPage({
   const txPage = /^[1-9]\d{0,5}$/.test(sp["p"] ?? "") ? Number(sp["p"]) : 1;
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
+  const correction = correctionAnchor(id, cui);
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
@@ -389,6 +391,13 @@ export default async function EntityPage({
                 : "Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."}>
                 număr necoroborat cu ONRC
               </Term></span>
+            ) : null}
+            {/* A hand-reviewed correction of the source names this entity (owner, 21 November 2026): its row in the
+                methodology says what SEAP holds, what the site shows and why. Complet only. */}
+            {correction ? (
+              <span className="ent-tip" data-only="complet">
+                <Link href={`/metodologie#${correction}`} prefetch={false}>date corectate</Link>
+              </span>
             ) : null}
           </div>
         </div>

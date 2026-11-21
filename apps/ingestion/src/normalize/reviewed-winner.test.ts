@@ -1,6 +1,13 @@
 import {describe,it,expect} from 'vitest';
+import {REVIEWED_WINNER_RECORDS} from '@seap/db';
 import {ACCEPTED_AUTHORITY_CUI,reviewedWinnerIdentity,reviewedWinnerRule} from './reviewed-winner.js';
 describe('reviewed source contradictions',()=>{
+ // The methodology page describes the three single rules from REVIEWED_WINNER_RECORDS: each must be what the rule does.
+ it.each(REVIEWED_WINNER_RECORDS.map(r=>[r.sourceName,r] as const))('the page describes the %s rule as it applies',(_n,r)=>{
+  const out=reviewedWinnerIdentity(1,{sicapId:r.sicapId,cuiRaw:r.sourceCui,nameDisplay:r.sourceName});
+  if(r.cui)expect(out.cuiRaw).toBe(r.cui);
+  else expect(out).toMatchObject({sicapId:null,cuiRaw:r.sourceCui});
+ });
  it.each([107982497,108090948])('fixes HABAU fiscal identifier in contract %s',id=>{
   const input={sicapId:54428,cuiRaw:'RO13068733',nameDisplay:'HABAU PPS PIPELINE SYSTEMS S.R.L.'};
   expect(reviewedWinnerIdentity(id,input)).toEqual({...input,cuiRaw:'13092995'});

@@ -1,4 +1,4 @@
-import { processingWritable } from "@seap/db";
+import { PINNED_FRAGMENTS, processingWritable, type PinnedFragment } from "@seap/db";
 import { processingStage, type DbSql } from '@seap/db';
 import { identityOf as identityOfTx } from '../normalize/da-supplier-vat.js';
 
@@ -44,12 +44,8 @@ export const AUTHORITY_FRAGMENT_REASON = 'legacy-authority-cui-prefix';
  * Reviewed strings whose prefix is a mistyped CUI. Applied only when
  * `approved`; the CUI rule above never matches them.
  */
-export type PinnedFragment = { prefix: string; holderId: string; targetId: string; targetCui: string; approved: boolean; evidence: string };
-export const PINNED_FRAGMENTS: readonly PinnedFragment[] = [
-  { prefix: '2164244', holderId: '2151208', targetId: '2205736', targetCui: '2614244', approved: true,
-    evidence: 'Comuna Tibucani (Neamț): source prefix 2164244, CUI 2614244 (first two digits swapped); same name and county; '
-      + 'the fragment buys 2018-04..2019-12, the commune 2020-01 onwards; no entity holds 2164244. Approved by the owner on 4 November 2026.' },
-];
+export { PINNED_FRAGMENTS };
+export type { PinnedFragment };
 
 /** What one holder looks like inside the repair transaction. */
 export type FragmentHolder = {

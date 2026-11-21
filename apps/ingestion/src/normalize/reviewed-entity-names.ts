@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { REVIEWED_AUTHORITY_NAMES, REVIEWED_TOWN_HALL_NAMES, type DbSql, type ReviewedAuthorityName, type ReviewedTownHallName } from "@seap/db";
 import { normalizeName } from "./name.js";
 
 /**
@@ -20,27 +20,8 @@ import { normalizeName } from "./name.js";
  * review. This is not a general name policy: low-similarity names on other
  * dual-registration entities are mostly renames of the same institution.
  */
-export interface ReviewedAuthorityName {
-  cui: string;
-  authoritySicapId: number;
-  supplierSicapId: number;
-  /** Name of the supplier registration, as currently displayed. */
-  wrongName: string;
-  /** Name of the authority registration. */
-  name: string;
-}
-
-export const REVIEWED_AUTHORITY_NAMES: readonly ReviewedAuthorityName[] = [
-  // ONRC 14491102 = DISTRIBUȚIE ENERGIE OLTENIA S.A.; TONIDRAG INSTAL S.R.L. is
-  // ONRC 35637856 (entity of its own). Every live notice/award string for the
-  // buyer reads "14491102 - DISTRIBUTIE ENERGIE OLTENIA S.A.".
-  { cui: "14491102", authoritySicapId: 1417, supplierSicapId: 179348,
-    wrongName: "SC TONIDRAG INSTAL SRL-D", name: "DISTRIBUTIE ENERGIE OLTENIA S.A." },
-  // CUI 3552050 is the commune of Găgești, Vaslui (SICAP authority 25355). The
-  // closest ONRC firm, ANDREII TEHNOMETAL S.R.L., is CUI 42429807.
-  { cui: "3552050", authoritySicapId: 25355, supplierSicapId: 100116354,
-    wrongName: "ANDREI TEHNOMETAL", name: "COMUNA GAGESTI (CONSILIUL LOCAL)" },
-];
+export { REVIEWED_AUTHORITY_NAMES };
+export type { ReviewedAuthorityName };
 
 type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
 
@@ -74,18 +55,8 @@ export async function applyReviewedEntityNames(
  * current wrong name, and the identity must be registered as an authority, so it is idempotent and touches nothing
  * else. The web's population mapping also lists these CUIs (APPROVED_TOWN_HALLS), so the map holds them before a run.
  */
-export interface ReviewedTownHallName { cui: string; county: string; wrongName: string; name: string }
-
-export const REVIEWED_TOWN_HALL_NAMES: readonly ReviewedTownHallName[] = [
-  // 331 contracts (981 mil. lei) and 2,889 direct acquisitions since 2018: the municipality, registered under its local
-  // police's name; the only valid-CUI identity named Municipiul Alba Iulia.
-  { cui: "4562923", county: "Alba", wrongName: "Municipiul Alba Iulia - Directia Politia Locala", name: "MUNICIPIUL ALBA IULIA" },
-  // Dâmbovița holds no Corabia (it is in Olt); the registration names Primăria Cobia and the 21 October UAT repair
-  // already links it to Cobia.
-  { cui: "4449429", county: "Dambovita", wrongName: "Comuna Corabia (Primaria Cobia)", name: "COMUNA COBIA (PRIMARIA COBIA)" },
-  // The registration name carries the town hall's address.
-  { cui: "5303080", county: "Cluj", wrongName: "Comuna Suatu (primariasuatu,suatu nr685,jud.cluj)", name: "COMUNA SUATU (PRIMARIA SUATU)" },
-];
+export { REVIEWED_TOWN_HALL_NAMES };
+export type { ReviewedTownHallName };
 
 /** Apply the reviewed town hall names in the caller's transaction; returns the ids renamed now. */
 export async function applyReviewedTownHallNames(

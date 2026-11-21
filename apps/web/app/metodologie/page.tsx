@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getMethodologyFigures } from "@/lib/methodology-figures";
+import { getCorrections } from "@/lib/seap-corrections-data";
 import MethodologyBehavior from "./MethodologyBehavior";
 import MethodologyStory from "./MethodologyStory";
 import "./metodologie-v24.css";
@@ -15,10 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function MetodologiePage() {
-  const figures = await getMethodologyFigures();
+  const [figures, corrections] = await Promise.all([getMethodologyFigures(), getCorrections()]);
   return (
     <>
-      <MethodologyStory figures={figures} />
+      <MethodologyStory figures={figures} corrections={corrections} />
       <MethodologyBehavior rootId="metodologie" />
     </>
   );

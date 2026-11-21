@@ -13,6 +13,8 @@ import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
 import { BRIEF_TERMS, GLOSSARY } from "@/lib/glossary";
 import TipText from "@/components/TipText";
 import { EXAMPLE_TOWN, type BandCounts, type KindKey, type MethodologyFigures } from "@/lib/methodology-figures";
+import type { CorrectionsData } from "@/lib/seap-corrections-data";
+import Corrections from "./Corrections";
 import ScoreCode from "./ScoreCode";
 
 // The /metodologie page body: the v24 prototype (seap-filters-work/scratchpad/metodologie-20261105), ported once by
@@ -134,7 +136,7 @@ function PatternList({ codes }: { codes: readonly string[] }) {
   return <>{codes.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}</>;
 }
 
-export default function MethodologyStory({ figures }: { figures: MethodologyFigures | null }) {
+export default function MethodologyStory({ figures, corrections = null }: { figures: MethodologyFigures | null; corrections?: CorrectionsData | null }) {
   const f = figures;
   const peers = f?.peers ?? null;
   const riskDay = shortDate(f?.riskAt);
@@ -1836,12 +1838,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                   <li><b>La o firmă</b>, „Declarate directe, peste plafon”, „Adunate, trec de plafon” și „Multe sume imediat sub plafon” țin de obligația cumpărătorului: împreună cântăresc cel mult 1,5 când vânzările firmei sunt împrăștiate; limita crește treptat când partea primelor două instituții trece de 60% și dispare la 80%. La utilități și furnizorii de masă contează doar partea cu primele două instituții.</li>
                   <li><b>Cumpărătorii:</b> plafonul se verifică la instituțiile publice, la asociațiile de dezvoltare intercomunitară (ADI) și la operatorii sectoriali publici. Cumpărătorii privați nu primesc scor: tiparele lor apar doar ca observații. La asociații, inclusiv organizațiile utilizatorilor de apă pentru irigații, „Declarate directe, peste plafon” nu se verifică, iar „Adunate, trec de plafon” cântărește pe jumătate. Firma unei instituții (in-house) nu primește scor. Regimul se stabilește după forma juridică și după nume, cu excepțiile verificate de mână de mai jos.</li>
                 </ul>
-                <h4 id="cumparatori-verificati">Cumpărători verificați de mână ({formatInt(BUYER_REGIME_OVERRIDES.length)})</h4>
-                <ul>
-                  {BUYER_REGIME_OVERRIDES.map((o) => (
-                    <li key={o.cui}>{o.name} (CUI {o.cui}): {o.regime === "classic" ? "verificat ca instituție" : "cumpărător privat"}, {o.why}.</li>
-                  ))}
-                </ul>
+                <p id="cumparatori-verificati">Cumpărătorii verificați de mână ({formatInt(BUYER_REGIME_OVERRIDES.length)}), fiecare cu sursa lui: <a href="#corecturi-cumparator">în „Unde corectăm datele SEAP”</a>.</p>
               </div>
             </details>
             <details suppressHydrationWarning>
@@ -1971,6 +1968,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <p>Cel puțin 3 achiziții directe din aceeași clasă CPV și același tip, într-o fereastră de cel mult 60 de zile; fiecare strict sub plafonul propriu. Suma se compară cu cel mai mare plafon aplicabil achizițiilor din fereastră. Sunt luate în calcul și pragurile pentru lucrări. Se reține fereastra cu cel mai mare raport față de plafon.</p>
               </div>
             </details>
+            {corrections && <Corrections data={corrections} />}
             <details suppressHydrationWarning id="cod">
               <summary>Codul, constantele și licența</summary>
               <div className="mt-body">

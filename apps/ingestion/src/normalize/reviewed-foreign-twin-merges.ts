@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { REVIEWED_FOREIGN_TWIN_MERGES, type DbSql, type ReviewedForeignTwinMerge } from "@seap/db";
 import { identityOf } from "./da-supplier-vat.js";
 
 /**
@@ -37,40 +37,8 @@ type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
 
 export const REVIEWED_FOREIGN_TWIN_MERGE_REASON = "reviewed-foreign-twin-merge";
 
-export interface ReviewedForeignTwinMerge {
-  sourceId: string;
-  targetId: string;
-  /** core.entities.foreign_id_norm shared by source and target when reviewed. */
-  foreignId: string;
-  /** core.entities.name_normalized of the source (country RO) when reviewed. */
-  sourceName: string;
-  /** core.entities.name_normalized of the target when reviewed. */
-  targetName: string;
-  /** core.entities.country_code of the target when reviewed. */
-  targetCountry: string;
-  evidence: string;
-}
-
-export const REVIEWED_FOREIGN_TWIN_MERGES: readonly ReviewedForeignTwinMerge[] = [
-  { sourceId: "2270125", targetId: "2270102", foreignId: "7895097", sourceName: "candu energy inc",
-    targetName: "candu energy inc cei", targetCountry: "CA",
-    evidence: "Candu Energy Inc., foreign id 7895097 under RO (SEAP contracts) and CA (TED, CANDU ENERGY INC.(CEI))" },
-  { sourceId: "2270082", targetId: "2275287", foreignId: "1007607001228", sourceName: "turboenergy power",
-    targetName: "turboenergy power", targetCountry: "MD",
-    evidence: "Turboenergy Power, foreign id 1007607001228 under RO (SEAP contracts) and MD (TED lots)" },
-  { sourceId: "2270605", targetId: "2275147", foreignId: "5750040554", sourceName: "koltek musavirlik",
-    targetName: "koltek musavirlik", targetCountry: "TR",
-    evidence: "KOLTEK MUSAVIRLIK, foreign id 5750040554 under RO (SEAP contracts) and TR (TED lots)" },
-  { sourceId: "2270952", targetId: "2275637", foreignId: "03272750542", sourceName: "tr costruzioni",
-    targetName: "tr costruzioni", targetCountry: "IT",
-    evidence: "T.R. COSTRUZIONI S.R.L., foreign id 03272750542 under RO (SEAP contracts) and IT (TED lots)" },
-  { sourceId: "2272875", targetId: "2279326", foreignId: "32543471883", sourceName: "schlumberger logelco inc",
-    targetName: "schlumberger logelco inc", targetCountry: "PA",
-    evidence: "Schlumberger Logelco INC, foreign id 32543471883 under RO (SEAP contracts) and PA (TED lots)" },
-  { sourceId: "2273166", targetId: "2279280", foreignId: "01401230469", sourceName: "tirrena scavi spa",
-    targetName: "tirrena scavi spa", targetCountry: "IT",
-    evidence: "Tirrena Scavi Spa, foreign id 01401230469 under RO (SEAP contracts) and IT (TED lots)" },
-];
+export { REVIEWED_FOREIGN_TWIN_MERGES };
+export type { ReviewedForeignTwinMerge };
 
 export type ReviewedForeignTwinMergeSkipReason =
   | "source_missing"

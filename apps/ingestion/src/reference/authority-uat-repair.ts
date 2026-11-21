@@ -1,4 +1,4 @@
-import { processingWritable } from "@seap/db";
+import { AUTHORITY_UAT_CORRECTIONS, processingWritable, type AuthorityUatCorrection } from "@seap/db";
 import { processingStage, type DbSql } from '@seap/db';
 
 /**
@@ -17,20 +17,8 @@ import { processingStage, type DbSql } from '@seap/db';
  * normalization; finishProcessing marks it completed with the verified publication.
  */
 export const AUTHORITY_UAT_REPAIR_ID='authority-uat-county-20261021';
-export type AuthorityUatCorrection={entityId:string;name:string;cui:string;county:string;from:number;to:number};
-export const AUTHORITY_UAT_CORRECTIONS:readonly AuthorityUatCorrection[]=[
- {entityId:'2142023',name:'COMUNA VANATORI (PRIMARIA VANATORI)',cui:'4393212',county:'Galati',from:113849,to:75150},
- {entityId:'2140064',name:'COMUNA VANATORI',cui:'4541424',county:'Iasi',from:113849,to:100086},
- {entityId:'2143042',name:'COMUNA VANATORI',cui:'5902721',county:'Mures',from:113849,to:120254},
- {entityId:'2144406',name:'Comuna Vânători (Primaria Vinatori)',cui:'4297975',county:'Vrancea',from:113849,to:178607},
- {entityId:'2146546',name:'Municipiul Sfantu Gheorghe',cui:'4404605',county:'Covasna',from:94456,to:63394},
- {entityId:'2139931',name:'Comuna Corabia (Primaria Cobia)',cui:'4449429',county:'Dambovita',from:125542,to:66580},
- {entityId:'2145835',name:'COMUNA SANTIMBRU',cui:'4562095',county:'Alba',from:86519,to:7384},
- {entityId:'2144866',name:'COMUNA CIRTA',cui:'4246122',county:'Harghita',from:144508,to:84102},
- {entityId:'2141946',name:'COMUNA SCANTEIA',cui:'4540313',county:'Iasi',from:94429,to:98916},
- {entityId:'2139141',name:'COMUNA CIOCARLIA',cui:'4514608',county:'Constanta',from:100709,to:61283},
- {entityId:'2140717',name:'COMUNA CANDESTI',cui:'4402663',county:'Dambovita',from:39967,to:66526},
-];
+export { AUTHORITY_UAT_CORRECTIONS };
+export type { AuthorityUatCorrection };
 
 /** What the database holds for one pinned row, read inside the repair transaction. */
 export type AuthorityUatObservation={

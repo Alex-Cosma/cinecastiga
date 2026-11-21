@@ -894,3 +894,32 @@
 .mt .mt-cta>a.mt-report,.mt .mt-cta>a.mt-s{min-height:52px;padding:0 22px;font-size:16px;font-weight:600;background:var(--surface)}
 /* The drawing sits on the frame's floor at its own height, not centred in a taller box (the gap above the caption). */
 .mt .mt-fr .mt-art>svg{height:auto;max-height:100%;align-self:end}
+
+/* „Unde corectăm datele SEAP” (Corrections.tsx, 21 November 2026): the kinds with their counts, one search, a fold per
+   kind with one line per correction (name · SEAP → la noi · "i" with why and basis). */
+.mt .mt-corr-t td:first-child,.mt .mt-corr-t th:first-child{width:auto;font-weight:500}
+.mt .mt-corr-t td.mt-n,.mt .mt-corr-t th.mt-n{width:5.5em}
+.mt .mt-corr-rule{display:block;font-size:14px;color:var(--muted)}
+.mt .mt-corr-search{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.mt .mt-corr-search label{font-size:15px;font-weight:600;color:var(--ink)}
+.mt .mt-corr-search input{width:100%;max-width:420px;min-height:48px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line2);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
+.mt .mt-corr-search input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.mt .mt-corr-found{min-height:1.4em;font-size:14px;color:var(--muted)}
+.mt .mt-ref .mt-body details.mt-corr-g{border-bottom:1px solid var(--line)}
+.mt .mt-ref .mt-body details.mt-corr-g:first-of-type{border-top:1px solid var(--line)}
+.mt .mt-ref .mt-body details.mt-corr-g>summary{min-height:48px;font-size:16px}
+.mt .mt-ref .mt-body details.mt-corr-g .mt-chip{font-size:13px;font-weight:500;color:var(--ink2)}
+.mt .mt-corr-lead{margin:0 0 6px 21px;font-size:15px;color:var(--muted)}
+.mt .mt-ref .mt-body ul.mt-corr{list-style:none;margin:0 0 14px 21px;padding:0;gap:0}
+.mt .mt-corr li{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;padding:9px 0;border-top:1px solid var(--line);font-size:15px;line-height:1.5;scroll-margin-top:96px}
+.mt .mt-corr li:first-child{border-top:0}
+.mt .mt-corr li>b{flex:1 1 100%;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.mt .mt-corr-x{flex:1 1 auto;min-width:0;color:var(--ink2);overflow-wrap:anywhere}
+.mt .mt-corr-x>span:first-child{color:var(--muted)}
+.mt .mt-corr .info-mark{vertical-align:-3px}
+@media(max-width:560px){
+.mt .mt-corr-lead{margin-left:0}
+.mt .mt-ref .mt-body ul.mt-corr{margin-left:0}
+.mt .mt-corr-x>span[aria-hidden]{display:none}
+.mt .mt-corr-x>span{display:block}
+}
