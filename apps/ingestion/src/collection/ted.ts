@@ -22,7 +22,10 @@ import {task,type PageResult,type Task,type TaskPlan} from './plan.js';
  *   page compares the exact set of publication numbers with the package. A
  *   difference is a visible, isolated gap (failed task), never a silent success.
  */
-export const TED_PAGE_SIZE=100;
+/** 250 is the Search API's largest page (owner, 21 November 2026): a day sorted by its date has no stable order
+ * between pages (all notices tie), so OJ S 180's 104 notices on two pages of 100 repeated one. A day almost never
+ * holds more than 250 Romanian awards, so it is one page; a repeat on a larger day is that day's gap. */
+export const TED_PAGE_SIZE=250;
 /** A failed day verification is searched again once a day for this many days (late TED indexing). */
 export const TED_OVERLAP_DAYS=3;
 export const TED_NOTICE_TYPE='can-standard';
@@ -70,7 +73,7 @@ function planTedList(t:Task,value:unknown,previous:PageResult[]):TaskPlan{
  const numbers=notices.map(n=>n?.['publication-number']);
  if(numbers.some(n=>typeof n!=='string'||!PUBLICATION.test(n)))throw Error('TED: rezultat fără număr de publicare valid.');
  const identities=numbers as string[],before=previous.flatMap(p=>p.identities??[]);
- if(new Set([...before,...identities]).size!==before.length+identities.length)throw Error('TED: paginare instabilă (anunț repetat între pagini).');
+ if(new Set([...before,...identities]).size!==before.length+identities.length)throw new TedVerificationError('TED: paginare instabilă (anunț repetat între pagini); verificarea zilei rămâne de refăcut.');
  for(const n of notices){
   const date=n['publication-date'],type=n['notice-type'];
   if(typeof date==='string'&&date.slice(0,10)!==day)throw Error('TED: anunț din afara zilei solicitate.');

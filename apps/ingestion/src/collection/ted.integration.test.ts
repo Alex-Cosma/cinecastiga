@@ -140,7 +140,7 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   expect(ledger.every(r=>r.stream==='ted')).toBe(true);
   expect(ledger[0]).toMatchObject({method:'GET',endpoint:'ted.europa.eu/packages/daily/202600198',parameters:{ojs:'202600198'},status:200,outcome:'success'});
   expect(Number(ledger[0]!.bytes)).toBeGreaterThan(100);
-  expect(ledger[1]).toMatchObject({method:'POST',endpoint:'api.ted.europa.eu/v3/notices/search',parameters:{publicationDate:'2026-10-13',page:1,limit:100},outcome:'success'});
+  expect(ledger[1]).toMatchObject({method:'POST',endpoint:'api.ted.europa.eu/v3/notices/search',parameters:{publicationDate:'2026-10-13',page:1,limit:250},outcome:'success'});
   expect(ledger.at(-1)).toMatchObject({endpoint:'ted.europa.eu/packages/daily/202600201',status:404,outcome:'failed'});
   expect(await tasks()).toEqual(['ted-package 202600198 complete','ted-list 202600198 complete','ted-package 202600199 complete','ted-list 202600199 complete','ted-package 202600200 complete','ted-list 202600200 complete','ted-package 202600201 complete']);
   expect(await control()).toEqual({paused_streams:[],blocked_reason:null});

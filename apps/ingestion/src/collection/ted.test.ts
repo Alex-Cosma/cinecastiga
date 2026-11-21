@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {planResponse,task,type PageResult} from './plan.js';
-import {gazetteOjs,nextOjs,ojsLabel,TED_PAGE_SIZE,tedPackageCandidates,tedPackageDay,tedPackageTask,tedReverifications,tedVerifyTask,type TedAttempt,type TedPackageFetch} from './ted.js';
+import {gazetteOjs,nextOjs,ojsLabel,TED_PAGE_SIZE,TedVerificationError,tedPackageCandidates,tedPackageDay,tedPackageTask,tedReverifications,tedVerifyTask,type TedAttempt,type TedPackageFetch} from './ted.js';
 import {readTedDailyPackage} from '../scrape/ted/package.js';
 import {extractTedNotice} from '../normalize/ted.js';
 import {tedDailyPackage,tedNoticeXml} from '../test/ted-package-fixture.js';
@@ -73,22 +73,25 @@ describe('TED collection tasks',()=>{
 
  it('pages a day verification without per-notice children',()=>{
   const t={...tedVerifyTask('b',ojs,day,day),id:1};
-  const first=planResponse(t,{totalNoticeCount:150,notices:notices(1,TED_PAGE_SIZE)},[],day);
+  const first=planResponse(t,{totalNoticeCount:300,notices:notices(1,TED_PAGE_SIZE)},[],day);
   expect(first.docs).toEqual([]);
   expect(first.children).toHaveLength(1);
   expect(first.children[0]).toMatchObject({kind:'ted-list',priority:0,params:{page:1,from:day,ojs,tedScan:day}});
-  const last=planResponse({...first.children[0]!,id:2},{totalNoticeCount:150,notices:notices(101,50)},[first.result as PageResult],day);
+  const last=planResponse({...first.children[0]!,id:2},{totalNoticeCount:300,notices:notices(251,50)},[first.result as PageResult],day);
   expect(last.children).toEqual([]);
   expect((last.result as PageResult).identities).toHaveLength(50);
  });
 
  it('fails closed on unstable or foreign search pages',()=>{
   const t={...tedVerifyTask('b',ojs,day,day),id:1};
-  const first=planResponse(t,{totalNoticeCount:150,notices:notices(1,100)},[],day).result as PageResult;
+  expect(TED_PAGE_SIZE).toBe(250);
+  const first=planResponse(t,{totalNoticeCount:300,notices:notices(1,250)},[],day).result as PageResult;
   const page1={...t,params:{...t.params,page:1}};
-  expect(()=>planResponse(page1,{totalNoticeCount:150,notices:notices(100,50)},[first],day)).toThrow(/paginare instabilă/);
-  expect(()=>planResponse(page1,{totalNoticeCount:151,notices:notices(101,50)},[first],day)).toThrow(/totalul/);
-  expect(()=>planResponse(page1,{totalNoticeCount:150,notices:notices(101,50)},[],day)).toThrow(/pagină anterioară/);
+  // A repeat between pages is that day's gap (TedVerificationError), never a stop of the TED stream.
+  expect(()=>planResponse(page1,{totalNoticeCount:300,notices:notices(250,50)},[first],day)).toThrow(TedVerificationError);
+  expect(()=>planResponse(page1,{totalNoticeCount:300,notices:notices(250,50)},[first],day)).toThrow(/paginare instabilă/);
+  expect(()=>planResponse(page1,{totalNoticeCount:301,notices:notices(251,50)},[first],day)).toThrow(/totalul/);
+  expect(()=>planResponse(page1,{totalNoticeCount:300,notices:notices(251,50)},[],day)).toThrow(/pagină anterioară/);
   expect(()=>planResponse(t,{totalNoticeCount:3,notices:notices(1,2)},[],day)).toThrow(/nu corespunde/);
   expect(()=>planResponse(t,{totalNoticeCount:1,notices:[{'publication-number':'1-2026','publication-date':'2026-10-14+02:00'}]},[],day)).toThrow(/afara zilei/);
   expect(()=>planResponse(t,{notices:[]},[],day)).toThrow(/structura/);
