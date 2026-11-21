@@ -423,7 +423,7 @@ export default async function EntityPage({
       {!bothRoles && sp["rol"] !== undefined && <DropRolParam />}
       {/* The page's tabs right under its header, above the summary they start with (owner, 2 November 2026). */}
       <SectionNav
-        name={cleanName(row.name)}
+        name={titleName(row.name)}
         items={[
           { id: "top", label: "Rezumat" },
           // In the page's order (critique of 2 November 2026): the representatives come right after the summary,

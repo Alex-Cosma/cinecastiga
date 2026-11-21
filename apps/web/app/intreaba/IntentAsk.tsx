@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { IntentResult } from "@/lib/intent/types";
 import { countWords } from "@/lib/ask/answer-text";
+import { tidyName } from "../../lib/tidy-name";
 import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-examples";
 import type { IntentChoice, UnderstoodLine } from "./intent-line";
 import DiscoveryIcon from "../DiscoveryIcon";
@@ -177,11 +178,17 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
   );
 }
 
+/** The sentence with the names it was built from tidied, as the page shows them (lib/tidy-name.ts). */
+function tidyNamesIn(sentence: string, result: IntentResult): string {
+  const i = result.interpretation;
+  return [i.authority, i.supplier, i.compareWith].reduce((text, e) => e?.name ? text.split(e.name).join(tidyName(e.name)) : text, sentence);
+}
+
 /** One polite announcement per interpretation, kept out of the panels that hold buttons. */
 export function IntentAnnouncer({ result, error }: { result: IntentResult | null; error: string | null }) {
   const text = error ? error
     : !result ? ""
-    : result.spec ? `Am înțeles așa: ${result.sentence ?? ""} Răspunsul apare mai jos; poți schimba orice parte a întrebării.`
+    : result.spec ? `Am înțeles așa: ${tidyNamesIn(result.sentence ?? "", result)} Răspunsul apare mai jos; poți schimba orice parte a întrebării.`
     : result.problem ?? "Nu am înțeles întrebarea.";
   return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }

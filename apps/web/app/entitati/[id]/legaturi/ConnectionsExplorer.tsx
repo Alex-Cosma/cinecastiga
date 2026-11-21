@@ -21,6 +21,7 @@ import "@/app/intreaba/builder/filters-kit.css";
 import { countWords } from "@/lib/ask/answer-text";
 import { glossaryEntry } from "@/lib/glossary";
 import { cleanName, countyLabel, formatRon } from "@/lib/format";
+import { titleName } from "../../../../lib/tidy-name";
 import { sumDecimalStrings } from "@/lib/ask/evidence";
 import Lei from "@/components/Lei";
 import { leiRounded } from "@/lib/lei";
@@ -39,7 +40,9 @@ type Scope = { dataset: Dataset; yearFrom?: number; yearTo?: number };
 type Picked = { root: ConnectionEntity; partner: ConnectionPartner; checkpointId: string };
 type Sources = { selection: ConnectionEvidenceSelection; title: string };
 const number = (value: number) => value.toLocaleString("ro-RO");
-const name = (entity: ConnectionEntity) => cleanName(entity.name);
+/** A name as the page shows it (lib/tidy-name.ts); `sourceName` keeps the source's spelling for a selection's stored title. */
+const name = (entity: ConnectionEntity) => titleName(entity.name);
+const sourceName = (entity: ConnectionEntity) => cleanName(entity.name);
 const records = (item: ConnectionPartner) => item.daRows + item.contractRows;
 const recordLabel = (n: number) => countWords(n, "înregistrare", "înregistrări").replace(/ /g, "\u00a0"); // the count never parts from its noun
 const sourceLabel = (n: number) => n === 1 ? "Vezi sursa" : `Vezi cele ${countWords(n, "sursă", "surse")}`;
@@ -584,7 +587,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
   const v = held ?? live;
   const isAuthority = role === "authority";
   const entity = v.base?.entity ?? v.top?.entity ?? v.picked?.root;
-  const currentName = entity ? name(entity) : entityName;
+  const currentName = entity ? name(entity) : titleName(entityName);
   const total = v.top ? Number(v.top.summary.totalExact) : 0;
   const secondTotal = v.secondTop && v.picked ? Number(v.secondTop.summary.totalExact) + amount(v.picked.partner) : 0;
 
@@ -681,8 +684,8 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
   }
   const pairs = v.picked ? [pair(v.picked.root, v.picked.partner.entity), ...(v.peer ? [pair(v.picked.partner.entity, v.peer.entity)] : [])] : [];
   const selection = v.picked ? selectionFor(pairs) : null;
-  const legTitle = (a: ConnectionEntity, b: ConnectionEntity) => `${name(a)} — ${name(b)}`;
-  const title = v.picked ? [name(v.picked.root), name(v.picked.partner.entity), ...(v.peer ? [name(v.peer.entity)] : [])].join(" — ") : "";
+  const legTitle = (a: ConnectionEntity, b: ConnectionEntity) => `${sourceName(a)} — ${sourceName(b)}`;
+  const title = v.picked ? [sourceName(v.picked.root), sourceName(v.picked.partner.entity), ...(v.peer ? [sourceName(v.peer.entity)] : [])].join(" — ") : "";
   const listPending = base.busy || search !== rootSearch;
   const secondPending = second.busy || peerSearch !== secondSearch;
   // The largest partner is being chosen (one frame) or a copied path reopened: the dock and the second list are ghosts.
@@ -785,7 +788,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>și</span><b><EntityName id={v.peer.entity.id} role={v.peer.entity.role}>{name(v.peer.entity)}</EntityName></b>
               <span>{isAuthority ? "cumpără de la" : "vând către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
             <div className="cx-legs">{[{ item: vp.partner, a: vp.root }, { item: v.peer, a: v.peer.entity }].map(({ item, a }, index) => (
-              <div className="cx-leg" key={index}><h3>{legTitle(a, vp.partner.entity)}</h3><p className="amt"><Lei value={item.totalExact} /></p>
+              <div className="cx-leg" key={index}><h3>{`${name(a)} — ${name(vp.partner.entity)}`}</h3><p className="amt"><Lei value={item.totalExact} /></p>
                 <p>{recordLabel(records(item))} · {item.firstDate ? `${date(item.firstDate)} – ${date(item.lastDate)}` : "fără date"}</p>
                 <button type="button" onClick={() => setSources({ selection: selectionFor([pairs[index]!]), title: legTitle(a, vp.partner.entity) })}>{sourceLabel(records(item))}</button></div>))}</div>
             {/* The caveat joins the line's (?) (owner, 17 November 2026; before: a sentence before „Împreună”). */}

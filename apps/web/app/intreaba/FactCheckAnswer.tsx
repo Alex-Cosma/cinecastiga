@@ -17,6 +17,7 @@ import type { AskSpec } from "../../lib/ask/spec";
 import { domainName } from "../../lib/cpv-aliases";
 import { shareLabel } from "../../lib/entity-summary";
 import { cleanName, formatRonFull } from "../../lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import HelpTip from "./builder/HelpTip";
 import { useChartMotion } from "./answer/chart-motion";
@@ -49,8 +50,8 @@ const OUTSIDE_SHOWN = 3;
 /** A figure beside its label (→): "107,5 mil." from a million, else with its unit ("18.453 lei"), so "2 · 18.453" never reads as two counts. */
 const mil = shortLei;
 const county = (raw: string | null | undefined) => countyDisplay(raw) ?? raw ?? null;
-const partyLine = (p: FactParty) => [cleanName(p.name), p.cui ? `CUI ${p.cui}` : null, county(p.county)].filter(Boolean).join(" · ");
-const shortName = (p: FactParty) => cleanName(p.name);
+const partyLine = (p: FactParty) => [titleName(p.name), p.cui ? `CUI ${p.cui}` : null, county(p.county)].filter(Boolean).join(" · ");
+const shortName = (p: FactParty) => titleName(p.name);
 
 /** The pair alone (final §5.1 "Arată toată relația"): no period, domain, channel or old condition. */
 export function wholeRelationSpec(spec: AskSpec): AskSpec {

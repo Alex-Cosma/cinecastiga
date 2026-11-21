@@ -13,6 +13,7 @@ import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useMemoryFilters } from "@/components/table-filters/useMemoryFilters";
 import { cleanName, formatCalendarDate, formatExactDecimal, formatInt } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { isActive } from "@/lib/table-filters/codec";
 import type { Readers } from "@/lib/table-filters/memory";
 import type { TableColumns } from "@/lib/table-filters/types";
@@ -71,7 +72,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
     data: (r) => r.date,
     valoare: (r) => r.value,
   }), []);
-  const names = useMemo(() => new Map(rows.map((r) => [r.partnerId ?? `n:${r.partnerName}`, cleanName(r.partnerName) || "—"])), [rows]);
+  const names = useMemo(() => new Map(rows.map((r) => [r.partnerId ?? `n:${r.partnerName}`, titleName(r.partnerName) || "—"])), [rows]);
   const filters = useMemoryFilters(columns, rows, readers, (key, value) => (key === "partener" ? names.get(value) : undefined));
   const [page, setPage] = useState(1);
   // In motion (owner, 6 November 2026): at first view the bars on screen grow from 0, top to bottom; after a page or a

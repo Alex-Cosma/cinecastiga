@@ -1,19 +1,19 @@
-import geo from "./reference/uat-geo.json" with { type: "json" };
-import { COUNTIES } from "./counties";
 import { cleanName } from "./format";
+import localityWords from "./reference/locality-words.json" with { type: "json" };
 
 /*
  * An entity's name as a title reads it (owner, 21 November 2026): SICAP writes most names in capitals without
  * diacritics („COMUNA BATRANA (PRIMARIA COMUNEI BATRANA)”), the titles show „Comuna Bătrâna (Primăria Comunei
- * Bătrâna)”. Display only, on the server (the localities list stays out of the browser bundle): the stored name,
- * search, links, clips and exports keep the source's spelling, and the entity page shows it in Complet.
+ * Bătrâna)”; the lists, charts, tips and answers too (owner, the same day: „peste tot”): through EntityName, or this
+ * function where a name is plain text. Display only: the stored name, search and its inputs, links, the labels saved
+ * with clips and follows, and exports keep the source's spelling, and the entity page shows it in Complet.
  *
  * - A name already in mixed case keeps its case; when it has no diacritic at all, the unambiguous ones come back.
  * - Each word gets a capital, except the small joining words inside a name („de”, „din”, „și”, „nr.”).
  * - Legal forms, acronyms and words without vowels stay in capitals (SRL, S.A., DGASPC, RDS); Roman numerals too.
  * - Diacritics come back only where the word is unambiguous: a short list of the words institutions' names are made
- *   of, the counties, and the localities' names (INS SIRUTA via lib/reference/uat-geo.json) when every locality
- *   spelling of that word agrees. Anything else keeps the source's letters („Botesti” is Botești or Boțești).
+ *   of, the counties, and the localities' names (INS SIRUTA, lib/reference/locality-words.json, 15 kB, built by
+ *   scripts/map/build-locality-words.mjs) when every locality spelling of that word agrees. Anything else keeps the source's letters („Botesti” is Botești or Boțești).
  */
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleUpperCase("ro-RO");
@@ -79,24 +79,8 @@ const SMALL = new Map([
 
 const ROMAN = /^(?=[IVX])X{0,3}(IX|IV|V?I{0,3})$/;
 
-function buildLocalities(): Map<string, string | null> {
-  const words = new Map<string, string | null>();
-  const add = (word: string) => {
-    if (word.length < 4) return;
-    const key = fold(word);
-    const proper = word.charAt(0).toLocaleUpperCase("ro-RO") + word.slice(1).toLocaleLowerCase("ro-RO");
-    const seen = words.get(key);
-    if (seen === undefined) words.set(key, proper);
-    else if (seen !== proper) words.set(key, null);
-  };
-  for (const [, name] of (geo as unknown as { uats: [number, string, string, string][] }).uats) {
-    for (const word of name.split(/[\s\-–]+/)) add(word);
-  }
-  for (const county of COUNTIES) for (const word of county.split(/[\s-]+/)) add(word);
-  return words;
-}
-
-let localities: Map<string, string | null> | null = null;
+/** Localities' and counties' words with their diacritics, by their capitals without them. */
+const LOCALITIES = new Map<string, string>(localityWords.words.map((w) => [fold(w), w]));
 const KNOWN = new Map<string, string>(WORDS);
 
 function word(raw: string, first: boolean, after: string): string {
@@ -109,7 +93,7 @@ function word(raw: string, first: boolean, after: string): string {
   if (!first && SMALL.has(key)) return SMALL.get(key)!;
   if (!/[AEIOUY]/.test(key)) return raw;
   // Diacritics are added only to a word the source wrote without any; its own (cedillas included) are kept.
-  const known = raw === key ? KNOWN.get(key) ?? (localities ??= buildLocalities()).get(key) : null;
+  const known = raw === key ? KNOWN.get(key) ?? LOCALITIES.get(key) : null;
   return known ?? raw.charAt(0) + raw.slice(1).toLocaleLowerCase("ro-RO");
 }
 
@@ -121,7 +105,7 @@ export function tidyName(name: string): string {
     // Written in small letters but without a single diacritic („Comuna Dobrotesti (Primaria Dobrotesti)”): only the
     // diacritics come back, on capitalised words that are unambiguous; the case stays the source's.
     if (/[^\x00-\x7F]/.test(trimmed)) return trimmed;
-    return trimmed.replace(/\b[A-Z][a-z]{2,}\b/g, (raw) => KNOWN.get(fold(raw)) ?? (localities ??= buildLocalities()).get(fold(raw)) ?? raw)
+    return trimmed.replace(/\b[A-Z][a-z]{2,}\b/g, (raw) => KNOWN.get(fold(raw)) ?? LOCALITIES.get(fold(raw)) ?? raw)
       .replace(/(?<=\p{L} )si(?= \p{L})/gu, "și");
   }
   let index = 0;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { tidyName } from "../../lib/tidy-name";
 import type { MapSearchInstitution, MapSearchPlace, MapSearchResult } from "@/lib/map-search";
 
 /*
@@ -84,7 +85,7 @@ export default function MapSearch({ chosen, onPlace, onInstitution }: {
             <div id={`${id}-${i}`} role="option" aria-selected={i === active} className="mx-find-o" onMouseEnter={() => setActive(i)} onClick={() => choose(item)}>
               {item.kind === "place"
                 ? <span><b>{item.place.name}</b><small>{item.place.kind} · {item.place.county === "bucuresti" ? "București" : `județul ${item.place.countyName}`}</small></span>
-                : <span><b>{item.institution.name}</b><small>{KIND_INSTITUTION[item.institution.kind]} · {item.institution.place}</small></span>}
+                : <span><b>{tidyName(item.institution.name)}</b><small>{KIND_INSTITUTION[item.institution.kind]} · {item.institution.place}</small></span>}
               <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M2 6h7.5M6.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
           </li>;

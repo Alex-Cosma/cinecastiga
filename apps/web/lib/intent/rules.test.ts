@@ -332,7 +332,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.period?.yearFrom).toBe(2023);
     expect(r.spec).toBeNull();
     expect(r.problem).toMatch(/Alege-o/);
-    expect(r.alternatives.map((a) => a.label)).toEqual(["STRABAG SRL (Bucuresti)", "SC STRABAG SRL"]);
+    expect(r.alternatives.map((a) => a.label)).toEqual(["Strabag SRL (Bucuresti)", "SC Strabag SRL"]);
     expect(r.alternatives[0]!.spec).toMatchObject({ block: "table", dim: "authority", filters: { supplierId: 9000004, yearFrom: 2023 } });
   });
 

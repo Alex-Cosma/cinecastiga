@@ -3,6 +3,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import EntityName from "../../components/EntityName";
+import { titleName } from "../../lib/tidy-name";
 import type { PartialYear } from "@/lib/ask/compile";
 import { BLOCK_FILTERS } from "../../lib/ask/filters/blocks";
 import type { FilterId } from "@/lib/ask/filters/types";
@@ -129,7 +130,7 @@ function TrendRowItem({ view, swatch, onRecords, actions = [] }: { view: TrendRo
     <div className="qb-trow-main">
       <div className="qb-arow-name qb-trow-name">
         {swatch && <><i className={`qb-sw qb-sw--${view.group === "equal" ? "all" : view.group} qb-trow-sw`} aria-hidden="true" /><span className="qb-sr">{view.groupWords}: </span></>}
-        {view.href ? <Link href={view.href}>{view.name}</Link> : view.name}
+        {view.href ? <Link href={view.href}>{titleName(view.name)}</Link> : view.name}
         {view.place && <small>{view.place}</small>}
       </div>
       <RowFacts facts={view.facts} />
@@ -151,11 +152,11 @@ function TrendRowItem({ view, swatch, onRecords, actions = [] }: { view: TrendRo
         <span><i>{view.years[0]!.label}</i> {view.years[0]!.value}</span>{" "}
         <span>→ <i>{view.years[1]!.label}</i> {view.years[1]!.value}</span>
       </span>}
-      {onRecords && <button type="button" className="qb-rec" aria-label={`Înregistrări: ${view.name}`} onClick={onRecords}>
+      {onRecords && <button type="button" className="qb-rec" aria-label={`Înregistrări: ${view.href ? titleName(view.name) : view.name}`} onClick={onRecords}>
         Înregistrări<span className="qb-glyph" aria-hidden="true">→</span>
       </button>}
     </div>
     {/* Esențial (lib/view-mode.ts): the row's „⋯” is Complet's (owner, 18 November 2026). */}
-    {actions.length > 0 && <RowMenu name={view.name} actions={actions} only="complet" />}
+    {actions.length > 0 && <RowMenu name={view.href ? titleName(view.name) : view.name} actions={actions} only="complet" />}
   </div>;
 }

@@ -62,11 +62,11 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
   });
 
   it("read as the finals say, with today's keys", () => {
-    expect(sentence(SIX.network!)).toBe("Cu cine lucrează MUNICIPIUL BUZAU, în toți anii?");
-    expect(sentence(q({ block: "sankey", dim: "authority", filters: { ...BUZAU } }))).toBe("Ce cumpără MUNICIPIUL BUZAU și de la cine, în toți anii?");
-    expect(sentence(SIX.sankey!)).toBe("Cine cumpără ce de la PORR CONSTRUCT, în 2024–2025?");
-    expect(sentence(SIX.fact_check!)).toBe("A cumpărat MUNICIPIUL BUZAU de la URBAN SCOPE până acum?");
-    expect(sentence(SIX.distribution!)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de toate instituțiile publice?");
+    expect(sentence(SIX.network!)).toBe("Cu cine lucrează Municipiul Buzău, în toți anii?");
+    expect(sentence(q({ block: "sankey", dim: "authority", filters: { ...BUZAU } }))).toBe("Ce cumpără Municipiul Buzău și de la cine, în toți anii?");
+    expect(sentence(SIX.sankey!)).toBe("Cine cumpără ce de la Porr Construct, în 2024–2025?");
+    expect(sentence(SIX.fact_check!)).toBe("A cumpărat Municipiul Buzău de la Urban Scope până acum?");
+    expect(sentence(SIX.distribution!)).toBe("Unde se situează Municipiul Buzău după risc, față de toate instituțiile publice?");
     // A county council has one per county: "din toată țara" is a fixed phrase, text and not a button (component 1b).
     const councils = renderToStaticMarkup(createElement(Sentence, { tokens: builderView(SIX.scatter!).sentence }));
     expect(text(councils.replace(/<span class="term[\s\S]*?<\/span><\/span>(?=<\/span>)/, ""))).toBe("Ce consilii județene din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
@@ -108,13 +108,13 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect([windowKind(group), group.title]).toEqual(["peers", "Față de cine?"]);
     expect(group.slot).toMatchObject({ id: "peers", picker: "peers", writes: ["county", "authorityKind"] });
     const chosen = chooseValue(SIX.distribution!, group.slot, { filter: "county", value: "Buzău" });
-    expect(sentence(chosen.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de instituțiile publice din județul Buzău?");
+    expect(sentence(chosen.spec)).toBe("Unde se situează Municipiul Buzău după risc, față de instituțiile publice din județul Buzău?");
     // A tick is a choice of the same window: written as the group, no note.
     const ticked = chooseValue(SIX.distribution!, group.slot, { filter: "peers", value: { similar: true } });
     expect([ticked.spec.peers, ticked.notes]).toEqual([{ similar: true }, []]);
-    expect(sentence(ticked.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de instituțiile de același tip?");
+    expect(sentence(ticked.spec)).toBe("Unde se situează Municipiul Buzău după risc, față de instituțiile de același tip?");
     const firm = q({ block: "distribution", dim: "supplier", filters: { ...URBAN, county: "Bucuresti" } });
-    expect(sentence(firm)).toBe("Unde se situează URBAN SCOPE după risc, față de firmele cu sediul în București?");
+    expect(sentence(firm)).toBe("Unde se situează Urban Scope după risc, față de firmele cu sediul în București?");
     expect(win(firm, "Față de cine").slot.writes).toEqual(["county"]);
     expect(windowTip(group, SIX.distribution!)).toMatchObject({ title: "Grupul de comparație" });
   });

@@ -2,6 +2,7 @@ import type { SuggestResponse } from "@/app/api/suggest/route";
 import { COUNTIES } from "./counties";
 import { askHref } from "./discovery-links";
 import { cleanName, countyLabel } from "./format";
+import { titleName } from "./tidy-name";
 import type { IntentResult, PlaceMatch } from "./intent/types";
 import type { EntityHit } from "./search";
 import { fold } from "./topic-search/shared";
@@ -176,7 +177,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     const authority = e.roles.includes("authority");
     push(authority ? "authorities" : "suppliers", {
       id: `entity:${e.id}`,
-      label: cleanName(e.name),
+      label: titleName(e.name),
       detail: [authority ? "pagina instituției" : "pagina firmei", countyLabel(e.county), e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
       href: `/entitati/${e.id}`,
       icon: authority ? "building" : "network",

@@ -92,7 +92,7 @@ describe("contracte în prima lună de la înființare (rf-2026.24)", () => {
     });
     expect(firstMonthWords("da_first_month_buyer", [firstMonth(input(buyer, "VLAMICON CONSTRUCT S.R.L."))], 1)).toEqual({
       title: "Instituția a contractat 890.000 lei cu o firmă aflată în primele 30 de zile de la înființare.",
-      lede: "VLAMICON CONSTRUCT S.R.L., înmatriculată la 5 octombrie 2023: prima achiziție, după 22 de zile.",
+      lede: "Vlamicon Construct S.R.L., înmatriculată la 5 octombrie 2023: prima achiziție, după 22 de zile.",
     });
     const two = [firstMonth(input(buyer, "A SRL")), firstMonth(input({ ...buyer, total: 110000 }, "B SRL"))];
     expect(firstMonthWords("da_first_month_buyer", two, 2)).toEqual({

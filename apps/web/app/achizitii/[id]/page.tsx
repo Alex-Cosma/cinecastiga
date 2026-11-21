@@ -6,6 +6,7 @@ import { getAcquisitionContext, getAcquisitionDetail } from "@/lib/acquisition-d
 import { countWords } from "@/lib/ask/answer-text";
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, formatInt, formatRon, cleanName, countyLabel } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { daState, durationLabel } from "@/lib/record-labels";
 import { getAwardItemPrices, productHref, type ItemPrice } from "@/lib/unit-prices";
 import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shared";
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const d = await acquisitionDetail(id);
   if (!d) return {};
   const x = await acquisitionContext(id);
-  return { title: `${titleOf(d, x?.items ?? []).slice(0, 70)} · ${cleanName(d.authority) || "achiziție directă"}` };
+  return { title: `${titleOf(d, x?.items ?? []).slice(0, 70)} · ${titleName(d.authority) || "achiziție directă"}` };
 }
 
 /**
@@ -78,8 +79,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   // To the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026); the products table below keeps
   // its prices and line totals exact, so quantity × price = total still adds up.
   const amount = (value: string | null) => value == null ? "Valoare neprecizată" : <Lei value={value} />;
-  const authority = d.authorityId ? <EntityName id={d.authorityId} role="authority">{cleanName(d.authority)}</EntityName> : <span>{d.authority ?? "Instituție neprecizată"}</span>;
-  const supplier = d.supplierId ? <EntityName id={d.supplierId} role="supplier">{cleanName(d.supplier)}</EntityName> : <span>{d.supplier ?? "furnizor neprecizat"}</span>;
+  const authority = d.authorityId ? <EntityName id={d.authorityId} role="authority">{cleanName(d.authority)}</EntityName> : <span>{d.authority ? titleName(d.authority) : "Instituție neprecizată"}</span>;
+  const supplier = d.supplierId ? <EntityName id={d.supplierId} role="supplier">{cleanName(d.supplier)}</EntityName> : <span>{d.supplier ? titleName(d.supplier) : "furnizor neprecizat"}</span>;
   const sameParty = x.supplierIsAuthority || (!!d.supplierId && d.supplierId === d.authorityId);
   const closing = d.value == null ? null : Number(d.value);
   const duration = durationLabel(d.publishedAt, d.finalizedAt);

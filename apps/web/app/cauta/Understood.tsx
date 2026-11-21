@@ -8,6 +8,7 @@ import InfoMark from '@/components/InfoMark';
 import EntityName from '@/components/EntityName';
 import {G,Ghost} from '@/components/ghost/Ghost';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
+import {titleName} from '../../lib/tidy-name';
 import {countWords} from '@/lib/ask/answer-text';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
@@ -390,7 +391,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
     <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
     <span className="topic-answer-what">
      {r.refId?<Link prefetch={false} className="topic-answer-title" title={title} href={r.src==='contracts'?`/contracte/i/${r.refId}`:`/achizitii/${r.refId}`}>{title}</Link>:<span className="topic-answer-title">{title}</span>}
-     <small className="topic-answer-parties">{r.authority&&<span className="topic-answer-buyer"><EntityName id={r.authorityId} role="authority" title={cleanName(r.authority)}>{cleanName(r.authority)}</EntityName></span>}
+     <small className="topic-answer-parties">{r.authority&&<span className="topic-answer-buyer"><EntityName id={r.authorityId} role="authority" title={titleName(r.authority)}>{cleanName(r.authority)}</EntityName></span>}
       {shown.length>0&&<> → {shown.map((x,k)=><Fragment key={x.name}>{k>0&&', '}<EntityName id={x.id} role="supplier">{cleanName(x.name)}</EntityName></Fragment>)}</>}
       {more>0&&<> și încă {more}</>}{!oneYear&&r.date&&<> · {r.date.slice(0,4)}</>}</small>
     </span>

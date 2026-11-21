@@ -3,6 +3,7 @@ import Term from "@/components/Term";
 import InfoMark from "@/components/InfoMark";
 import { STRIP_DOTS, STRIP_LEADS, productHref, type PriceOrder, type PriceStrip } from "@/lib/unit-prices";
 import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadsWord, medianWords } from "@/lib/unit-prices-shared";
+import { tidyName } from "../../lib/tidy-name";
 import StripChart from "./StripChart";
 import StripRow from "./StripRow";
 
@@ -46,7 +47,7 @@ function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: numbe
   const partial = largestOf(s.dots.length, s.dotsTotal);
   const seasonal = isSeasonal(s.group);
   const sentence = `${title}: ${median}, ${buyersWord(s.buyers)}, ${s.thin ? "prea puține instituții pentru piste" : leadsWord(s.leads)}${county ? ` în ${county}` : ""}.`
-    + (named ? ` Cel mai mare: ${named.name}, ${formatRatio(named.ratio)}.` : "")
+    + (named ? ` Cel mai mare: ${tidyName(named.name)}, ${formatRatio(named.ratio)}.` : "")
     + (s.mixed ? " Mărci diferite: citește denumirile." : "") + (seasonal ? " Sezonul poate explica o parte." : "");
   const shown = Math.min(s.leads, STRIP_LEADS);
   const head = s.leads > 0 ? `${s.leads > shown ? `Cele mai mari ${shown} din ${s.leads}` : s.leads === 1 ? "Singurul preț peste dublu" : `Toate cele ${s.leads}`}, după ${order === "multiplu" ? "multiplu" : "lei peste mediană"}.` : null;
@@ -62,7 +63,7 @@ function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: numbe
       <span className="pr-strip"><StripChart band={{ r10: s.r10, r25: s.r25, r75: s.r75, r90: s.r90 }} median={s.year ? s.medianLo : null} per={s.per}
         dots={s.dots} index={i} hrefBase={productHref(s.family, s.pack, s.year)}
         label={`${median}; ${s.thin ? "prea puține instituții pentru piste" : leadsWord(s.leads)}${partial ? `, punctele sunt ${partial}` : ""}`} /></span>
-      {named && <span className="pr-strip-lead" aria-hidden="true"><span className="pr-tag-name">{named.name}</span><span className="pr-tag-x"> · <b>{formatRatio(named.ratio)}</b></span></span>}
+      {named && <span className="pr-strip-lead" aria-hidden="true"><span className="pr-tag-name">{tidyName(named.name)}</span><span className="pr-tag-x"> · <b>{formatRatio(named.ratio)}</b></span></span>}
       <span className="pr-count">
         {s.thin ? <small className="pr-thin">prea puține instituții pentru piste</small>
           : <><b>{s.leads || "—"}</b><small className="pr-count-word">peste dublu</small></>}

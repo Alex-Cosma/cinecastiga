@@ -18,6 +18,7 @@ import { COUNTIES } from "@/lib/counties";
 import { awardValueLabel, riskListLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskPoints, riskScoreText, type RiskCriterion } from "@/lib/risk-score";
 import { cleanName, countyLabel, formatInt, formatRon } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { countWords } from "@/lib/ask/answer-text";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
@@ -50,7 +51,7 @@ function sortOptions(sort: RiskGroupSort, dir: "asc" | "desc"): [string, string]
 const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}:${s.entity ?? ""}`;
 /** One entity's page for a pattern (the case page). */
 const caseUrl = (code: string, role: SignalState["role"], entity: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: entity }));
-function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link prefetch={false} href={`/entitati/${id}`}>{cleanName(name)}</Link> : <>{cleanName(name)}</>; }
+function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link prefetch={false} href={`/entitati/${id}`}>{titleName(name)}</Link> : <>{titleName(name)}</>; }
 function TypeChooser({ code, role, counts, choose, close }: { code: string; role: SignalState["role"]; counts: Record<string, number>; choose: (c: string) => void; close: () => void }) {
   const [search, setSearch] = useState("");
   let found = 0;
@@ -241,7 +242,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {/* The usual kind, the notice's value, is said by the count's "?"; only the other kinds stay under the sum. */}
         {fi.subjectType === "award" && awardValueLabel(fi.evidence) !== "valoarea anunțului" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
       <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}${meter?.under ? " under" : ""}`}>{meter?.value ?? ""}</div>
-      <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
+      <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${titleName(fi.entityName)}${fi.partnerName ? `, ${titleName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
     </article>;
   }
   const distTotal = distribution.reduce((n, d) => n + d.n, 0), distNone = distribution.find(d => d.bin === 0)?.n ?? 0;
@@ -310,7 +311,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
                 <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}>{(points[c] ?? 0) >= ((points[c] ?? 0) >= 10 ? 7 : 5) && <span>{formatInt(points[c] ?? 0)}</span>}</i>)}</div>
                 <p className="sg-meta">{metaPieces(parts.map(flagLabel))}</p></> : <p className="sg-meta">{r.flags.length ? r.flags.map(flagLabel).join(" · ") : "fără tipare"}</p>}</div>
               <div className="sg-score"><strong className={`cri-pill ${RISK_BAND_CLASS[riskBand(r.score)]}`}>{riskScoreText(r.score)}</strong><small>{RISK_BAND_WORD[riskBand(r.score)]}</small></div>
-              <Link href={href} className="sg-open" aria-label={`Deschide tiparele: ${cleanName(r.name)}`}><span aria-hidden="true">→</span></Link>
+              <Link href={href} className="sg-open" aria-label={`Deschide tiparele: ${titleName(r.name)}`}><span aria-hidden="true">→</span></Link>
             </article>;
           })}
           {toolbar(true)}</> : emptyState()}

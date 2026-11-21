@@ -6,6 +6,7 @@ import Term from "@/components/Term";
 import { chartPace } from "../../../../components/motion/pace";
 import type { DepRow } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
+import { tidyName } from "../../../../lib/tidy-name";
 import { formatRon, formatInt } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 import { INITIAL_ZOOM, boundZoom, zoomAt, percent, yearRange, type Zoom } from "@/lib/radiografie-view";
@@ -185,10 +186,10 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
             return; const b = e.currentTarget.getBoundingClientRect(); drag.current = { id: e.pointerId, cx: e.clientX, cy: e.clientY, x: viewRef.current.x, y: viewRef.current.y, w: b.width * 613 / 700, h: b.width * 250 / 700, moved: false }; }} onPointerMove={e => { const d = drag.current; if (!d || d.id !== e.pointerId)
             return; const dx = e.clientX - d.cx, dy = e.clientY - d.cy; if (!d.moved && Math.hypot(dx, dy) < 5)
             return; d.moved = true; tip.hide(); e.currentTarget.setPointerCapture(e.pointerId); const v = viewRef.current; jump(boundZoom({ ...v, x: d.x - dx / d.w / v.k, y: d.y - dy / d.h / v.k })); }} onPointerUp={endDrag} onPointerCancel={endDrag}>
- <svg viewBox="0 0 700 370" role="group" aria-label={`Furnizorii ${authorityName}`}><defs><clipPath id="rv-supplier-clip"><rect x="37" y="43" width="663" height="300"/></clipPath></defs>
+ <svg viewBox="0 0 700 370" role="group" aria-label={`Furnizorii ${tidyName(authorityName)}`}><defs><clipPath id="rv-supplier-clip"><rect x="37" y="43" width="663" height="300"/></clipPath></defs>
  {[0, .25, .5, .75, 1].map(t => <g key={t}><line className="rv-grid" x1={62} x2={675} y1={68 + t * 250} y2={68 + t * 250}/><text className="rv-axis" x={50} y={72 + t * 250} textAnchor="end">{percent(Math.max(0, 1 - zoom.y - t / zoom.k))}</text><text className="rv-axis" x={62 + t * 613} y={342} textAnchor="middle">{percent((zoom.x + t / zoom.k) * maxX)}</text></g>)}
  <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <SupplierDot key={s.id} born={!drawn ? "cm-pt" : fresh?.has(s.id) ? "cm-in" : ""} i={shown.indexOf(s)} selected={p.id === s.id} ring={chose && p.id === s.id} cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.all)}
-            aria={`${s.name}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} tip={tip.bind(shortName(s.name), formatRon(s.all), `${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile firmei`)} onSelect={() => select(s)}
+            aria={`${tidyName(s.name)}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} tip={tip.bind(shortName(s.name), formatRon(s.all), `${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile firmei`)} onSelect={() => select(s)}
             label={p.id === s.id && <DotLabel first={!drawn} x={Math.min(470, Math.max(62, X(s.shareHere) - 60))} y={Y(s.shareLife) > 258 ? Y(s.shareLife) - R(s.all) - 10 : Y(s.shareLife) + R(s.all) + 20}>{(() => { const nm = shortName(s.name); return nm.length > 30 ? `${nm.slice(0, 29).trimEnd()}…` : nm; })()}</DotLabel>}/>)}</g></svg></div>
  {visible < shown.length && <p className="rv-small">{visible} din {countWords(shown.length, "furnizor", "furnizori")} în zona vizibilă</p>}</div></div>
  <aside ref={detail} tabIndex={-1} className="rv-selection" aria-live="polite"><p className="rv-small">Relația · {yearRange(p.y0, p.y1)}{inChart ? "" : " · în afara graficului"}</p><h3><Link prefetch={false} href={`/entitati/${p.id}`}>{shortName(p.name)}</Link></h3><dl>

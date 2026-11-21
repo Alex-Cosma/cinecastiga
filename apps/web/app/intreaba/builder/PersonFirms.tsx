@@ -5,6 +5,7 @@ import { countWords } from "../../../lib/ask/answer-text";
 import type { PersonFirms as Firms } from "../../../lib/ask/person-firms";
 import { countyDisplay } from "../../../lib/ask/peer-groups-shared";
 import { cleanName } from "../../../lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import HelpTip from "./HelpTip";
 import OptionList from "./pickers/OptionList";
 
@@ -43,7 +44,7 @@ export default function PersonFirms({ person, onPick }: { person: PersonPick; on
     {error && <p className="qb-form-error" role="alert">{error}</p>}
     {data && (data.suppliers.length
       ? <OptionList label={`Firmele lui ${cleanName(person.name)}`} value={null}
-        options={data.suppliers.map((f) => ({ value: f.entityId, label: cleanName(f.name),
+        options={data.suppliers.map((f) => ({ value: f.entityId, label: titleName(f.name),
           detail: [f.cui ? `CUI ${f.cui}` : null, countyDisplay(f.county) ?? f.county, f.role].filter(Boolean).join(" · ") }))}
         {...(others > 0 ? { rest: [{ label: `${countWords(others, "firmă", "firme")} fără achiziții publice în datele noastre` }] } : {})}
         onChange={(value, source) => { if (source !== "activate") return; const f = data.suppliers.find((s) => s.entityId === value); if (f) onPick({ id: f.entityId, name: f.name }); }} />

@@ -9,7 +9,8 @@ import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
 import { SEAT_ABROAD } from "../../lib/ask/seat";
-import { cleanName, formatInt, formatRon } from "../../lib/format";
+import { formatInt, formatRon } from "../../lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { newFirmTag, rankedGroupLead } from "../../lib/ask/winner-words";
 import { signalTip } from "../../lib/ask/signal-tips";
@@ -143,7 +144,7 @@ export function rankingHeadline(ranking: Pick<RiskRanking, "pool" | "top" | "top
   const { text: score, band } = scorePill(ranking.top);
   return ranking.topCount > 1
     ? { kind: "tied", lead: `${formatInt(ranking.topCount)} la egalitate pe primul loc`, score, band }
-    : { kind: "first", lead: `Primul: ${cleanName(first.name)}`, score, band };
+    : { kind: "first", lead: `Primul: ${titleName(first.name)}`, score, band };
 }
 
 /** A score as its pill says it, the band's word beside it and the pill's colour class: „71%”, „puternic”, risk-high. */

@@ -1,4 +1,5 @@
-import { cleanName, formatRon } from "./format";
+import { formatRon } from "./format";
+import { titleName } from "./tidy-name";
 import { consortiumRankingNote } from "./consortium";
 import type { GlossaryId } from "./glossary";
 import { roCount } from "./ro-count";
@@ -157,7 +158,7 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   // Short labels, so that the line fits the card (owner, 1 November 2026): the share says whether it is a majority.
   if (top && top.partnerId !== "0" && top.totalRon > 0) {
     second.push(isAuth ? "Cel mai mare furnizor: " : "Cel mai mare client: ",
-      { text: cleanName(top.partnerName), href: `/entitati/${top.partnerId}` },
+      { text: titleName(top.partnerName), href: `/entitati/${top.partnerId}` },
       ` (${shareLabel(top.pct)}${top.nConsortium > 0 ? ", inclusiv părți din contracte în consorțiu" : ""}).`);
   }
   if (topDivision) {
@@ -179,7 +180,7 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   });
   const partners: SummaryBar[] = input.partners.slice(0, 3).map((p) => ({
     key: p.partnerId,
-    label: p.partnerId === "0" ? "Partener neidentificat" : p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`,
+    label: p.partnerId === "0" ? "Partener neidentificat" : p.partnerName ? titleName(p.partnerName) : `Entitate #${p.partnerId}`,
     ...(p.partnerId !== "0" ? { href: `/entitati/${p.partnerId}` } : {}),
     valueLabel: formatRon(p.totalRon),
     share: p.pct,

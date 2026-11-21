@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { tidyName, titleName } from "./tidy-name";
+import { COUNTIES } from "./counties";
+import geo from "./reference/uat-geo.json";
+import { localityWords } from "../scripts/map/build-locality-words.mjs";
 
 /* Titles read entity names tidied (owner, 21 November 2026); invented names in the shapes SICAP writes. */
 describe("tidyName", () => {
@@ -38,5 +42,12 @@ describe("tidyName", () => {
   it("drops a leading CUI before tidying (titleName)", () => {
     expect(titleName("9813902 EXEMPLU CONSTRUCT")).toBe("Exemplu Construct");
     expect(titleName(null)).toBe("(fără nume)");
+  });
+});
+
+describe("the localities' words", () => {
+  it("are current with the localities and counties (node scripts/map/build-locality-words.mjs)", () => {
+    const stored = JSON.parse(readFileSync(new URL("./reference/locality-words.json", import.meta.url), "utf8")).words;
+    expect(stored).toEqual(localityWords((geo as unknown as { uats: [number, string][] }).uats.map((u) => u[1]), COUNTIES));
   });
 });

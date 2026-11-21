@@ -176,6 +176,7 @@ export function rowFacts(row: NetworkRow, partner: NetworkPartner): RowFact[] {
 export function networkRowView(row: NetworkRow, data: NetworkData, list: NetworkList, last: number): NetworkRowView {
   const partner = data.partners[row.entityId] ?? { entityId: row.entityId, name: "?", county: null, employees: null, first: 0, last: 0, years: [], signals: [], firmShare: null };
   const name = cleanName(partner.name);
+  // Shown tidied at the row (NetworkAnswer); the name here also names an exclusion and a stored scope.
   const firm = data.focal.role === "authority";
   const place = [countyName(partner.county), firm && partner.employees !== null ? countWords(partner.employees, "angajat", "angajați") : null].filter(Boolean).join(" · ") || null;
   const own = data.lists[list];

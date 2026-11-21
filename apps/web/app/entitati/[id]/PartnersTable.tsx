@@ -2,7 +2,8 @@
 
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { formatRon, cleanName } from "@/lib/format";
+import { formatRon} from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { useTip } from "../../intreaba/use-tip";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
@@ -73,8 +74,8 @@ export default function PartnersTable({
         {!loading && !error && rows.length === 0 && <p className="county">Niciun partener înregistrat.</p>}
         {!error && rows.map((p, i) => (
           <div className="bar-row ent-tip" key={p.partnerId}>
-            <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
-              {p.partnerId !== "0" ? <Link prefetch={false} href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
+            <div className="bar-label" {...tip.bindClip(titleName(p.partnerName))}>
+              {p.partnerId !== "0" ? <Link prefetch={false} href={`/entitati/${p.partnerId}`}>{p.partnerName ? titleName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
               {/* Beside the name, not in the value column, so every row's bar and value stay aligned (owner, 4 November 2026). */}
               {p.nConsortium > 0 && <Term tip hold="box" title="În consorțiu" text={consortiumRankingNote(p.nConsortium)} className="cons-tag">în consorțiu</Term>}
             </div>

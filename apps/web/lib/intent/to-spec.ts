@@ -1,4 +1,5 @@
 import { cleanName } from "../format";
+import { titleName } from "../tidy-name";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
 import { questionTitle, type TitleLabels } from "../ask/filters/title";
@@ -579,7 +580,7 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
   if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }, context).spec);
   // a number that is both a fiscal code and a CPV code: the firm or institution is a choice too
   if (choosing === "entity" || (choosing === "subject" && i.entityAlternatives.length && !i.supplier && !i.authority)) {
-    const base = (e: EntityMatch) => `${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;
+    const base = (e: EntityMatch) => `${titleName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;
     const counts = new Map<string, number>();
     for (const e of i.entityAlternatives) counts.set(base(e), (counts.get(base(e)) ?? 0) + 1);
     // same name and county: the registry id is the only honest difference

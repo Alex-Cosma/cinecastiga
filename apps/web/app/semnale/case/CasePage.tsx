@@ -12,6 +12,7 @@ import { evidenceLinks } from "@/lib/ask/evidence";
 import { entityHref } from "@/lib/entity-href";
 import { FLAG_META, FLAG_ORDER, flagEntityRule, flagLabel } from "@/lib/flags";
 import { cleanName, countyLabel, formatCalendarDate, formatInt, formatRon } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { shortName } from "@/lib/radiografie-fmt";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
@@ -104,7 +105,7 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
   );
   const scored = tabs.inScore.length > 0;
   return (
-    <nav className="sgc-score" aria-label={`Tiparele: ${cleanName(e.name)}`}>
+    <nav className="sgc-score" aria-label={`Tiparele: ${titleName(e.name)}`}>
       {scored && (
         // Each segment opens its pattern's tab (the tabs under it are the same links, for the keyboard and screen readers).
         // In motion: the bar grows from 0 as one piece (components/motion/chart-motion.css).
@@ -224,9 +225,9 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               <div key={g.id} className={`grp${g.counted ? "" : " out"}`} style={{ flexGrow: its.length }}>
                 {its.map((it, k) => {
                   const at = seen++;
-                  const words = `${cleanName(g.partnerName)}, ${it.date ? formatCalendarDate(it.date) : "fără dată"}: ${lei(it.value)}, ${pctWords(it.ofCeiling)} din plafonul de ${lei(g.ceiling)}`;
+                  const words = `${titleName(g.partnerName)}, ${it.date ? formatCalendarDate(it.date) : "fără dată"}: ${lei(it.value)}, ${pctWords(it.ofCeiling)} din plafonul de ${lei(g.ceiling)}`;
                   return <span key={k} className="bar cm-y" data-rove tabIndex={at === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%`, "--i": at } as CSSProperties}>
-                    <span className={`sgc-tip tipcard${edge(at, shown)}`} aria-hidden="true"><b className="tipcard-t">{cleanName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
+                    <span className={`sgc-tip tipcard${edge(at, shown)}`} aria-hidden="true"><b className="tipcard-t">{titleName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
                   </span>;
                 })}
               </div>
@@ -240,14 +241,14 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
         {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
         <RovingGroup label="Grupurile adunate, față de plafon; săgețile trec de la unul la altul" className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
-            const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
+            const words = `${titleName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             // The multiple sits over its bar, outside the bar's box: bars and the ceiling share one 120px scale (polish M1).
             return <div key={g.id} className={g.counted ? "" : "out"} style={{ "--h": `${(g.ratio / max) * 100}%` } as CSSProperties}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
               <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words}>
-                <span className={`sgc-tip tipcard${edge(i, top.length)}`} aria-hidden="true"><b className="tipcard-t">{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
+                <span className={`sgc-tip tipcard${edge(i, top.length)}`} aria-hidden="true"><b className="tipcard-t">{titleName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
               </i></div>;
           })}</RovingGroup>
-        <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{shortName(cleanName(g.partnerName))}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
+        <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={titleName(g.partnerName)}>{shortName(titleName(g.partnerName))}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
         {/* A phone draws the first four groups (case.css), so its caption counts four (polish H2). */}
         {all.groups > Math.min(4, top.length) && <p className={`sgc-cap${all.groups > top.length ? "" : " sgc-narrow-only"}`}>Cele mai mari <span className="sgc-n-wide">{formatInt(top.length)}</span><span className="sgc-n-narrow">{formatInt(Math.min(4, top.length))}</span> din {formatInt(all.groups)}.</p>}
       </Side>
@@ -293,7 +294,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
  */
 function AcqDot({ it, rec, edge, style }: { it: NearCeiling; rec: CaseRecord | undefined; edge: string; style?: CSSProperties }) {
   const what = rec?.title ?? rec?.cpvName;
-  const card = <span className={`sgc-tip tipcard${edge}`}><b className="tipcard-t">{cleanName(it.partnerName) || "—"}</b>
+  const card = <span className={`sgc-tip tipcard${edge}`}><b className="tipcard-t">{titleName(it.partnerName) || "—"}</b>
     <span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{what ? ` · ${what}` : ""}</span>
     <span><b>{exactLei(it.value)}</b> · cu {exactLei(Math.round(it.gap * 100) / 100)} sub plafonul de {lei(it.ceiling)}</span></span>;
   return rec?.src === "da" && rec.refId
@@ -422,7 +423,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
   const inst = data.instances[0];
   if (!inst) return null;
   const s = partnerShare(code, inst.evidence, (data.entity.parts[code] as ScorePart | undefined)?.partnerShare);
-  const partner = cleanName(inst.partnerName) || "partenerul principal";
+  const partner = titleName(inst.partnerName) || "partenerul principal";
   const mineTotal = inst.records.reduce((a, r) => a + r.value, 0);
   const dep = code === "da_dependence";
   const partnerName = <EntityName id={inst.partnerId} role={partnerRole(data.entity.role)}>{partner}</EntityName>;
@@ -433,7 +434,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
         <p className="sgc-cap"><b>{partnerName}</b> {formatRon(mineTotal)}{inst.aside && inst.aside.count > 0 && <> · <b>{dep ? "celelalte instituții" : "ceilalți furnizori"}</b> {formatRon(inst.aside.totalExact)}</>}</p>
       </Side>
       {dep
-        ? <Side title={`Pentru ${partner} · de la cine cumpără`} big={s.reverse == null ? "—" : pctWords(s.reverse)} unit={`de la ${cleanName(data.entity.name)}`}
+        ? <Side title={`Pentru ${partner} · de la cine cumpără`} big={s.reverse == null ? "—" : pctWords(s.reverse)} unit={`de la ${titleName(data.entity.name)}`}
             mark={<InfoMark title="Tăria tiparului" text="Crește cu acest procent: cu cât firma contează mai mult pentru instituție, cu atât relația cântărește mai mult." />}>
             {s.reverse != null && <ShareBar share={s.reverse} />}
           </Side>
@@ -442,7 +443,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
             {s.adjusted != null && <ShareBar share={s.adjusted} ticks={[{ at: 0.6, label: "semnal de la 60%" }]} />}
           </Side>}
     </div>
-    <CasesHead title={<>{countWords(inst.records.length, "achiziție", "achiziții")} cu {partnerName}</>} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(code)} · ${partner}`} />} />
+    <CasesHead title={<>{countWords(inst.records.length, "achiziție", "achiziții")} cu {partnerName}</>} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(code)} · ${cleanName(inst.partnerName) || "partenerul principal"}`} />} />
     <div id={`caz-${inst.id}`}>
       <Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
       <Warnings inst={inst} />
@@ -609,7 +610,7 @@ function SharedAdminCase({ data, state }: { data: SignalCase; state: SignalState
           <span className="sgc-who"><b><EntityName id={r.partnerId} role="authority">{cleanName(r.partnerName) || "—"}</EntityName></b>
             {!common && <span className="sgc-people"><People people={r.people} ids={ids} /></span>}</span>
           <span className="sgc-sum"><Lei value={r.largest.value} empty="necunoscută" /><small>cel mai mare grup: {countWords(r.largest.firms, "firmă", "firme")}</small></span>
-          <span className="sgc-src"><Link prefetch={false} href={`/semnale/${r.largest.id}`} aria-label={`Sursele celui mai mare grup: ${cleanName(r.partnerName)}`}>Sursele →</Link></span>
+          <span className="sgc-src"><Link prefetch={false} href={`/semnale/${r.largest.id}`} aria-label={`Sursele celui mai mare grup: ${titleName(r.partnerName)}`}>Sursele →</Link></span>
         </article>;
       })}
     </div>
@@ -719,7 +720,7 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         {lede && <ScoreWords text={lede} />}</p>}
 
       {data.total === 0 ? (
-        <div className="sgc-empty"><h2>{cleanName(e.name)} nu are acum acest tipar</h2><p>Poate a avut la un calcul anterior. Celelalte tipare sunt mai jos.</p></div>
+        <div className="sgc-empty"><h2>{titleName(e.name)} nu are acum acest tipar</h2><p>Poate a avut la un calcul anterior. Celelalte tipare sunt mai jos.</p></div>
       ) : code === "da_split" ? <SplitCase data={data} groups={models.split!} />
         : code === "da_round" ? <RoundCase data={data} items={models.round!} />
         : code === "da_above_ceiling" ? <AboveCase data={data} items={models.above!} />

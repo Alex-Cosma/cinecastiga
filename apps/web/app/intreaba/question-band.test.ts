@@ -13,7 +13,7 @@ describe("the question in a few words (Z2-37)", () => {
       .toEqual({ lead: "Lucrări de construcții", rest: ["Cluj-Napoca", "2019–2024"] });
   });
   it("leads with the firm a question is about, and has nothing to say for a bare question", () => {
-    expect(questionGist(spec({ supplierName: "DACIA SA", supplierId: 1 }))?.lead).toBe("DACIA SA");
+    expect(questionGist(spec({ supplierName: "DACIA SA", supplierId: 1 }))?.lead).toBe("Dacia SA");
     expect(questionGist(spec({}))).toBeNull();
   });
 });

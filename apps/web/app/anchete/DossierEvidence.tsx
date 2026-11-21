@@ -1,5 +1,6 @@
 import type { ClipRow } from "@/lib/anchete";
 import { cleanName, formatExactDecimal } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { clipCode, clipDate, clipHref, clipKindGroup, clipKindLabel, clipQueryHref, clipTitle, clipValue, entityKindLabel } from "@/lib/evidence-clip";
 import { privateDay } from "@/lib/private-format";
 import EntityName from "@/components/EntityName";
@@ -32,7 +33,7 @@ export function dossierEvidenceParts({ clips }: { clips: ClipRow[] }): EvidenceI
     const partiesLine = (clip.kind === "contract" || clip.kind === "da") && authority ? <span className="iw-evidence-parties">
       <EntityName id={parties?.authorityId ?? null} role="authority">{cleanName(authority)}</EntityName><span className="iw-quiet" aria-hidden="true"> → </span><span className="d-sr-only"> a contractat cu </span>
       {suppliers.length ? suppliers.map((sup, i) => <span key={i}>{i > 0 && ", "}<EntityName id={sup.id} role="supplier">{cleanName(sup.name) || "Furnizor necunoscut"}</EntityName></span>)
-        : typeof s.supplier === "string" ? cleanName(s.supplier) : "Furnizor necunoscut"}
+        : typeof s.supplier === "string" ? titleName(s.supplier) : "Furnizor necunoscut"}
     </span> : null;
     const valueLine = ownValue ? <span className="iw-evidence-value"><strong>{formatExactDecimal(ownValue.exact)} {ownValue.unit}</strong> <span>{ownValue.label}{date ? ` · ${privateDay(date)}` : ""}</span></span> : null;
     const line = partiesLine || valueLine ? <>{partiesLine}{partiesLine && valueLine && <span className="iw-quiet" aria-hidden="true"> · </span>}{valueLine}</> : null;

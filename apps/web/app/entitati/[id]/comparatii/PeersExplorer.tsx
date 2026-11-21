@@ -26,6 +26,7 @@ import type { ConnectionRole } from "@/lib/connections-shared";
 import { entityHref } from "@/lib/entity-href";
 import { writeAddress } from "@/lib/address";
 import { cleanName, countyLabel } from "@/lib/format";
+import { titleName as tidyTitle } from "../../../../lib/tidy-name";
 import { peerEvidenceSpec, type PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
 import { peerDomainLabel, peerPeriodLabel } from "@/lib/peers-shared";
 import { domainName } from "@/lib/cpv-aliases";
@@ -179,7 +180,7 @@ function RankRow({ row, place = null, axis, median, role, busy, opening, onSourc
       <small>{row.records > 0 ? recordsWords(row.records) : "fără înregistrări în selecție"}{row.people ? <> · <span className="pxs-people">{count(row.people)} <abbr title="locuitori">loc.</abbr></span></> : null}</small></span>
     <span className="pxs-track" aria-hidden="true">{median !== null && median > 0 && <b className="cm-tw" style={{ left: `${along(axis, median) * 100}%` }} />}{row.records > 0 && <i className={played ? "cm-tw" : born >= 0 ? "cm-tw cm-pt" : "cm-tw cm-in"} onAnimationEnd={() => setBorn(-2)} style={{ left: `${along(axis, row.value) * 100}%`, ...(born >= 0 ? { "--i": born } as CSSProperties : {}) }} />}</span>
     <span className="pxs-v" title={row.records > 0 ? formatEvidenceAmount(row.exact, true) : undefined}>{row.records > 0 ? `${short(row.value)} lei` : "—"}</span>
-    <button type="button" className="pxs-src" disabled={busy || opening !== null || row.records === 0} aria-label={`Vezi sursele: ${row.focal ? row.name : cleanName(row.name)}`}
+    <button type="button" className="pxs-src" disabled={busy || opening !== null || row.records === 0} aria-label={`Vezi sursele: ${tidyTitle(row.name)}`}
       onClick={() => onSources(row)}>{opening === row.id ? "…" : "Surse"}</button>
   </li>;
 }
@@ -251,7 +252,7 @@ function SwarmDots({ born, many, children }: { born: string; many: boolean; chil
  * nearest dot answers the pointer with its name, place and exact value and opens its page; the lists under the
  * stage hold the same members for the keyboard. Switching the measure slides every dot to its new place.
  */
-function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf, compact = false, nameOf = (_id, name) => cleanName(name) }: {
+function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf, compact = false, nameOf = (_id, name) => tidyTitle(name) }: {
   points: readonly PeerPoint[]; focal: { name: string; value: number }; median: number | null; metric: Metric; role: ConnectionRole;
   rank: number; total: number; axis: Axis; rankOf: ReadonlyMap<string, number>;
   /** A small group (UX audit Z4-31): the drawing only as tall as its tallest column of dots. */
@@ -484,8 +485,8 @@ export default function PeersExplorer({ entityId, entityName, titleName = entity
       const body = await response.json() as PeersResponse & { error?: string };
       const member = response.ok ? body.members?.[0] : undefined;
       if (member) setSources({ receipt: receipt(member), title: `${cleanName(member.entity.name)} · ${scopeWords()}` });
-      else setCopied(body.error ?? `Nu am putut deschide sursele: ${cleanName(name)}.`);
-    } catch { setCopied(`Nu am putut deschide sursele: ${cleanName(name)}. Reîncearcă.`); }
+      else setCopied(body.error ?? `Nu am putut deschide sursele: ${tidyTitle(name)}.`);
+    } catch { setCopied(`Nu am putut deschide sursele: ${tidyTitle(name)}. Reîncearcă.`); }
     finally { setOpening(null); }
   }
   // The place and the comparison changed by a control, for the same entity, are marked once (M-05).
@@ -673,7 +674,7 @@ export default function PeersExplorer({ entityId, entityName, titleName = entity
                 <span className="pxs-legend" aria-hidden="true"><span><i className="sw band" />jumătatea din mijloc</span><span><i className="sw med" />mediana</span><span className="pxs-legend-me"><i className="sw me" />{shownName}</span></span></p>
               <div className="pxs-seg" role="group" aria-label="Măsura"><button type="button" aria-pressed={metric === "total"} onClick={() => setMetric("total")}>Total</button><button type="button" aria-pressed={metric === "mean"} onClick={() => setMetric("mean")}>Pe înregistrare</button></div></div>
             <Swarm points={points} focal={{ name: shownName, value: focalValue }} median={median} metric={metric} role={role} rank={rank} total={total} axis={axis} rankOf={rankOf}
-              compact={small} nameOf={(id: string, name: string) => placeOf(id)?.name ?? cleanName(name)} />
+              compact={small} nameOf={(id: string, name: string) => placeOf(id)?.name ?? tidyTitle(name)} />
           </section> : <section className="px-empty px-empty--short"><h2>{comparisonAvailable && focal.recordCount === 0 ? "Nu are înregistrări în această selecție." : "Grupul nu are încă membri cu înregistrări."}</h2>
             <p>{data.filters.county ? "Încearcă toată țara, alt an sau alt domeniu." : method === "manual" ? "Grupul ales e gol: revino la grupul automat." : widen ? "Lărgește selecția:" : "Încearcă alt canal."}</p>
             {widen && <div className="pxs-acts pxs-acts--out">{widenButtons("pxs-btn")}</div>}</section>}

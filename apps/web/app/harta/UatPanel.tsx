@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { tidyName } from "../../lib/tidy-name";
 import { G } from "@/components/ghost/Ghost";
 import { cancelNavPending } from "@/components/ghost/client";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
@@ -418,7 +419,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
               <div className="mx-p-sec"><h3>Cui?</h3>
                 {!top && <p>Fără furnizori în această selecție.</p>}
                 <Rows tip={t.bind} rows={d.suppliers.map((s) => ({ key: String(s.id), name: <EntityName id={s.id} role="supplier">{s.name}</EntityName>, bar: pct(s.value, top!.value),
-                  value: share(s.value, value), tip: [s.name, `${int(s.value)} lei · ${share(s.value, value)} din total`, withDe(s.records, "înregistrare", "înregistrări")] }))} />
+                  value: share(s.value, value), tip: [tidyName(s.name), `${int(s.value)} lei · ${share(s.value, value)} din total`, withDe(s.records, "înregistrare", "înregistrări")] }))} />
               </div>
             </div>
             {/* With the institutions (owner, 8 November 2026): which of the town hall's, and how much of the total. */}
@@ -426,7 +427,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
               const subTotal = d.institutions.reduce((a, x) => a + x.value, 0), first = d.institutions[0]!.value;
               return <div className="mx-p-sec mx-p-wide" data-only="complet"><h3>Instituțiile primăriei <small>{short(subTotal)} lei</small></h3>
                 <Rows tip={t.bind} rows={d.institutions.slice(0, 8).map((x) => ({ key: x.id, name: <EntityName id={x.id} role="authority">{x.name}</EntityName>, bar: pct(x.value, first),
-                  value: share(x.value, value), tip: [x.name, `${int(x.value)} lei · ${share(x.value, value)} din total`] }))} />
+                  value: share(x.value, value), tip: [tidyName(x.name), `${int(x.value)} lei · ${share(x.value, value)} din total`] }))} />
                 {d.institutions.length > 8 && <p className="mx-p-more">Și încă {withDe(d.institutions.length - 8, "instituție", "instituții")}, cu {short(d.institutions.slice(8).reduce((a, x) => a + x.value, 0))} lei.</p>}
               </div>;
             })()}

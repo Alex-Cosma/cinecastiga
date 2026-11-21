@@ -14,6 +14,7 @@ import {
 } from "../../lib/ask/peer-groups-shared";
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { parseSignalState, signalUrl } from "../../lib/signals-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import EmptyState from "./answer/EmptyState";
@@ -86,7 +87,7 @@ function GroupHead({ distribution: d, spec, onChangeGroup }: VersionProps<AnyDis
   if (answered !== d) { setAnswered(d); setPending(null); }
   const windowSpec = pending ?? appliedSpec(spec);
   const peers = usePeerDialog(open ? windowSpec : { block: "", filters: {} });
-  const { group } = d, noun = groupNoun(d), name = cleanName(d.focal.name), write = writer(onChangeGroup);
+  const { group } = d, noun = groupNoun(d), name = titleName(d.focal.name), write = writer(onChangeGroup);
   const groupTip = [
     `${group.words.charAt(0).toLocaleUpperCase("ro-RO")}${group.words.slice(1)}.`,
     ...(group.coverage ? [coverageWords(group.coverage)] : []),
@@ -107,7 +108,7 @@ function GroupHead({ distribution: d, spec, onChangeGroup }: VersionProps<AnyDis
 
 /** Below the profile's threshold, or a group under 5 (final §4.5): the reason and what to remove; null when the answer has a position. */
 function groupEmpty({ distribution: d, spec, onChangeGroup }: VersionProps<AnyDistribution>): ReactNode {
-  const applied = appliedSpec(spec), { focal, group } = d, name = cleanName(focal.name), noun = groupNoun(d), write = writer(onChangeGroup);
+  const applied = appliedSpec(spec), { focal, group } = d, name = titleName(focal.name), noun = groupNoun(d), write = writer(onChangeGroup);
   if (d.status === "below") {
     const stat = { block: "stat", measure: "value", dataset: "da", filters: Object.fromEntries(Object.entries(applied.filters).filter(([key]) => /^(authority|supplier)(Id|Name)$/.test(key))) };
     return <div className="dist">
@@ -188,7 +189,7 @@ function BarMembers<M extends DistributionMember>({ bar, title, row, listRef, on
 /** A member's name, place and direct acquisitions (the list's left side). */
 function MemberName({ m }: { m: Pick<DistributionMember, "entityId" | "name" | "county" | "population" | "nDas"> }) {
   return <span className="dist-member-t">
-    <Link prefetch={false} href={`/entitati/${m.entityId}`}>{cleanName(m.name)}</Link>
+    <Link prefetch={false} href={`/entitati/${m.entityId}`}>{titleName(m.name)}</Link>
     {memberPlace(m) && <small>{memberPlace(m)}</small>}
     <small>{countWords(m.nDas, "achiziție directă", "achiziții directe")}</small>
   </span>;
@@ -198,7 +199,7 @@ function SourcesFoot({ d, name }: { d: AnyDistribution; name: string }) {
   const evidence = useAnswerEvidence();
   return <div className="dist-foot">
     {/* Z3-08: the profile's records say how many they are (its direct acquisitions), as everywhere. */}
-    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${name} · sursele profilului`)}>{d.focal.nDas === 1 ? "Vezi achiziția" : `Vezi cele ${countWords(d.focal.nDas, "achiziție", "achiziții")}`} →</button>}
+    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${cleanName(d.focal.name)} · sursele profilului`)}>{d.focal.nDas === 1 ? "Vezi achiziția" : `Vezi cele ${countWords(d.focal.nDas, "achiziție", "achiziții")}`} →</button>}
     <p className="dist-caveat">Semnal, nu dovadă. Valori înregistrate, nu plăți.</p>
   </div>;
 }
@@ -271,7 +272,7 @@ function ScoreStrip({ d, members, noun, name }: { d: DistributionDataV3; members
     <div className="dist-strip-plot" role="img" aria-label={label} style={{ "--rows": rows } as CSSProperties} {...motion.root}>
       <span className={`dist-strip-name${stripEdge(f.score, 25)} ${motion.enter("cm-fade cm-late")}`} style={{ "--x": f.score } as CSSProperties} aria-hidden="true">{f.inGroup ? name : `${name} · în afara grupului`}</span>
       {dots.map((dot) => <i key={dot.id} ref={motion.join} className={`dist-dot ${dot.focal ? "is-focal" : RISK_BAND_CLASS[riskBand(dot.score)]} cm-tw ${motion.enter(dot.focal ? "cm-fade cm-late" : "cm-fade")}`}
-        style={{ "--x": dot.score, "--l": dot.level } as CSSProperties} title={`${cleanName(dot.name)} · ${riskScoreText(dot.score)}`} />)}
+        style={{ "--x": dot.score, "--l": dot.level } as CSSProperties} title={`${titleName(dot.name)} · ${riskScoreText(dot.score)}`} />)}
       {over.map((o) => <span key={o.score} ref={motion.join} className={`dist-strip-over${stripEdge(o.score)}`} style={{ "--x": o.score, "--l": STRIP_LEVELS } as CSSProperties} aria-hidden="true">+{formatInt(o.n)}</span>)}
     </div>
     <div className="dist-strip-axis" aria-hidden="true">
@@ -301,7 +302,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   if (empty) return empty;
 
   const { focal: f, group, role } = d;
-  const name = cleanName(f.name), noun = groupNoun(d), national = isNational(d), band = riskBand(f.score);
+  const name = titleName(f.name), noun = groupNoun(d), national = isNational(d), band = riskBand(f.score);
   const position = d.position!, hist = d.hist ?? [], per = d.perCriterion ?? [];
   const members = d.members ?? null;
   const listed = members && (all || members.length <= LIST_FIRST + 1) ? members : members?.slice(0, LIST_FIRST) ?? [];
@@ -450,7 +451,7 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
 
   const { focal, group, role, criteria } = d;
   const max = criteria.length;
-  const name = cleanName(focal.name), noun = groupNoun(d), national = isNational(d);
+  const name = titleName(focal.name), noun = groupNoun(d), national = isNational(d);
   const position = d.position!, hist = d.hist ?? [], per = d.perCriterion ?? [];
   const members = d.members ?? null;
   const listed = members && (all || members.length <= LIST_FIRST + 1) ? members : members?.slice(0, LIST_FIRST) ?? [];

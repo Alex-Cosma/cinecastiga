@@ -43,7 +43,7 @@ describe("by value: the podium", () => {
   it("draws place 1 with its figures, the lead over place 2 and the bar of the three places against the total", () => {
     const markup = render({ card: card(), podium: PODIUM }, valueSpec, false);
     const words = text(markup);
-    expect(words).toContain("ALLIANCE HEALTHCARE ROMANIA");
+    expect(words).toContain("Alliance Healthcare România");
     expect(words).toContain("Firmă · sediul în București");
     expect(words).toContain("5,6 mld. lei valoare înregistrată");
     expect(words).toContain("21,1% din total");
@@ -60,8 +60,8 @@ describe("by value: the podium", () => {
   it("lists places 2 and 3 as rows with their share, records and menu, the total line and the two buttons", () => {
     const markup = render({ card: card(), podium: PODIUM }, valueSpec, false, ["doar 2025"]);
     const words = text(markup);
-    expect(words).toContain("2. DR.MAX sediul în județul Ilfov 4,4 mld. lei 16,5% · 16.671 de înregistrări →");
-    expect(words).toContain("3. FARMEXIM S.A. sediul în București 3,5 mld. lei 13,2% · 25.590 de înregistrări →");
+    expect(words).toContain("2. DR.Max sediul în județul Ilfov 4,4 mld. lei 16,5% · 16.671 de înregistrări →");
+    expect(words).toContain("3. Farmexim S.A. sediul în București 3,5 mld. lei 13,2% · 25.590 de înregistrări →");
     expect(markup.match(/class="qb-arow"/g)).toHaveLength(2);
     // „Scoate din calcul” on every place (its menu), the page of the firm.
     expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(3);
@@ -127,8 +127,8 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(words).not.toContain("În ordinea valorii");
     expect(markup.match(/class="qb-arow ec-rrow( is-first)?"/g)).toHaveLength(5);
     // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
-    expect(words).toContain("1 1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie declarate directe, peste plafon 71 din 100 pronunțat 190 mil. lei");
-    expect(markup).toMatch(/class="qb-arow-name"><span class="ec-first-n" aria-hidden="true">1<\/span><span class="qb-sr">1\. <\/span><a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
+    expect(words).toContain("1 1. Spitalul Orășenesc Agnita Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie declarate directe, peste plafon 71 din 100 pronunțat 190 mil. lei");
+    expect(markup).toMatch(/class="qb-arow-name"><span class="ec-first-n" aria-hidden="true">1<\/span><span class="qb-sr">1\. <\/span><a href="\/entitati\/1">Spitalul Orășenesc Agnita<\/a>/);
     expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe adunate, trec de plafon 60 din 100 moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");
@@ -244,8 +244,8 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     const ties: LegacyTies = { ...TIES, count: 3, pool: 14_972, level: 0.8, maxFlags: 4, rows };
     const words = text(render({ card: card({ role: "authority" }), ties }, { ...riskSpec, filters: {} }, true));
     expect(words).toContain("Eco Rural Consulting SRL-D Cluj · 1.000 de achiziții directe adunate, trec de plafon societate");
-    expect(words).toContain("ASOCIATIA CLUB SPORTIV PROGRESUL PECICA Cluj · 2.000 de achiziții directe adunate, trec de plafon asociație");
-    expect(words).toMatch(/EURO APAVOL Cluj · 3\.000 de achiziții directe adunate, trec de plafon 1\d\d mil\. lei/);
+    expect(words).toContain("Asociația Club Sportiv Progresul Pecica Cluj · 2.000 de achiziții directe adunate, trec de plafon asociație");
+    expect(words).toMatch(/Euro Apavol Cluj · 3\.000 de achiziții directe adunate, trec de plafon 1\d\d mil\. lei/);
   });
 });
 

@@ -11,6 +11,7 @@ import { getContractDetail, type ContractDetail } from "@/lib/marts";
 import { getContractContext, tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { leiRounded } from "@/lib/lei";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
@@ -59,7 +60,7 @@ function titleParts(c: ContractDetail, noticeTitle: string | null) {
 
 export async function generateMetadata({ params }: { params: Promise<{ nid: string }> }): Promise<Metadata> {
   const c = await contractDetail((await params).nid);
-  return c ? { title: `${titleParts(c, null).title.slice(0, 70)} · ${cleanName(c.authority?.name) || "contract"}` } : {};
+  return c ? { title: `${titleParts(c, null).title.slice(0, 70)} · ${titleName(c.authority?.name) || "contract"}` } : {};
 }
 
 const moneyNote = (c: ContractDetail) => c.amountStatus === "converted" && c.valueRonExact !== null

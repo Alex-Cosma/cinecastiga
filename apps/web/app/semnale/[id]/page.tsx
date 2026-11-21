@@ -15,6 +15,7 @@ import { awardUrl } from "@/lib/elicitatie";
 import { FLAG_META, FLAG_ORDER, flagFindingLabel, flagLabel } from "@/lib/flags";
 import { GLOSSARY } from "@/lib/glossary";
 import { cleanName, countyLabel, formatRon } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { tedNoticeUrl } from "@/lib/record-context";
 import { procedureLabel } from "@/lib/record-labels";
 import { awardValueLabel, noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "@/lib/risk-presentation";
@@ -51,7 +52,7 @@ export async function generateMetadata({ params, searchParams }: {
   const who = d.code === "net_shared_admin" && d.partner ? d.partner.name : d.entity?.name;
   // The one signal that names a person (owner, 18 November 2026, legal audit): its pages stay out of search engines;
   // the links on them are still followed.
-  return { title: `${flagFindingLabel(d.code)} · ${cleanName(who) || "semnal"}`, description: FLAG_META[d.code]?.short,
+  return { title: `${flagFindingLabel(d.code)} · ${titleName(who) || "semnal"}`, description: FLAG_META[d.code]?.short,
     ...(d.code === "net_shared_admin" ? { robots: { index: false, follow: true } } : {}) };
 }
 
@@ -278,7 +279,7 @@ export default async function SignalPage({ params, searchParams }: {
   </Sources>;
   return <RecordPage className="signal-record">
     {/* The way back says where it goes: the entity's page of this pattern (UX audit Z6-24). */}
-    <Link href={caseHref} className="back">← {d.entity ? `${cleanName(d.entity.name) || (role === "supplier" ? "Firma" : "Instituția")} · ${flagLabel(d.code)}` : `Toate cazurile: ${flagLabel(d.code)}`}</Link>
+    <Link href={caseHref} className="back">← {d.entity ? `${titleName(d.entity.name) || (role === "supplier" ? "Firma" : "Instituția")} · ${flagLabel(d.code)}` : `Toate cazurile: ${flagLabel(d.code)}`}</Link>
     <RecordHead
       title={head.title}
       lot={head.lot ?? null}

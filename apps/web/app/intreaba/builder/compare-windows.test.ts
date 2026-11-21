@@ -27,7 +27,7 @@ describe("„În ce perioadă?” of a comparison (final §3.1, kit §6 compare 
     const { presets, value } = comparePeriodPresets(firms, span, 2026, null, pair({ years: [{ year: 2016, a: side(0), b: { value: 5, n: 3 } }, ...pair().years] }));
     expect(presets.map((p) => [p.label, p.detail ?? null])).toEqual([
       ["Toți anii", "apr. 2018 – 25 sept. 2026 · +3 mai vechi"],
-      ["Perioada comună", "2021–2025 · KARSAN OTOMOTIV apare din 2021"],
+      ["Perioada comună", "2021–2025 · Karsan Otomotiv apare din 2021"],
       ["Ultimii 3 ani compleți", "2023–2025"],
       ["2025", null],
     ]);
@@ -42,7 +42,7 @@ describe("„În ce perioadă?” of a comparison (final §3.1, kit §6 compare 
   it("says in its (?) what the common period is, and the records before 2018 once the pair's facts arrive", () => {
     expect(comparePeriodTip(towns, null).text).toBe("De la primul la ultimul an în care apar amândouă în arhivă, în selecția aleasă. Nu e vechimea firmei sau a instituției.");
     const older = pair({ years: [{ year: 2014, a: side(0), b: { value: 44_000_000, n: 17 } }, ...pair().years] });
-    expect(comparePeriodTip(towns, older).text).toMatch(/Unele înregistrări au date dinainte de 2018 \(Timisoara: 17, 44 mil\. lei\)\./);
+    expect(comparePeriodTip(towns, older).text).toMatch(/Unele înregistrări au date dinainte de 2018 \(Timișoara: 17, 44 mil\. lei\)\./);
   });
   it("checks the preset the draft holds", () => {
     expect(comparePeriodPresets({ ...firms, filters: { ...firms.filters, yearFrom: 2021, yearTo: 2025 } }, span, 2026, null, pair()).value).toBe("common");
@@ -98,6 +98,6 @@ describe("„Cu cine comparăm?” (final §3.6)", () => {
     expect(peerResults(null, {})).toEqual([]);
   });
   it("names the pair short in the presets' words", () => {
-    expect(pairNames(towns)).toEqual({ a: "Cluj-Napoca", b: "Timisoara" });
+    expect(pairNames(towns)).toEqual({ a: "Cluj-Napoca", b: "Timișoara" });
   });
 });

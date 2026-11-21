@@ -12,6 +12,7 @@ import { flagLabel } from "@/lib/flags";
 import { signalTagTip } from "@/lib/ask/signal-tips";
 import { riskLabel, riskScoreText } from "@/lib/risk-score";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
 import {
@@ -125,7 +126,7 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
   const empty = e.count === 0;
   return (
     <article className={`cmp-card cmp-${side}${empty ? " cmp-card-empty" : ""}`}>
-      <h3><Link prefetch={false} href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link></h3>
+      <h3><Link prefetch={false} href={`/entitati/${e.entityId}`}>{titleName(e.name)}</Link></h3>
       <p className="cmp-sub">{subtitle ?? <>
         {countyName(e.county) ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · <RoleWord entity={e} />
         {span.years && ` · ${span.years}`}{span.older > 0 && ` · +${formatInt(span.older)} mai vechi`}
@@ -237,7 +238,7 @@ function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b
       : <>{formatRon(e.value)}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</>;
   };
   return (
-    <div className="cmp-ab" role="table" aria-label={`${cleanName(a.name)} și ${cleanName(b.name)}`}>
+    <div className="cmp-ab" role="table" aria-label={`${titleName(a.name)} și ${titleName(b.name)}`}>
       <div className="cmp-ab-head" role="row">
         <span className="ev-sr-only" role="columnheader">Măsura</span>
         {sides.map(({ e, key }) => (
@@ -302,7 +303,7 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
   );
 }
 
-const shortName = (name: string) => cleanName(name).split(/\s+/).slice(0, 2).join(" ");
+const shortName = (name: string) => titleName(name).split(/\s+/).slice(0, 2).join(" ");
 
 /**
  * "Pe ani" (final §4.6): the years before 2018 in one faded column
@@ -387,7 +388,7 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
         <p className="cmp-mirror-head"><span>{shortName(a.name)}</span><span>{firms ? "Instituția" : "Firma"}</span><span>{shortName(b.name)}</span></p>
         {rows.map((row, i) => (
           <div className="cmp-mirror-row" key={row.entityId} ref={motion.join}>
-            <Link prefetch={false} className="cmp-mirror-name" href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>
+            <Link prefetch={false} className="cmp-mirror-name" href={`/entitati/${row.entityId}`}>{titleName(row.name)}</Link>
             <div className="cmp-mirror-a"><span>{formatRon(row.a.value)} · {formatInt(row.a.count)}</span>{bar(row.a, "cm-xr", i)}</div>
             <div className="cmp-mirror-b">{bar(row.b, "cm-x", i)}<span>{formatRon(row.b.value)} · {formatInt(row.b.count)}</span></div>
           </div>
@@ -408,7 +409,7 @@ function TopPartners({ entity: e, side, firms, motion }: { entity: CompareEntity
     <div className={`cmp-panel cmp-${side}`}>
       <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName>{e.partners !== undefined && ` · ${countWords(e.partners, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}`}</p>
       {rows.length === 0 ? <p className="cmp-none">Niciunul în selecție.</p> : rows.map((row, i) => (
-        <ShareRow key={row.entityId} label={<Link prefetch={false} href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} motion={motion} i={i} />
+        <ShareRow key={row.entityId} label={<Link prefetch={false} href={`/entitati/${row.entityId}`}>{titleName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} motion={motion} i={i} />
       ))}
       <Link prefetch={false} className="cmp-all" href={`/entitati/${e.entityId}#parteneri`}>Toți {firms ? "clienții" : "furnizorii"} →</Link>
     </div>

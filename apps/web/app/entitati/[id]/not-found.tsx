@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import { coverageDate, getCoverage } from "@/lib/coverage";
-import { cleanName } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { getEntityProfile } from "@/lib/marts";
 import { pageTitle } from "@/lib/site";
 import { searchHref, searchWords } from "../../not-found-search";
@@ -27,7 +27,7 @@ export default async function EntityNotFound() {
   const at = coverage?.observations[0]?.calculated_at;
 
   if (profile) {
-    const role = profile.roles[0]?.role ?? null, name = cleanName(profile.name ?? "această entitate");
+    const role = profile.roles[0]?.role ?? null, name = titleName(profile.name ?? "această entitate");
     return (
       <div className="err-page">
         <title>{pageTitle("Pagina nu există")}</title>

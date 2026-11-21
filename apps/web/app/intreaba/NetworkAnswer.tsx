@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import EntityName from "../../components/EntityName";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { countWords, formatShare } from "@/lib/ask/answer-text";
 import { networkSinceChoices, NETWORK_LIST_LABELS, type NetworkData, type NetworkList, type NetworkOrder, type NetworkRow } from "@/lib/ask/network-shared";
 import { networkOrder, unknownSeatWords } from "@/lib/ask/network-shared";
@@ -174,10 +175,10 @@ function NetworkRowItem({ view, actions, onRecords, picked = false }: { view: Ne
       </span>
       <small>{view.yearsText}</small>
     </div>}
-    {onRecords && <button type="button" className="qb-rec qb-nrow-rec" aria-label={`${view.records}: ${view.name}`} onClick={onRecords}>
+    {onRecords && <button type="button" className="qb-rec qb-nrow-rec" aria-label={`${view.records}: ${titleName(view.name)}`} onClick={onRecords}>
       {view.records}<span className="qb-glyph" aria-hidden="true">→</span>
     </button>}
-    {actions.length > 0 && <RowMenu name={view.name} actions={actions} only="complet" />}
+    {actions.length > 0 && <RowMenu name={titleName(view.name)} actions={actions} only="complet" />}
   </div>;
 }
 
@@ -211,7 +212,8 @@ function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: reado
   }).sort((p, q) => (p.n.entityId < q.n.entityId ? -1 : p.n.entityId > q.n.entityId ? 1 : 0));
   const at = (turn: number) => `translate(${cx}px, ${cy}px) rotate(${turn}deg)`;
   const hovering = (id: string) => ({ onMouseEnter: () => setHover(id), onMouseLeave: () => setHover(null) });
-  return <svg viewBox={`0 0 ${W} ${H}`} className="qb-net-svg" role="img" aria-label={`${countWords(rows.length, "partener", "parteneri")}, primii, ai lui ${data.focal.name}`} {...motion.root}>
+  const focalName = titleName(data.focal.name);
+  return <svg viewBox={`0 0 ${W} ${H}`} className="qb-net-svg" role="img" aria-label={`${countWords(rows.length, "partener", "parteneri")}, primii, ai lui ${titleName(data.focal.name)}`} {...motion.root}>
     <g className={`qb-net-spokes ${motion.enter("cm-fade")}`}>
       {nodes.map(({ n, turn }) => {
         const on = hover === n.entityId || picked === n.entityId;
@@ -221,7 +223,7 @@ function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: reado
     </g>
     {nodes.map(({ n, turn }) => {
       const r = 6 + Math.sqrt(n.value / max) * 16;
-      const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId || picked === n.entityId;
+      const view = byId.get(n.entityId), name = titleName(view?.name ?? "?"), on = hover === n.entityId || picked === n.entityId;
       return <a key={n.entityId} ref={motion.join} href={`/entitati/${n.entityId}`} className={motion.enter("cm-pt")} style={DISC_IN}
         aria-label={`${name} · ${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total`} {...hovering(n.entityId)}
         onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); onPick(n.entityId); }}>
@@ -234,7 +236,7 @@ function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: reado
       // Only a disc at the very top or bottom centres its label: with 15 partners the two nearest the bottom (78°, 102°)
       // centred theirs about 50 units apart, and labels of 26 characters met (S4 review); beside their discs they part.
       const anchor = Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle";
-      const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId || picked === n.entityId;
+      const view = byId.get(n.entityId), name = titleName(view?.name ?? "?"), on = hover === n.entityId || picked === n.entityId;
       const label = name.length > 26 ? `${name.slice(0, 25)}…` : name;
       // The disc is the target; its label is words beside it, away from its neighbours', upright while it turns.
       return <text key={n.entityId} ref={motion.join} x={anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0} y={anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4}
@@ -242,7 +244,7 @@ function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: reado
         fontWeight={on ? 700 : 400} aria-hidden="true" pointerEvents="none">{label}</text>;
     })}
     <circle cx={cx} cy={cy} r={34} className="qb-net-centre" />
-    <text x={cx} y={cy + 3} fontSize={9} textAnchor="middle" className="qb-net-centre-label">{data.focal.name.length > 13 ? `${data.focal.name.slice(0, 12)}…` : data.focal.name}<title>{data.focal.name}</title></text>
+    <text x={cx} y={cy + 3} fontSize={9} textAnchor="middle" className="qb-net-centre-label">{focalName.length > 13 ? `${focalName.slice(0, 12)}…` : focalName}<title>{focalName}</title></text>
   </svg>;
 }
 

@@ -8,6 +8,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, cleanName } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { readableCpvName } from "@/lib/entity-summary";
 import { countWords, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -570,7 +571,7 @@ export function ScatterBlock({
       const h = locate(ev);
       if (h) {
         tipRef.current.show(
-          `${cleanName(h.p.name)}${h.p.county ? ` (${countyName(h.p.county)})` : ""}`,
+          `${titleName(h.p.name)}${h.p.county ? ` (${countyName(h.p.county)})` : ""}`,
           `CRI ${formatDecimal(h.p.cri, 2)} · ${formatRon(h.p.value)}`,
           `${countWords(h.p.nFlags, "semnal", "semnale")} de risc · click → înregistrările profilului`,
           ev.clientX,
@@ -671,7 +672,7 @@ export function ScatterBlock({
               <tr key={p.entityId}>
                 <td>
                   <Link prefetch={false} href={`/entitati/${p.entityId}`}>
-                    {cleanName(p.name)}
+                    {titleName(p.name)}
                   </Link>
                 </td>
                 <td>{formatRonFull(p.value)}</td>

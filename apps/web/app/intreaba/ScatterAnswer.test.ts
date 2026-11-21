@@ -81,10 +81,10 @@ describe("the risk cloud's answer", () => {
     expect(markup).not.toContain("sc-stripe");
     expect(markup).not.toContain(">3/5</text>");
     // The names of the first rows sit on the chart, without the parenthesis of the registry's name.
-    expect(markup).toContain(">Comuna Sageata</text>");
+    expect(markup).toContain(">Comuna Săgeata</text>");
     expect(markup).not.toMatch(/class="sc-label[^"]*"[^>]*>[^<]*\(/);
     // The chart's names have their own class, not the list's link's (critique 15 November 2026: its 13.5 px won).
-    expect(markup).toMatch(/class="sc-label cm-fade cm-late"[^>]*>Comuna Sageata<\/text>/);
+    expect(markup).toMatch(/class="sc-label cm-fade cm-late"[^>]*>Comuna Săgeata<\/text>/);
     // The score is not a probability of corruption: the legend's (?) is the glossary's.
     expect(text(markup)).toContain("riscul, din 100");
     expect(markup).toContain("Riscul, din 100");
@@ -94,7 +94,7 @@ describe("the risk cloud's answer", () => {
     const markup = render();
     const words = text(markup);
     expect(words).toContain("Primele 3 din 82");
-    expect(words).toContain("Comuna Sageata (Primaria Comunei Sageata)");
+    expect(words).toContain("Comuna Săgeata (Primăria Comunei Săgeata)");
     // Owner, 17 November 2026 (less small print): the row's count of direct acquisitions is its records link's.
     expect(words).toContain("Primărie de comună · Buzău");
     expect(words).not.toContain("2.567 de achiziții directe");
@@ -150,7 +150,7 @@ describe("the risk cloud's answer", () => {
     const markup = render({ ...SPITALE_SMALL, wider: 329 }, spec({ filters: { authorityKind: "spital", county: "Buzău" } }));
     expect(markup).not.toContain("sc-chart");
     expect(text(markup)).toContain("5 profiluri în grup: prea puține pentru un nor. Le arătăm ca listă.");
-    expect(text(markup)).toContain("SPITALUL JUDETEAN DE URGENTA BUZAU");
+    expect(text(markup)).toContain("Spitalul Județean de Urgență Buzău");
     expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-slab"><button[^>]*>20 din 100<.*?<\/span><\/span><small>slab/);
     // Only the place leaves: the hospitals stay hospitals (review: the kind was dropped without a word).
     const link = markup.match(/href="\/intreaba\?spec=([^"]+)"[^>]*>Toate spitalele din țară · 329/);
@@ -499,7 +499,7 @@ describe("the chart's geometry and words", () => {
     const asked: ScatterData = { ...BUZAU_CLOUD, list: [BUZAU_ROWS[0]!, { ...BUZAU_ROWS[1]!, historic: "2019-02-01" }, BUZAU_ROWS[2]!] };
     const listed = render(asked, spec({ filters: { authorityKind: "comuna", county: "Buzău", includeHistoric: true } }));
     // The mark stays a tag on the row; the patterns are on the pill (owner, 20 November 2026).
-    expect(text(listed)).toMatch(/Comuna Pardosi .*? Inactiv · ultima 02\.2019/);
+    expect(text(listed)).toMatch(/Comuna Pardoși .*? Inactiv · ultima 02\.2019/);
     expect(listed).toContain("ultima înregistrare: 01.02.2019");
     expect(listed).not.toContain("sc-hist");
   });

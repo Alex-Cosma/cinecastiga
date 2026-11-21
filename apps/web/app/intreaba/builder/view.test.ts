@@ -55,7 +55,7 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
     // F3: the firms' employees are the row CÂȘTIGĂTORII under the sentence, not a phrase of it (plan §4.2).
     expect(sentence(SEVEN.table!)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în 2025?");
     expect(builderView(SEVEN.table!).rows.map((r) => [r.label, r.kind, r.chips.map((c) => [c.label, c.active])])).toEqual([["Câștigătorii", "group", [["Firme noi", false], ["1–9 angajați", true]]]]);
-    expect(sentence(SEVEN.compare!)).toBe("Compară ERBASU cu PORR la toate achizițiile, în toți anii.");
+    expect(sentence(SEVEN.compare!)).toBe("Compară Erbasu cu Porr la toate achizițiile, în toți anii.");
     expect(sentence(SEVEN.trend!)).toBe("Ce firme au cea mai mare schimbare între 2024 și 2025?");
     // P5 only where it changes the query.
     expect(builderView(SEVEN.table!).presentation.map((t) => t.kind === "slot" ? t.value : t.kind === "text" ? t.text : "").join("")).toBe("Arată primele 10, după valoarea înregistrată.");

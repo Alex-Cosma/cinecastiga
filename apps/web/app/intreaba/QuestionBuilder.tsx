@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { entityHref, type EntityRole } from "../../lib/entity-href";
+import { tidyName } from "../../lib/tidy-name";
 import type { PillLabels } from "../../lib/ask/pill-filters";
 import { liveNotes } from "./answer/live-notes";
 import SubclassesPill from "./answer/SubclassesPill";
@@ -535,8 +536,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     // The answer's title is the sentence (Z2-03 B). An entity's phrase opens its window; its page is the „→” after it.
     const named = (live.entities ?? []).filter((entity) => entity.name);
     const goTo = (token: { value: string }) => {
-      const entity = named.filter((e) => token.value.includes(e.name)).sort((x, y) => y.name.length - x.name.length)[0];
-      return entity ? <a className="qb-phrase-go" href={entityHref(entity.id, entity.role)} aria-label={`Pagina „${entity.name}”`} title="Deschide pagina">→</a> : null;
+      // The phrase shows the name tidied (builder/view.ts): either spelling finds its entity.
+      const entity = named.filter((e) => token.value.includes(e.name) || token.value.includes(tidyName(e.name))).sort((x, y) => y.name.length - x.name.length)[0];
+      return entity ? <a className="qb-phrase-go" href={entityHref(entity.id, entity.role)} aria-label={`Pagina „${tidyName(entity.name)}”`} title="Deschide pagina">→</a> : null;
     };
     // What only a pill said stays as quiet words; the subclasses a domain leaves out keep their box and „Include-le”.
     const extra = live.pills ? liveNotes(applied as unknown as AskSpec, live.pills, live.labels ?? {}, view) : { notes: [], subclasses: null };

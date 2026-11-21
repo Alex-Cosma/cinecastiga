@@ -17,6 +17,7 @@ import { G } from "../../components/ghost/Ghost";
 import { useChartMotion } from "./answer/chart-motion";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon, formatRonColumn } from "../../lib/format";
+import { titleName } from "../../lib/tidy-name";
 import EntityName from "../../components/EntityName";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import AnswerStrip, { StripRow } from "./answer/AnswerStrip";
@@ -149,7 +150,7 @@ const flagHelp = (role: "authority" | "supplier") => <>
 </>;
 
 /** A name on the chart: without the parenthesis ("Comuna Sageata (Primaria Comunei Sageata)"), short. */
-const chartName = (name: string): string => { const short = cleanName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
+const chartName = (name: string): string => { const short = titleName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
 
 /** A row's risk beside its value: the score's pill and its band (scatter-3), or the index with its criteria (scatter-2). */
 function RowRisk({ row, levels, parts }: { row: AnyListRow; levels: number; parts: readonly ScatterFlagFact<string>[] }) {
@@ -514,7 +515,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     onFacet={(facet) => list.filters.learn(key, facet)} align={align} />;
 
   const results = (found?.results ?? []).map((m) => ({
-    id: m.id, name: cleanName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : outWords(m, "nu are semnalul ales"),
+    id: m.id, name: titleName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : outWords(m, "nu are semnalul ales"),
     ...(m.county ? { side: m.county } : {}),
   }));
 
@@ -633,7 +634,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find cm-pt" style={FAST} /> : null; })}
       </svg>
       {hover && <div className="sc-hover tipcard" style={{ left: Math.min(hover.x + 12, g.box.width - 250), top: Math.max(hover.y - 8, 0) }} role="presentation">
-        <b className="tipcard-t">{cleanName(hover.dot.point.name)}</b>
+        <b className="tipcard-t">{titleName(hover.dot.point.name)}</b>
         <span>{formatRon(hover.dot.point.value)} · {pointRisk(hover.dot)}</span>
       </div>}
       <figcaption className={`sc-legend${legacy ? "" : " qb-tipwrap"}`}>
@@ -659,13 +660,13 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <Locate key={`${data.flag ?? ""}|${data.rankBy}`} label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
         emptyText={`Niciun profil „${query}” în ${groupIn}.`}
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
-        found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />
+        found={found && found.name ? { name: titleName(found.name), place: found.place } : null} />
       {found && !searching && found.results.length === 0 && hasPlace
         && <a className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></a>}
     </div>}
 
     {picked && <DetailCard
-      title={cleanName(picked.name)}
+      title={titleName(picked.name)}
       entity={{ id: picked.id, role }}
       meta={[firm ? employeesWords(picked.employees, picked.employeesYear) : kindWords(picked.kind), picked.county, picked.place].filter(Boolean).join(" · ")}
       facts={(legacy ? cardFactsV2(picked.value, picked.cri ?? 0, picked.nFlags, levels) : cardFacts(picked.value, picked.score ?? 0)).map((f) => ({ label: f.label, value: f.value }))}

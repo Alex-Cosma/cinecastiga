@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import EntityName from "@/components/EntityName";
+import { tidyName } from "../../lib/tidy-name";
 import { G } from "@/components/ghost/Ghost";
 import type { PriceLead, StripLeads } from "@/lib/unit-prices";
 import { countWord, formatLei, formatQuantity, formatRatio, formatUnitPrice, leadHref } from "@/lib/unit-prices-shared";
@@ -32,7 +33,7 @@ function LeadRow({ lead, query, suppliers }: { lead: PriceLead; query: StripQuer
     <span className="pr-lead-qty" data-only="complet">{formatQuantity(lead.quantity, query.per)}<small>{countWord(lead.awards, "o achiziție", "achiziții")}</small></span>
     <span className="pr-lead-lei">{formatLei(lead.excess)}<small>peste mediană</small></span>
     <span className="pr-lead-sup">{named.length ? <>{named.map((id, i) => <Fragment key={id}>{i > 0 && ", "}<EntityName id={id} role="supplier">{suppliers[id]}</EntityName></Fragment>)}{lead.supplierIds.length > 2 && ` și încă ${lead.supplierIds.length - 2}`}</> : "—"}</span>
-    <Link className="pr-lead-open" href={leadHref(query.family, query.pack, query.year, lead)} prefetch={false} aria-label={`Liniile: ${lead.name}, ${lead.year}`}>Liniile</Link>
+    <Link className="pr-lead-open" href={leadHref(query.family, query.pack, query.year, lead)} prefetch={false} aria-label={`Liniile: ${tidyName(lead.name)}, ${lead.year}`}>Liniile</Link>
   </li>;
 }
 

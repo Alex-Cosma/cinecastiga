@@ -3,7 +3,7 @@ import { KIND_WORDS } from "../../lib/ask/question-ui";
 import { cpvTermParts } from "../../lib/ask/cpv-terms";
 import { spellTerm } from "../../lib/ask/term-spelling";
 import { countyName } from "../../lib/counties";
-import { cleanName } from "../../lib/format";
+import { titleName } from "../../lib/tidy-name";
 
 /*
  * The question in a few words, for the band that keeps it at hand on a phone once its title has scrolled away (UX
@@ -24,7 +24,7 @@ export function questionGist(spec: AskSpec, cpvName?: string | null): { lead: st
       ? cpvName && cpvTermParts(term).length === 1 ? cpvName : `CPV ${part.replace(/\s+/g, "")}`
       : `„${spellTerm(part)}”`).join(" + "));
   }
-  for (const name of [f.authorityName, f.supplierName]) if (name) parts.push(cleanName(String(name)));
+  for (const name of [f.authorityName, f.supplierName]) if (name) parts.push(titleName(String(name)));
   if (f.authorityKind && KIND_WORDS[String(f.authorityKind)]) parts.push(KIND_WORDS[String(f.authorityKind)]!.bare);
   if (f.uatName) parts.push(placeName(String(f.uatName)));
   else if (f.county) parts.push(countyName(String(f.county)));

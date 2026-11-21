@@ -1,4 +1,5 @@
-import { cleanName, formatInt, formatRon } from "../format";
+import { formatInt, formatRon } from "../format";
+import { titleName } from "../tidy-name";
 import { countWords } from "./answer-text";
 
 /*
@@ -137,7 +138,7 @@ export function olderRecordsDetail(older: { a: PairSide; b: PairSide }): string 
 }
 
 /** A short name for the pair's words ("Cluj-Napoca", "PORR CONSTRUCT"): the first two words of the clean name. */
-export const pairName = (name: string): string => cleanName(name).replace(/^(?:municipiul|orașul|oraşul|comuna|judetul|județul)\s+/i, "").split(/\s+/).slice(0, 2).join(" ");
+export const pairName = (name: string): string => titleName(name).replace(/^(?:municipiul|orașul|oraşul|comuna|judetul|județul)\s+/i, "").split(/\s+/).slice(0, 2).join(" ");
 
 /** "16 clienți comuni · CPV 45", the basis of a suggested firm (final §3.6). */
 export const peerFirmDetail = (shared: number, division: string): string =>

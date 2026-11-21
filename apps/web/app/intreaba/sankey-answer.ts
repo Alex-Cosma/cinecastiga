@@ -7,6 +7,7 @@ import {
 import type { AskSpec } from "../../lib/ask/spec";
 import { readableCpvName } from "../../lib/entity-summary";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
+import { tidyName, titleName } from "../../lib/tidy-name";
 import type { KitTip } from "./builder/kit-types";
 
 /*
@@ -107,7 +108,7 @@ export function sankeyView(data: SankeyData, spec: Pick<AskSpec, "sankey">): San
     const p = partners.find((n) => n.id === partner), d = domains.find((n) => n.id === flow.categoryCode);
     folded.set(key, {
       partner, domain: flow.categoryCode, value: flow.value, count: flow.count,
-      label: `${p?.full ?? "?"} → ${d?.full ?? "?"}`,
+      label: `${p?.full ? tidyName(p.full) : "?"} → ${d?.full ?? "?"}`,
       scope: { ...p?.scope, ...(d && !d.rest ? { cpvPrefixes: [d.id] } : d?.rest ? { excludeCpvPrefixes: data.domains.map((x) => x.code) } : {}) },
     });
   }
@@ -120,7 +121,7 @@ export function sankeyView(data: SankeyData, spec: Pick<AskSpec, "sankey">): San
 function partnerNode(p: SankeyPartner, share: (v: number) => string, role: "supplier" | "authority", focal: string): FlowNode {
   const full = cleanName(p.name);
   // „În asociere cu A, B și C”, „…, B, C și încă 4 firme”: the firms that won the same contracts with it.
-  const names = [...(p.with ?? []).map(cleanName), ...(p.withMore ? [`încă ${countWords(p.withMore, "firmă", "firme")}`] : [])];
+  const names = [...(p.with ?? []).map(titleName), ...(p.withMore ? [`încă ${countWords(p.withMore, "firmă", "firme")}`] : [])];
   const joint = names.length ? `În asociere cu ${names.length > 1 ? `${names.slice(0, -1).join(", ")} și ${names[names.length - 1]}` : names[0]}` : undefined;
   return {
     id: p.entityId, rest: false, name: cut(full), full, value: p.value, count: p.count, share: share(p.value),

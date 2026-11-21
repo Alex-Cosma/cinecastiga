@@ -1,6 +1,7 @@
 "use client";
 
 import EntityName from "../../components/EntityName";
+import { tidyName } from "../../lib/tidy-name";
 import { formatRon } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 import type { SankeyData } from "@/lib/ask/sankey-shared";
@@ -69,10 +70,10 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
           <div className="qb-arow-val">
             <span className="qb-num">{formatRon(node.value)}</span>
             <small>{node.share} · {node.facts}</small>
-            {evidence && <button type="button" className="qb-rec qb-flow-rec" aria-label={`Înregistrările: ${node.full}`}
+            {evidence && <button type="button" className="qb-rec qb-flow-rec" aria-label={`Înregistrările: ${tidyName(node.full)}`}
               onClick={() => evidence.open(undefined, node.scope, node.scopeLabel)}>{countWords(node.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}
           </div>
-          {actions.length > 0 && <RowMenu name={node.full} actions={actions} only="complet" />}
+          {actions.length > 0 && <RowMenu name={tidyName(node.full)} actions={actions} only="complet" />}
         </div>;
       })}
     </div>
@@ -102,12 +103,12 @@ function FlowChart({ view, menu }: { view: SankeyView; menu: (node: FlowNode, si
     return <div key={node.id} className={`qb-flow-label${node.rest ? " is-rest" : ""}`} role="listitem" style={{ top: pos.y + pos.h / 2 }}>
       <div className="qb-flow-label-text">
         {side === "partner" && !node.rest
-          ? <EntityName id={node.id} className="qb-flow-name" title={node.full}>{node.name}</EntityName>
-          : <span className="qb-flow-name" title={node.full}>{node.name}</span>}
+          ? <EntityName id={node.id} className="qb-flow-name" title={tidyName(node.full)}>{node.name}</EntityName>
+          : <span className="qb-flow-name" title={tidyName(node.full)}>{node.name}</span>}
         <span className="qb-flow-fig">{formatRon(node.value)} · {node.share}</span>
         <span className="qb-flow-facts">{node.single ?? node.facts}</span>
       </div>
-      {actions.length > 0 && <RowMenu name={node.full} actions={actions} only="complet" />}
+      {actions.length > 0 && <RowMenu name={tidyName(node.full)} actions={actions} only="complet" />}
     </div>;
   });
   return <div className="qb-flow" style={{ height: geo.height }} {...motion.root}>

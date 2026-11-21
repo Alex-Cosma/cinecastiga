@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getAwardNoticeDetail, type AwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { leiRounded } from "@/lib/lei";
 import { awardUrl } from "@/lib/elicitatie";
 import { isGenericTitle, lotTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "@/lib/record-labels";
@@ -56,7 +57,7 @@ const fold = (t: string | null | undefined) => (t ?? "").trim().replace(/\s+/g, 
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ caid: string }>; searchParams: Promise<Record<string, string | undefined>> }): Promise<Metadata> {
   const n = await noticeDetail((await params).caid, queryOf(await searchParams));
-  return n ? { title: `${cleanName(headlineOf(n)).slice(0, 70)} · ${cleanName(n.authority?.name) || "anunț de atribuire"}` } : {};
+  return n ? { title: `${cleanName(headlineOf(n)).slice(0, 70)} · ${titleName(n.authority?.name) || "anunț de atribuire"}` } : {};
 }
 
 export default async function NoticePage({ params, searchParams }: {

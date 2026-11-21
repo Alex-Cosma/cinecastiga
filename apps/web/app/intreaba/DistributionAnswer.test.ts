@@ -43,7 +43,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("draws the group on 0–100 up to 50 members, the entity named and every member placed or counted", () => {
     const markup = render(VASLUI_LIST);
-    expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100; MUNICIPIUL VASLUI: 54 din 100."');
+    expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100; Municipiul Vaslui: 54 din 100."');
     expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "10", "40", "68", "100"]);
     expect(markup).toContain('<i class="dist-dot is-focal cm-tw cm-fade cm-late" style="--x:54;--l:0"');
     const { dots, over } = stripLayout({ id: "f", name: "F", score: 54 }, VASLUI_LIST.members!);
@@ -61,8 +61,8 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("lists the members with their scores, the entity first, by score", () => {
     const markup = render(VASLUI_LIST), shown = text(markup);
-    expect(shown).toContain("Cine intră în comparație? 38 + MUNICIPIUL VASLUI");
-    expect(shown).toMatch(/MUNICIPIUL VASLUI Vaslui · 63\.035 loc\. 1\.953 de achiziții directe 54 din 100 MUNICIPIUL BUZAU Iași · 60\.000 loc\. 2\.000 de achiziții directe 71 din 100/);
+    expect(shown).toContain("Cine intră în comparație? 38 + Municipiul Vaslui");
+    expect(shown).toMatch(/Municipiul Vaslui Vaslui · 63\.035 loc\. 1\.953 de achiziții directe 54 din 100 Municipiul Buzău Iași · 60\.000 loc\. 2\.000 de achiziții directe 71 din 100/);
     expect(markup).toContain('<span class="risk-high" style="width:71%"></span>');
     expect(markup).toMatch(/<button type="button" class="qb-link dist-all">Arată toate cele 38<\/button>/);
     expect(markup).not.toContain("dist-dots");
@@ -83,7 +83,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     expect(RUSETU_SCORE_CHART.focal.score).toBe(44);
     // UX audit Z3-09: the bands from 10 are the chart, against their own largest; the ones under 10 are one line under it.
     expect(markup.match(/<button[^>]*class="dist-hcol[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(8);
-    expect(markup).toMatch(/aria-label="Scor 40–49: 280 de primării, aici e COMUNA RUSETU\. Lista lor"/);
+    expect(markup).toMatch(/aria-label="Scor 40–49: 280 de primării, aici e Comuna Rușețu\. Lista lor"/);
     expect(markup).not.toMatch(/aria-label="Scor 0:/);
     expect(markup).toMatch(/<button type="button" class="dist-low"[^>]*aria-label="Sub 10, fără semnal în scor: 433 de primării\. Lista lor"/);
     expect(text(markup)).toContain("sub 10 433 fără semnal în scor · 21,3% din grup");
@@ -109,7 +109,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("keeps the empty states: under 10 direct acquisitions, a group under 5 with its removals", () => {
     const below: DistributionDataV3 = { ...VASLUI_LIST, status: "below", focal: { ...VASLUI_LIST.focal, nDas: 7 } };
-    expect(text(render(below))).toContain("MUNICIPIUL VASLUI are 7 achiziții directe acceptate. Comparația începe de la 10.");
+    expect(text(render(below))).toContain("Municipiul Vaslui are 7 achiziții directe acceptate. Comparația începe de la 10.");
     const small: DistributionDataV3 = { ...VASLUI_LIST, status: "small", group: { ...VASLUI_LIST.group, others: 3 } };
     const shown = text(render(small));
     expect(shown).toContain("Grupul are doar 3 primării. Comparația cere cel puțin 5.");
@@ -152,7 +152,7 @@ describe("an answer stored before (distribution-2, the criteria)", () => {
   it("opens a bar's members (not only their records) above 50, and marks the entity's column", () => {
     const markup = render(RUSETU_CHART);
     expect(markup.match(/<button[^>]*class="dist-col[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(4);
-    expect(markup).toMatch(/aria-label="2 criterii: 442 de primării, aici e COMUNA RUSETU\. Lista lor"/);
+    expect(markup).toMatch(/aria-label="2 criterii: 442 de primării, aici e Comuna Rușețu\. Lista lor"/);
     expect(text(markup)).toContain("clic pe o bară: cine are acel număr");
   });
 
@@ -163,7 +163,7 @@ describe("an answer stored before (distribution-2, the criteria)", () => {
     expect(markup).not.toMatch(/<em[^>]*>aici<\/em>/);
     expect(markup).toContain("dist-col is-would");
     expect(markup).not.toContain("dist-col is-here");
-    expect(markup).toContain("aici ar fi COMUNA RUSETU");
+    expect(markup).toContain("aici ar fi Comuna Rușețu");
   });
 
   it("anchors the group's and the criteria's (?) on their rows; a link to another page of the site is →; a retired criterion shows its code", () => {

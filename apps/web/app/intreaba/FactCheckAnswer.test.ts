@@ -31,15 +31,15 @@ afterEach(() => vi.clearAllMocks());
 describe("the verification's answer", () => {
   it("says „Da” with the records, the value, the months and the last day, then the two entities by CUI and county", () => {
     const shown = text(render(BUZAU_URBAN));
-    expect(shown).toMatch(/^Da .*58 de înregistrări · 51,1 mil\. lei valoare înregistrată iul\. 2018 – iun\. 2026 · ultima: 11\.06\.2026 MUNICIPIUL BUZAU/);
+    expect(shown).toMatch(/^Da .*58 de înregistrări · 51,1 mil\. lei valoare înregistrată iul\. 2018 – iun\. 2026 · ultima: 11\.06\.2026 Municipiul Buzău/);
     // The records open from the answer's own "Vezi cele 58 de înregistrări" (AskPanel): no second button with the same words.
     expect(shown).not.toContain("Vezi cele");
     // The verdict's (?) opens over the whole row, not over the 86 px box.
     expect(render(BUZAU_URBAN)).toContain('class="fc-verdict-row qb-tipwrap"');
-    expect(shown).toContain("MUNICIPIUL BUZAU · CUI 4233874 · Buzău");
-    expect(shown).toContain("URBAN SCOPE · CUI 35752863 · București");
-    expect(shown).toContain("Pentru URBAN SCOPE: al 2-lea client din 70 (14%)");
-    expect(shown).toContain("Pentru MUNICIPIUL BUZAU: al 7-lea furnizor din 282 (3%)");
+    expect(shown).toContain("Municipiul Buzău · CUI 4233874 · Buzău");
+    expect(shown).toContain("Urban Scope · CUI 35752863 · București");
+    expect(shown).toContain("Pentru Urban Scope: al 2-lea client din 70 (14%)");
+    expect(shown).toContain("Pentru Municipiul Buzău: al 7-lea furnizor din 282 (3%)");
   });
 
   it("draws the profile: years as bars with the incomplete year marked, the channels, three domains and the rest, the competition", () => {
@@ -96,8 +96,8 @@ describe("the verification's answer", () => {
     const markup = render(ABA_NONE);
     const shown = text(markup);
     expect(shown).toMatch(/^Nu Nicio înregistrare între ei în datele noastre\. Înregistrări până la 25\.09\.2026/);
-    expect(shown).toContain("Ai ales: ADMINISTRATIA BAZINALA DE APA SOMES TISA · CUI 42066043 · Cluj PROEURO CONSTRUCT SRL · CUI 17117170 · Sălaj");
-    expect(shown).toContain("Același nume, alt CUI: CUI 18269681 · Cluj are 6 înregistrări cu PROEURO CONSTRUCT SRL, 2018–2019. Verifică");
+    expect(shown).toContain("Ai ales: Administrația Bazinala de Apă Someș Tisa · CUI 42066043 · Cluj Proeuro Construct SRL · CUI 17117170 · Sălaj");
+    expect(shown).toContain("Același nume, alt CUI: CUI 18269681 · Cluj are 6 înregistrări cu Proeuro Construct SRL, 2018–2019. Verifică");
     // UX audit Z3-18: the institution's suppliers are the head's main action; the firm's clients stay here.
     expect(shown).not.toContain("Instituția a cumpărat de la 796 de firme");
     expect(shown).toContain("Firma a vândut către 3 instituții");

@@ -4,7 +4,8 @@
  * meets the same sentence on both pages; the numbers here come from the cases and their records.
  */
 import { countWords } from "./ask/answer-text";
-import { cleanName, formatInt, formatRon } from "./format";
+import { formatInt, formatRon } from "./format";
+import { titleName } from "./tidy-name";
 import type { RiskRole, ScorePart } from "./risk-score";
 import { datesWords, dayWords, ratioWords, type AboveCeiling, type Capacity, type FirstMonth, type NearCeiling, type PartnerShare, type SplitTotals, type YearEnd } from "./signal-mirror";
 
@@ -46,7 +47,7 @@ export function roundWords(found: number, _part: ScorePart | undefined, items: r
   const title = `${countWords(found, "achiziție directă s-a oprit", "achiziții directe s-au oprit")} la 96–100% din plafon.`;
   const years = items.map((i) => i.date?.slice(0, 4)).filter((y): y is string => Boolean(y)).sort();
   const span = years.length ? ` ${yearsWords({ from: years[0]!, to: years[years.length - 1]! }).replace(/^./, (c) => c.toUpperCase())}.` : "";
-  const who = partners.length ? ` ${partners.slice(0, 2).map((p, i) => `${formatInt(p.n)} ${i === 0 ? (p.n === 1 ? "e" : "sunt") + " de la" : "de la"} ${cleanName(p.name)}`).join(", ")}.` : "";
+  const who = partners.length ? ` ${partners.slice(0, 2).map((p, i) => `${formatInt(p.n)} ${i === 0 ? (p.n === 1 ? "e" : "sunt") + " de la" : "de la"} ${titleName(p.name)}`).join(", ")}.` : "";
   const lede = span + who;
   return { title, lede: lede.trim() || null };
 }
@@ -72,13 +73,13 @@ export function yearEndWords(years: readonly YearEnd[]): CaseWords {
 }
 
 export function partnerWords(code: "da_concentration" | "da_dependence", entityName: string, partnerName: string | null, s: PartnerShare, partnerTotal: number, dates: readonly (string | null)[]): CaseWords {
-  const partner = cleanName(partnerName) || (code === "da_dependence" ? "o singură instituție" : "o singură firmă");
+  const partner = titleName(partnerName) || (code === "da_dependence" ? "o singură instituție" : "o singură firmă");
   // The count, the sum and the shares are the list's heading and the mirror's panels (owner, 17 November 2026): the line
   // keeps the dates and, for an institution, how many suppliers it has.
   const when = datesWords(dates);
   const span = when ? `${when.charAt(0).toUpperCase()}${when.slice(1)}.` : "";
   if (code === "da_dependence") {
-    const title = `${pctWords(s.share)} din ce vinde ${cleanName(entityName)} prin achiziții directe vine de la o singură instituție: ${partner}.`;
+    const title = `${pctWords(s.share)} din ce vinde ${titleName(entityName)} prin achiziții directe vine de la o singură instituție: ${partner}.`;
     return { title, lede: span || null };
   }
   const title = `${pctWords(s.share)} din valoarea achizițiilor directe ale instituției e la o singură firmă: ${partner}.`;
@@ -120,7 +121,7 @@ export function firstMonthWords(code: "da_first_month" | "da_first_month_buyer",
     const age = firstMonthAge(first.ageDays);
     return {
       title: `Instituția a contractat ${formatRon(first.total)} cu o firmă aflată în primele ${window} de la înființare.`,
-      lede: `${cleanName(first.partnerName) || "Firma"}${dayWords(first.registeredOn) ? `, înmatriculată la ${dayWords(first.registeredOn)}` : ""}${age ? `: prima achiziție, ${age}` : ""}.`,
+      lede: `${titleName(first.partnerName) || "Firma"}${dayWords(first.registeredOn) ? `, înmatriculată la ${dayWords(first.registeredOn)}` : ""}${age ? `: prima achiziție, ${age}` : ""}.`,
     };
   }
   const sum = cases.reduce((a, c) => a + c.total, 0);

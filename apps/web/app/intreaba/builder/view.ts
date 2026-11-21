@@ -20,6 +20,7 @@ import { specTrendList, type TrendList } from "../../../lib/ask/trend-shared";
 import { KIND_WORDS, cloneQuestion, countyWords, questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
 import type { UnderChipItem } from "./UnderChips";
+import { tidyName } from "../../../lib/tidy-name";
 
 /*
  * What the builder draws for a draft (plan §2.3, kit P1–P9): the registry
@@ -167,6 +168,8 @@ function rowChipLabel(spec: FilterSpec, slot: Slot, described: ReturnType<typeof
   }
 }
 
+const ENTITY_SLOTS: ReadonlySet<FilterId> = new Set<FilterId>(["authority", "supplier", "compareWith"]);
+
 /** The kit's tokens of a sentence; each phrase is keyed by its window. */
 function kitTokens(tokens: readonly SentenceToken[], prefix: string, windows: Record<string, BuilderWindowSpec>): KitToken[] {
   return tokens.map((token): KitToken => {
@@ -175,7 +178,8 @@ function kitTokens(tokens: readonly SentenceToken[], prefix: string, windows: Re
     if (token.kind === "fixed") return { kind: "fixed", text: token.text, ...(token.tip ? { tip: token.tip } : {}) };
     const key = `${prefix}${token.id}`;
     windows[key] = { key, slot: phraseSlot(token), title: token.window, name: token.slot };
-    return { kind: "slot", id: key, slot: token.slot, value: token.value };
+    // An institution's or a firm's name reads tidied in the phrase (lib/tidy-name.ts); the spec keeps the source's.
+    return { kind: "slot", id: key, slot: token.slot, value: ENTITY_SLOTS.has(token.filter) ? tidyName(token.value) : token.value };
   });
 }
 

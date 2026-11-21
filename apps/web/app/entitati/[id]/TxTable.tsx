@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ENTITY_TABLE_EVENT, ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
+import { titleName } from "../../../lib/tidy-name";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/use-tip";
@@ -284,7 +285,7 @@ export default function TxTable({
                   </Term>
                 </td>
                 {members ? (
-                <td className="clip c-party" {...tip.bindClip(members.map((m) => cleanName(m.partnerName)).join(" · "))}>
+                <td className="clip c-party" {...tip.bindClip(members.map((m) => titleName(m.partnerName)).join(" · "))}>
                   <span className="tx-members">
                     {members.map((m, k) => <span key={m.partnerId ?? k}>{m.partnerId
                       ? <EntityName id={m.partnerId} role="supplier">{cleanName(m.partnerName)}</EntityName>
@@ -292,9 +293,9 @@ export default function TxTable({
                   </span>
                 </td>
                 ) : (
-                <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
+                <td className="clip c-party" {...tip.bindClip(titleName(t.partnerName))}>
                   {t.partnerId ? (
-                    <Link prefetch={false} href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
+                    <Link prefetch={false} href={`/entitati/${t.partnerId}`}>{titleName(t.partnerName)}</Link>
                   ) : (
                     (t.partnerName ?? "—")
                   )}
@@ -303,7 +304,7 @@ export default function TxTable({
                       {t.consortiumMembers
                         ? consortiumPhraseParts(t.consortiumMembers.map((m) => ({ ...m, name: cleanName(m.name) })), t.nWinners).map((part, k) =>
                             typeof part === "string" ? part : <EntityName key={k} id={part.id} role="supplier">{part.name}</EntityName>)
-                        : consortiumPhrase(t.consortiumOthers.map(cleanName), t.nWinners)}
+                        : consortiumPhrase(t.consortiumOthers.map(titleName), t.nWinners)}
                     </span>
                   )}
                 </td>

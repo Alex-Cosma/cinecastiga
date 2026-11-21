@@ -122,7 +122,7 @@ const ranking = (scores: number[], extra: Partial<RiskRanking> = {}): RiskRankin
 describe("the ranking by the risk score (entity_card-3)", () => {
   it("names the first profile with its score and band, or the profiles tied on the best score", () => {
     expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71 din 100", band: "pronunțat" });
-    expect(rankingHeadline(ranking([71, 60], { rows: [ranked(1, 71, { name: "RO123456 SPITALUL ORASENESC AGNITA" })] }), hospitals).lead).toBe("Primul: SPITALUL ORASENESC AGNITA");
+    expect(rankingHeadline(ranking([71, 60], { rows: [ranked(1, 71, { name: "RO123456 SPITALUL ORASENESC AGNITA" })] }), hospitals).lead).toBe("Primul: Spitalul Orășenesc Agnita");
     expect(rankingHeadline(ranking([60, 60, 60, 58]), hospitals)).toEqual({ kind: "tied", lead: "3 la egalitate pe primul loc", score: "60 din 100", band: "moderat" });
     // The tie counts the whole group, beyond the listed rows.
     expect(rankingHeadline(ranking([60, 60], { topCount: 312 }), firm).lead).toBe("312 la egalitate pe primul loc");

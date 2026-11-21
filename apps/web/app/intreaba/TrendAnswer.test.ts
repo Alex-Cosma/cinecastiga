@@ -30,12 +30,12 @@ describe("the trend's answer", () => {
     const up = text(render({ spec: trendSpec({ change: "up", months: "auto" }) }));
     const fresh = text(render({ spec: trendSpec({ change: "new", months: "auto" }) }));
     const first = text(render({ spec: trendSpec({ change: "new", firstOnly: true, months: "auto" }) }));
-    expect(up).toContain("ALFA CONSTRUCT SRL");
-    expect(up).not.toContain("BETA SERV SRL");
-    expect(fresh).toContain("BETA SERV SRL");
-    expect(fresh).toContain("GAMMA GMBH");
-    expect(first).toContain("BETA SERV SRL");
-    expect(first).not.toContain("GAMMA GMBH");
+    expect(up).toContain("Alfa Construct SRL");
+    expect(up).not.toContain("Beta Serv SRL");
+    expect(fresh).toContain("Beta Serv SRL");
+    expect(fresh).toContain("Gamma GmbH");
+    expect(first).toContain("Beta Serv SRL");
+    expect(first).not.toContain("Gamma GmbH");
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -59,9 +59,9 @@ describe("the trend's answer", () => {
     const markup = render({ spec: trendSpec({ change: "up" }) });
     const shown = text(markup);
     expect(shown).toContain("1 contract: 86%");
-    expect(shown).toContain("40% de la PRIMARIA EXEMPLU");
+    expect(shown).toContain("40% de la Primăria Exemplu");
     expect(shown).toContain("+1.400");
-    expect(markup).toContain('aria-label="Înregistrări: ALFA CONSTRUCT SRL"');
+    expect(markup).toContain('aria-label="Înregistrări: Alfa Construct SRL"');
     expect(markup).toContain('href="/entitati/1"');
     // A firm's county is its seat since F4 (owner-seat-switch, TB-county-firm flipped).
     expect(shown).toContain("București");
@@ -70,9 +70,9 @@ describe("the trend's answer", () => {
 
   it("puts an institution's county beside it, and a swatch with its group on every row of „Toate”", () => {
     const markup = render({ data: trendFixture({ noun: "instituții" }), spec: trendSpec({ change: "all" }, { dim: "authority" }) });
-    expect(text(markup)).toContain("ALFA CONSTRUCT SRL București");
+    expect(text(markup)).toContain("Alfa Construct SRL București");
     expect(tags(markup, /class="qb-sw qb-sw--(up|new|down|gone|all) qb-trow-sw"/g)).toHaveLength(5);
-    expect(text(markup)).toContain("scădere: DELTA SA");
+    expect(text(markup)).toContain("scădere: Delta SA");
   });
 
   it("offers „Vezi toate schimbările” on an empty group, and no total line under it", () => {
@@ -87,7 +87,7 @@ describe("the trend's answer", () => {
     const old = trendFixture({ groups: undefined, composition: undefined, list: undefined, change: undefined, rowFacts: undefined, noun: undefined, months: undefined });
     const markup = render({ data: old, spec: trendSpec() });
     expect(markup).not.toContain("qb-group");
-    expect(text(markup)).toContain("ALFA CONSTRUCT SRL");
+    expect(text(markup)).toContain("Alfa Construct SRL");
     expect(text(markup)).toContain("+1.400");
   });
 

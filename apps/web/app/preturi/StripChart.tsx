@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { tidyName } from "../../lib/tidy-name";
 import { AXIS_FROM, AXIS_TO, axisPos, countWord, formatLei, formatQuantity, formatRatio, formatUnitPrice, ratioWords, type StripDot } from "@/lib/unit-prices-shared";
 
 /**
@@ -123,7 +124,7 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
       return <a key={k} href={href(d)} data-dot={k} tabIndex={product && k === activeKey ? 0 : -1} aria-hidden={product ? undefined : true}
         className={`pr-dot cm-fade cm-late${d.ratio > 8 ? " pr-dot-over" : ""}${tip && keyOf(tip) === k ? " is-on" : ""}`}
         style={{ left: `${axisPos(d.ratio)}%` }}
-        aria-label={`${d.name}, ${d.year}: ${formatUnitPrice(d.price)} ${per}, ${ratioWords(d.ratio)}, ${formatLei(d.excess)} peste mediană. Deschide liniile.`}
+        aria-label={`${tidyName(d.name)}, ${d.year}: ${formatUnitPrice(d.price)} ${per}, ${ratioWords(d.ratio)}, ${formatLei(d.excess)} peste mediană. Deschide liniile.`}
         onPointerEnter={(e) => { if (e.pointerType === "mouse") { setRuler(null); setTip(d); } }}
         onPointerLeave={(e) => { if (e.pointerType === "mouse") setTip(null); }}
         onFocus={() => { setRuler(null); setTip(d); setActive(k); }} onBlur={() => setTip(null)}
@@ -140,10 +141,10 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
       const x = axisPos(d.ratio), end = x > 60;
       return <span key={`t${keyOf(d)}`} className={`pr-tag cm-fade cm-late${end ? " pr-tag-end" : ""}`}
         style={{ left: `${x}%`, maxWidth: end ? `calc(${x}% + 8px)` : `${2 * Math.min(x, 100 - x)}%`, ["--t" as string]: t }} aria-hidden="true">
-        <span className="pr-tag-name">{d.name}</span><span className="pr-tag-x"> · <b>{formatRatio(d.ratio)}</b></span></span>;
+        <span className="pr-tag-name">{tidyName(d.name)}</span><span className="pr-tag-x"> · <b>{formatRatio(d.ratio)}</b></span></span>;
     })}
     {tip && <span className={`pr-tip pr-lead-tip tipcard${side(axisPos(tip.ratio))}`} style={{ left: `${axisPos(tip.ratio)}%` }} role="tooltip">
-      <b className="tipcard-t">{tip.name}</b><small>{[tip.county, tip.year].filter(Boolean).join(" · ")}</small>
+      <b className="tipcard-t">{tidyName(tip.name)}</b><small>{[tip.county, tip.year].filter(Boolean).join(" · ")}</small>
       <span className="pr-tip-row"><strong>{formatUnitPrice(tip.price)} {per}</strong> · {ratioWords(tip.ratio)}{tip.median != null && ` (${formatUnitPrice(tip.median)} în ${tip.year})`}</span>
       <span className="pr-tip-row">{tip.quantity != null && `${formatQuantity(tip.quantity, per)} · `}{tip.awards != null && `${countWord(tip.awards, "o achiziție", "achiziții")} · `}{formatLei(tip.excess)} peste mediană</span>
       <small className="pr-tip-hint">Pistă, nu dovadă · deschide liniile</small>

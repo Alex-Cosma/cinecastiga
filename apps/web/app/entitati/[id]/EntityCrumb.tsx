@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { G } from "@/components/ghost/Ghost";
+import { tidyName } from "../../../lib/tidy-name";
 import "./crumb.css";
 
 export type Analysis = "Semnale" | "Radiografie" | "Legături" | "Comparații";
@@ -29,7 +30,7 @@ export default function EntityCrumb({ id, name, role, bothRoles = false, current
   return (
     <nav className="ent-crumb" aria-label="Locul în aplicație">
       <p className="ent-crumb-trail">
-        <Link prefetch={false} href={`/entitati/${id}${rol}`} className="ent-crumb-name" title={name}>← {name}</Link>
+        <Link prefetch={false} href={`/entitati/${id}${rol}`} className="ent-crumb-name" title={tidyName(name)}>← {tidyName(name)}</Link>
         <span className="sep" aria-hidden="true">·</span>
         {currentHref ? <Link prefetch={false} href={currentHref}>{current}</Link> : <span aria-current="page">{current}</span>}
         {sub && <><span className="sep" aria-hidden="true">·</span><span aria-current="page">{sub}</span></>}

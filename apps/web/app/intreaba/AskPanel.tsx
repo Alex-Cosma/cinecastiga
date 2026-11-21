@@ -10,6 +10,7 @@ import ClipButton from "@/components/ClipButton";
 import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
 import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { keepAnswer, recallAnswer } from "@/lib/ask/answer-memory";
 import { isHistoricalProfile } from "@/lib/ask/population";
@@ -1405,7 +1406,7 @@ export default function AskPanel({
                         ?count===1?'Vezi achiziția':<span><span className="cq-source-verb">Vezi cele </span>{countWords(count, 'achiziție', 'achiziții')}</span>
                         :count===1?'Vezi înregistrarea':<span><span className="cq-source-verb">Vezi cele </span>{countWords(count, 'înregistrare', 'înregistrări')}</span>}
                     </button> : null;
-                  const profiles = profileLinks(applied, resp.townHall).map((p) => <Link key={p.role} className="cq-profile-link" href={entityHref(p.id, p.role)} {...(p.name ? { title: cleanName(p.name) } : {})}>
+                  const profiles = profileLinks(applied, resp.townHall).map((p) => <Link key={p.role} className="cq-profile-link" href={entityHref(p.id, p.role)} {...(p.name ? { title: titleName(p.name) } : {})}>
                     <DiscoveryIcon name="building" />{p.label}<span className="qb-glyph" aria-hidden="true">→</span>
                   </Link>);
                   return profiles.length === 1
@@ -2067,7 +2068,7 @@ function RankingBars({
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
                 {spec.measure !== "count" && share !== null && <span className="cq-rank-share" data-only="complet"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
               </strong>
-              <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${shown}`}>
+              <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${titleName(shown)}`}>
                 {spec.measure === "count"
                   ? <>{formatRonFull(r.value)}{share !== null && <span data-only="complet"> · {formatShare(share)} din total</span>}</>
                   : countWords(r.count, "înregistrare", "înregistrări")}
@@ -2083,7 +2084,7 @@ function RankingBars({
             {row}
             {marked && <SelectTrace key={`found:${foundId}`} />}
             {/* Esențial: the row's „⋯” (Scoate din calcul, Radiografia ↗) is Complet's; its records are the link beside the sum. */}
-            <span className="qb cq-rank-menu" data-only="complet"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
+            <span className="qb cq-rank-menu" data-only="complet"><RowMenu name={titleName(r.name)} actions={actions} /></span>
           </div> : row;
         })}
         {rest && (
@@ -2119,7 +2120,7 @@ function RankingBars({
                   {spec.measure === "count" ? countWords(count, "înregistrare", "înregistrări") : formatRonFull(value)}
                   {spec.measure !== "count" && share !== null && <span className="cq-rank-share" data-only="complet"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
                 </strong>
-                <button type="button" className="cq-rank-records" aria-label={`Înregistrările din clasament: ${cleanName(pinned.name)}`}
+                <button type="button" className="cq-rank-records" aria-label={`Înregistrările din clasament: ${titleName(pinned.name)}`}
                   onClick={() => onSources(spec, entitySourceScope(spec, row), `${cleanName(pinned.name)} · înregistrările din clasament`)}>
                   {spec.measure === "count" ? formatRonFull(value) : countWords(count, "înregistrare", "înregistrări")}{" →"}
                 </button>
@@ -2413,7 +2414,7 @@ function TableBlock({
               <td>
                 {r.entityId ? (
                   <Link prefetch={false} href={`/entitati/${r.entityId}`}>
-                    {cleanName(r.name)}
+                    {titleName(r.name)}
                   </Link>
                 ) : (
                   countyName(cleanName(r.name))

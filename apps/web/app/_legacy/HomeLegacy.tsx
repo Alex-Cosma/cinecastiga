@@ -8,7 +8,8 @@ import {
   type TopEntity,
 } from "@/lib/marts";
 import { countryName } from "@/lib/ted";
-import { formatRon, formatInt, cleanName } from "@/lib/format";
+import { formatRon, formatInt} from "@/lib/format";
+import { titleName } from "../../lib/tidy-name";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 
 /**
@@ -99,7 +100,7 @@ export async function LegacyHomeSections() {
               >
                 <div className="k">⚑ {flagLabel(n.flagCode).toUpperCase()}</div>
                 <div className="t">
-                  {cleanName(n.entityName)} — {formatRon(n.totalRon)}
+                  {titleName(n.entityName)} — {formatRon(n.totalRon)}
                   {n.county ? ` (${n.county})` : ""}
                 </div>
                 <div className="s">

@@ -34,8 +34,8 @@ describe("“Pe scurt” for an authority", () => {
     expect(s.sentences[0]).toContainEqual({ text: "1,6 mld. lei", strong: true, tip: "valoare-inregistrata" });
   });
   it("names the largest supplier with its share and the largest subject area", () => {
-    expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor: RER SUD (21%). Domeniu principal: lucrări de construcții (55%).");
-    expect(s.sentences[1]).toContainEqual({ text: "RER SUD", href: "/entitati/2044213" });
+    expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor: Rer Sud (21%). Domeniu principal: lucrări de construcții (55%).");
+    expect(s.sentences[1]).toContainEqual({ text: "Rer Sud", href: "/entitati/2044213" });
   });
   it("counts consortium contracts and leaves the equal split to the glossary tip", () => {
     expect(text(s.sentences[2]!)).toBe("30 de contracte în consorțiu.");
@@ -49,7 +49,7 @@ describe("“Pe scurt” for an authority", () => {
       ["Fără cod CPV", "<1%", "1.000 lei"],
     ]);
     expect(s.partnersTitle).toBe("Cui a atribuit");
-    expect(s.partners[0]).toMatchObject({ label: "RER SUD", href: "/entitati/2044213", shareLabel: "21%", share: 0.2114 });
+    expect(s.partners[0]).toMatchObject({ label: "Rer Sud", href: "/entitati/2044213", shareLabel: "21%", share: 0.2114 });
     expect(s.partners[0]!.consortium).toBeUndefined();
     expect(s.partners[1]!.consortium).toContain("2 contracte în consorțiu");
     expect(s.partners[2]).toMatchObject({ label: "Partener neidentificat", shareLabel: "0%" });
@@ -67,7 +67,7 @@ describe("“Pe scurt” for a supplier", () => {
     })!;
     expect(s.sentences.map(text)).toEqual([
       "A câștigat 3,3 mil. lei din 15 achiziții directe, în 2025.",
-      "Cel mai mare client: COMUNA APAHIDA (99%). Domeniu principal: lucrări de construcții (67%).",
+      "Cel mai mare client: Comuna Apahida (99%). Domeniu principal: lucrări de construcții (67%).",
     ]);
     expect(s.subjectsTitle).toBe("Ce a câștigat");
     expect(s.partnersTitle).toBe("Cine i-a atribuit");

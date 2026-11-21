@@ -11,6 +11,7 @@ import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import { buyersWord, countWord, formatUnitPrice, largestOf, leadsCount, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
+import { tidyName } from "../../../lib/tidy-name";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
@@ -63,7 +64,7 @@ export default async function ProdusPage({ params, searchParams }: {
   const sortHref = (k: PriceBuyerSort, dir: "asc" | "desc") => here({ ordine: k, sens: dir, pagina: null, deschis: null });
   const scope = data.scope;
   const rows: BuyerRowData[] = data.buyers.map((b) => ({
-    id: b.authorityId, year: b.year, name: b.name, county: b.county, price: b.price, median: b.median, ratio: b.ratio, quantity: b.quantity, excess: b.excess,
+    id: b.authorityId, year: b.year, name: tidyName(b.name), county: b.county, price: b.price, median: b.median, ratio: b.ratio, quantity: b.quantity, excess: b.excess,
     lead: b.lead, awards: b.awards, lines: b.lines, pinned: b.pinned,
     suppliers: b.supplierIds.slice(0, 2).flatMap((id) => data.suppliers[id] ? [{ id, name: data.suppliers[id] }] : []), moreSuppliers: Math.max(0, b.supplierIds.length - 2),
     shown: b.linesShown.map((l) => ({
