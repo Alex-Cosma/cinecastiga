@@ -198,7 +198,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      if(candidate?.outcome==='running'&&!owner?.present){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
     }
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
-    const admission=await proxyAdmission(q,info.proxyId,info.documentJobId);
+    const admission=await proxyAdmission(q,info.proxyId,info.documentJobId,false,info.stream);
     selectedProxy=admission?.proxy??null;
     // Batch policy is read from the DB, not a caller-controlled rate-limit bypass.
     const [documentBatch]=info.documentJobId?await q`select b.id,b.status,b.max_requests,b.requests_started,j.status job_status from app.document_jobs j join app.document_batches b on b.id=j.batch_id where j.id=${info.documentJobId}`:[];

@@ -20,7 +20,11 @@ export async function registerSeapProxies(q:DbSql,proxies:SeapProxy[]){
 }
 
 /** Called under collection_control FOR UPDATE and a shared HTTP drain lock. */
-export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allowBusy=false){
+/**
+ * `stream` „ted”: TED requests are spread evenly over the configured connections (owner, 21 November 2026): the one
+ * least recently used for TED first. SEAP keeps its own order (the earliest allowed).
+ */
+export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allowBusy=false,stream?:string){
  if(process.env.SEAP_PROXY_REQUIRED!==undefined&&!['true','false'].includes(process.env.SEAP_PROXY_REQUIRED))throw new SeapProxyConfigurationError();
  // The settings and the release of reservations left by terminal jobs (only those: never a running job's) in one
  // statement, one round trip less per admission (14 November 2026). The release now runs with the pool off too:
@@ -34,10 +38,15 @@ export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allo
  }
  const pool=await loadSeapProxies();
  if(!pool.length)throw Error('Lipsește configurația proxy. Conexiunea directă nu este permisă.');
- const rows=await q`select *,greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) delay_ms
-   from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null})
-   and (reserved_job is null or reserved_job=${jobId??null})
-   and (${allowBusy} or not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(id from 7)::int::oid and l.objsubid=2 and l.granted)) order by next_allowed_at nulls first,id limit 1 for update skip locked`;
+ const ted=stream==='ted';
+ const rows=await q`with ted as (select proxy_id,max(started_at) last from app.collection_requests
+     where ${ted} and stream='ted' and proxy_id is not null group by proxy_id)
+   select p.*,greatest(0,extract(epoch from(p.next_allowed_at-clock_timestamp()))*1000) delay_ms
+   from app.collection_proxies p left join ted on ted.proxy_id=p.id
+   where p.configured and p.enabled and (${pinnedId??null}::text is null or p.id=${pinnedId??null})
+   and (p.reserved_job is null or p.reserved_job=${jobId??null})
+   and (${allowBusy} or not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(p.id from 7)::int::oid and l.objsubid=2 and l.granted))
+   order by case when ${ted} then ted.last end nulls first,p.next_allowed_at nulls first,p.id limit 1 for update of p skip locked`;
  const row=rows[0];
  if(!row){
   const [enabled]=await q`select id from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null}) limit 1`;

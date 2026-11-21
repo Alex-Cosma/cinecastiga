@@ -302,4 +302,28 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
    await rm(folder,{recursive:true,force:true});
   }
  });
+ it('spreads TED requests evenly: the connection least recently used for TED goes first (owner, 21 November 2026)',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'seap-ted-rotation-'));
+  const pool=[1,2,3].map(n=>({id:`proxy-${n}`,server:`http://192.0.2.${n}:8000`,username:'fixture-only',password:'fixture-password'}));
+  try{
+   const file=join(folder,'proxies.json');await writeFile(file,JSON.stringify(pool));vi.stubEnv('SEAP_PROXY_FILE',file);vi.stubEnv('SEAP_PROXY_REQUIRED','true');
+   await q`insert into app.collection_proxy_control(id) values(1) on conflict do nothing`;
+   await q`update app.collection_proxy_control set enabled=true,max_in_flight=1,requests_per_minute=200,min_seconds=1,max_seconds=1 where id=1`;
+   await q`truncate app.collection_proxies`;await q`update app.collection_control set paused=true where id=1`;
+   await registerSeapProxies(q,pool);await q`update app.collection_proxies set enabled=true`;await q`update app.collection_control set paused=false where id=1`;
+   const used:string[]=[];
+   for(let i=0;i<4;i++){
+    // SEAP's own order would pick the earliest allowed: proxy-1 every time once the pacing is cleared.
+    await q`update app.collection_proxies set next_allowed_at=null`;await q`update app.collection_control set next_allowed_at=null`;
+    const c=await q.reserve();
+    try{used.push(String(await runCollectionRequest(c as unknown as DbSql,{stream:'ted',worker:'ted-rotation-fixture',method:'GET',url:`https://ted.europa.eu/packages/daily/2026002${10+i}`,context:{}},async(_signal,proxy)=>({value:proxy?.id,status:200}))));}
+    finally{c.release();}
+   }
+   expect(new Set(used.slice(0,3)).size).toBe(3);
+   expect(used[3]).toBe(used[0]);
+  }finally{
+   vi.unstubAllEnvs();await q`update app.collection_proxy_control set enabled=false where id=1`;await q`truncate app.collection_proxies`;
+   await rm(folder,{recursive:true,force:true});
+  }
+ });
 });
