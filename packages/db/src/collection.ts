@@ -5,7 +5,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
-import { collectionTaskId, scheduleCollectionTimeout } from './collection-retry.js';
+import { collectionTaskId, scheduleCollectionTimeout, scheduleTedRateLimitRetry } from './collection-retry.js';
 import { loadSeapProxies } from './proxy-config.js';
 import { SEAP_PACE_BURST_SECONDS } from './collection-limits.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
@@ -89,7 +89,7 @@ async function fastAdmission(q:DbSql,info:CollectionRequestInfo,endpoint:string,
     p.enabled pool,p.max_in_flight,p.requests_per_minute,p.min_seconds,p.max_seconds
    from app.collection_control c cross join app.collection_proxy_control p where c.id=1 and p.id=1`;
   if(!state||state.paused||state.maintenance||state.blocked_reason||state.daily_limit!==null||state.stream_paused||state.quiet||!state.pool){await undo();return {kind:'full'};}
-  const [retry]=await q`select x.task_id from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and (r.proxy_id is null or x.task_id=${taskId}) limit 1`;
+  const [retry]=await q`select x.task_id from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and ((r.proxy_id is null and r.stream<>'ted') or x.task_id=${taskId}) limit 1`;
   if(retry){await undo();return {kind:'full'};}
   const [held]=await q`with held as materialized (select objid from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted)
    select (select r.id from app.collection_requests r where outcome='running' and not exists(select 1 from held h where h.objid=r.id::oid) limit 1) id,
@@ -174,7 +174,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(c.paused||(c.maintenance&&(!c.collection_during_maintenance||info.stream==='documents'))||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
     if(c.maintenance&&(await q`select id from app.processing_runs where status='running' limit 1`).length)throw new CollectionSuspendedError();
     if(c.blocked_reason)throw new CollectionSuspendedError(String(c.blocked_reason));
-    const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and (r.proxy_id is null or x.task_id=${taskId}) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
+    const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and ((r.proxy_id is null and r.stream<>'ted') or x.task_id=${taskId}) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
     if(retry){
      if(Number(retry.task_id)!==taskId||retry.waiting)throw new CollectionSuspendedError('SEAP așteaptă reîncercarea programată după timeout.');
      const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
@@ -265,6 +265,8 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   if(!ted&&(result.status===400&&seapSystemError(transportDiagnostics)||seapInternalErrorRedirect(result.status,transportDiagnostics))&&await scheduleCollectionTimeout(q,id!,taskId,'source'))throw new CollectionSuspendedError('Eroare de sistem SEAP; cererea va fi reîncercată.');
   // TED 5xx/408: the same 5/10-minute task retries as SEAP's proxy failures; the stream pauses only once they are exhausted.
   if(ted&&tedReason&&[408,500,502,503,504].includes(result.status)&&await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('TED indisponibil temporar; cererea va fi reîncercată.');
+  // A TED 429 does not pause the stream (owner, 21 November 2026): the task goes again later.
+  if(ted&&result.status===429&&!result.challenge){const wait=await scheduleTedRateLimitRetry(q,id!,taskId,retryAfterSeconds(result.retryAfter??null));if(wait!==null)throw new CollectionSuspendedError(`TED a răspuns cu 429; cererea va fi reîncercată după ${Math.round(wait/60)} minute.`);}
   // A pending retry stays pending, the task returns to the queue (CollectionSuspendedError).
   if(ipRefused)throw new CollectionSuspendedError(await restrictProxy(q,selectedProxy!.id,id!,endpoint)??'Proxy oprit (403); sarcina revine în coadă.');
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;

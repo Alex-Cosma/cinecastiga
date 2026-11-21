@@ -223,21 +223,27 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   expect(await control()).toEqual({paused_streams:['ted'],blocked_reason:null});
  });
 
- it('a TED 429 pauses only the TED stream, keeps the task, alerts, and SEAP continues',async()=>{
-  const ted=mockTed({});ted.fail('202600198',{status:429,retryAfter:'120'});vi.stubGlobal('fetch',ted.fetch);
+ it('a TED 429 never pauses the stream: the task waits (Retry-After or 2, 4, 8… minutes) and goes again; SEAP continues (owner, 21 November 2026)',async()=>{
+  const ted=mockTed({});ted.fail('202600198',{status:429,retryAfter:'600'});vi.stubGlobal('fetch',ted.fetch);
   await enableTedCollection(q);await drain();
   expect(ted.calls).toEqual(['package 202600198']);
-  const c=await control();expect(c.paused_streams).toEqual(['ted']);expect(c.blocked_reason).toBeNull();
+  expect(await control()).toEqual({paused_streams:[],blocked_reason:null});
   const [request]=await q`select status,outcome,error from app.collection_requests`;
-  expect(request).toMatchObject({status:429,outcome:'failed'});expect(request!.error).toContain('Retry-After 120');
+  expect(request).toMatchObject({status:429,outcome:'failed'});expect(request!.error).toContain('Reîncercare automată după 10 minute');
   expect(await tasks()).toEqual(['ted-package 202600198 pending']);
-  const [audit]=await q`select after from app.collection_audit where action='stream-auto-paused'`;
-  expect(audit!.after).toMatchObject({stream:'ted',pausedStreams:['ted']});
-  expect((await detectOperationalAlerts(q,'https://example.invalid')).filter(a=>a.kind==='stream-auto-paused').map(a=>a.subject)).toEqual(['Fluxul „ted” a fost pus automat pe pauză']);
+  const [retry]=await q`select status,timeouts,extract(epoch from retry_at-clock_timestamp())::int wait from app.collection_retries`;
+  expect(retry).toMatchObject({status:'pending',timeouts:1});expect(Number(retry!.wait)).toBeGreaterThan(590);
+  expect((await q`select count(*)::int n from app.collection_audit where action='stream-auto-paused'`)[0]!.n).toBe(0);
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
   await q`update app.collection_control set next_allowed_at=null`;
   expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
   expect((await q`select status from app.collection_tasks where stream='da'`)[0]!.status).toBe('complete');
+  // Without Retry-After the wait doubles with the TED 429s of the last six hours: the second is 4 minutes.
+  await q`update app.collection_retries set retry_at=clock_timestamp()-interval '1 second'`;
+  ted.fail('202600198',429);await drain(1);
+  expect(await control()).toEqual({paused_streams:[],blocked_reason:null});
+  const [again]=await q`select extract(epoch from retry_at-clock_timestamp())::int wait from app.collection_retries`;
+  expect(Number(again!.wait)).toBeGreaterThan(230);expect(Number(again!.wait)).toBeLessThanOrEqual(240);
  });
 
  it('a TED 5xx is retried on the shared schedule without a SEAP stop; an invalid archive stops only TED',async()=>{

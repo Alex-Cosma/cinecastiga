@@ -38,3 +38,26 @@ export async function scheduleCollectionTimeout(q:DbSql,requestId:number,taskId:
   await q`commit`;return retryable;
  }catch(error){await q`rollback`.catch(()=>{});throw error;}
 }
+
+/**
+ * A TED 429 (owner, 21 November 2026): the TED stream is not paused. The same task waits and goes again later:
+ * 2, 4, 8, 16, 32 and then 60 minutes after the TED 429s of the last six hours, or TED's own Retry-After when longer. The 5xx retry budget of the task (`timeouts`) is kept as it was (at least 1, the table's
+ * floor). Caller owns the request lock; false when the task is not a running TED task (the gate then pauses as before).
+ */
+export async function scheduleTedRateLimitRetry(q:DbSql,requestId:number,taskId:number|null,retryAfterSeconds:number|null):Promise<number|null>{
+ if(taskId===null)return null;
+ await q`begin`;
+ try{
+  const [t]=await q`select status,stream from app.collection_tasks where id=${taskId} for update`;
+  if(!t||t.status!=='running'||t.stream!=='ted'){await q`rollback`;return null;}
+  const [n]=await q`select count(*)::int n from app.collection_requests where stream='ted' and status=429 and started_at>clock_timestamp()-interval '6 hours'`;
+  const delay=Math.max(retryAfterSeconds??0,Math.min(3600,120*2**Math.max(0,Number(n?.n??1)-1)));
+  await q`insert into app.collection_retries(task_id,first_request_id,last_request_id,timeouts,status,retry_at)
+   values(${taskId},${requestId},${requestId},1,'pending',clock_timestamp()+${delay}*interval '1 second')
+   on conflict(task_id) do update set last_request_id=excluded.last_request_id,status='pending',retry_at=excluded.retry_at,updated_at=clock_timestamp()`;
+  await q`update app.collection_tasks set status='pending',started_at=null where id=${taskId}`;
+  await q`update app.collection_requests set diagnostics=diagnostics||${JSON.stringify({retry:{taskId,rateLimited:true,delaySeconds:delay}})}::jsonb,
+   error=${`TED a răspuns cu 429. Reîncercare automată după ${Math.round(delay/60)} minute; fluxul TED continuă.`} where id=${requestId}`;
+  await q`commit`;return delay;
+ }catch(error){await q`rollback`.catch(()=>{});throw error;}
+}
