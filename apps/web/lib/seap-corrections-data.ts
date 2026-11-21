@@ -1,6 +1,6 @@
 import { createDb, type DbSql } from "@seap/db";
 import { unstable_cache } from "next/cache";
-import { correctionGroups, type CorrectionGroup } from "./seap-corrections";
+import { anchorIn, correctionGroups, type CorrectionGroup } from "./seap-corrections";
 
 /*
  * The database's part of „Unde corectăm datele SEAP” (lib/seap-corrections.ts): the entity pages of the rows the lists
@@ -84,4 +84,9 @@ export async function getCorrections(): Promise<CorrectionsData> {
   } catch {
     return { groups, ruleMerges: [], contracts: null };
   }
+}
+
+/** The row an entity page links to, among the rows the section shows: a skipped merge's row is not one of them. */
+export async function getCorrectionAnchor(id: string | number, cui: string | null | undefined): Promise<string | null> {
+  return anchorIn((await getCorrections()).groups, id, cui);
 }

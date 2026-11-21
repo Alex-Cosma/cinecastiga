@@ -149,17 +149,18 @@ export function correctionGroups(): CorrectionGroup[] {
   ];
 }
 
-let anchors: { byId: Map<string, string>; byCui: Map<string, string> } | null = null;
-
-/** The row an entity page links to: by the entity's id, else by its CUI; the first row when several name it. */
-export function correctionAnchor(id: string | number, cui: string | null | undefined): string | null {
-  if (!anchors) {
-    anchors = { byId: new Map(), byCui: new Map() };
-    for (const g of correctionGroups()) for (const r of g.rows) {
-      if (r.entityId && !anchors.byId.has(r.entityId)) anchors.byId.set(r.entityId, r.key);
-      // A CUI names the entity only for rows without an id (the page resolves them the same way).
-      if (!r.entityId && r.cui && !anchors.byCui.has(r.cui)) anchors.byCui.set(r.cui, r.key);
-    }
+/** The row an entity page links to, in these groups: by the entity's id, else by its CUI; the first row when several name it. */
+export function anchorIn(groups: readonly CorrectionGroup[], id: string | number, cui: string | null | undefined): string | null {
+  let byCui: string | null = null;
+  for (const g of groups) for (const r of g.rows) {
+    if (r.entityId === String(id)) return r.key;
+    // A CUI names the entity only for rows without an id (the page resolves them the same way).
+    if (!byCui && cui && !r.entityId && r.cui === cui) byCui = r.key;
   }
-  return anchors.byId.get(String(id)) ?? (cui ? anchors.byCui.get(cui) ?? null : null);
+  return byCui;
+}
+
+/** The same in the lists alone, before the database's part (lib/seap-corrections-data.ts getCorrectionAnchor). */
+export function correctionAnchor(id: string | number, cui: string | null | undefined): string | null {
+  return anchorIn(correctionGroups(), id, cui);
 }

@@ -3,7 +3,7 @@ import {
   ACCEPTED_AUTHORITY_CUI, AUTHORITY_UAT_CORRECTIONS, BUYER_REGIME_OVERRIDES, REVIEWED_AUTHORITY_NAMES, REVIEWED_FOREIGN_TWIN_MERGES,
   REVIEWED_REGISTRY_COLLISIONS, REVIEWED_SUPPLIER_MERGES, REVIEWED_TOWN_HALL_NAMES, REVIEWED_WINNER_RECORDS,
 } from "@seap/db";
-import { correctionAnchor, correctionGroups, mergeSource, onrcHolder, winnerSource } from "./seap-corrections";
+import { anchorIn, correctionAnchor, correctionGroups, mergeSource, onrcHolder, winnerSource } from "./seap-corrections";
 import { withDatabase } from "./seap-corrections-data";
 
 const groups = correctionGroups();
@@ -63,5 +63,16 @@ describe("Unde corectăm datele SEAP", () => {
     expect(out.find((g) => g.kind === "cumparator")!.rows[0]!.entityId).toBe("42");
     expect(out.find((g) => g.kind === "dubluri")!.rows.map((r) => r.key)).toEqual(["corectura-dubluri-1"]);
     expect(withDatabase(groups, {}, null).find((g) => g.kind === "dubluri")!.rows).toHaveLength(20);
+  });
+
+  it("links an entity page only to a row the section shows", () => {
+    // A merge whose firm no other row names: once the processing skipped it, its page has no row to link to.
+    const named = (id: string) => groups.flatMap((g) => g.rows).filter((r) => r.entityId === id).length;
+    const skipped = REVIEWED_SUPPLIER_MERGES.find((m) => named(m.targetId) === 1)!;
+    const shown = withDatabase(groups, {}, REVIEWED_SUPPLIER_MERGES.filter((m) => m !== skipped).map((m) => m.sourceId));
+    expect(anchorIn(groups, skipped.targetId, null)).toMatch(/^corectura-dubluri-/);
+    expect(anchorIn(shown, skipped.targetId, null)).toBeNull();
+    const cui = BUYER_REGIME_OVERRIDES[0]!.cui;
+    expect(anchorIn(withDatabase(groups, { [cui]: "42" }, null), "42", null)).toBe("corectura-cumparator-1");
   });
 });

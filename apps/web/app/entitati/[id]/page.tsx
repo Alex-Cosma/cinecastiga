@@ -38,7 +38,7 @@ import { lastMonthWords } from "@/lib/ask/historic";
 import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import { successorOf } from "@/lib/entity-successors";
-import { correctionAnchor } from "@/lib/seap-corrections";
+import { getCorrectionAnchor } from "@/lib/seap-corrections-data";
 import { getSuccessorTarget } from "@/lib/entity-successor-target";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -176,7 +176,7 @@ export default async function EntityPage({
   const txPage = /^[1-9]\d{0,5}$/.test(sp["p"] ?? "") ? Number(sp["p"]) : 1;
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const correction = correctionAnchor(id, cui);
+  const correctionAt = getCorrectionAnchor(id, cui).catch(() => null);
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
@@ -212,6 +212,7 @@ export default async function EntityPage({
       role === "supplier" ? getEntityRegistered(id).catch(() => null) : null,
     ]);
   const continuedAt = await successorTarget;
+  const correction = await correctionAt;
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
   // number ONRC registers to another firm, not a foreign number.
