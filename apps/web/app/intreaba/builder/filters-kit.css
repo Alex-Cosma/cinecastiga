@@ -317,7 +317,8 @@ dialog.qb-pop::backdrop{background:var(--fk-scrim)}
 
 /* ---------- 13. Entity search (combobox + results) ---------- */
 .qb-search{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--sunk);margin:0 0 10px}
-.qb-search::before{content:"";width:13px;height:13px;border:2px solid var(--faint);border-radius:50%;flex:none;box-shadow:5px 5px 0 -3.5px var(--faint)}
+/* The site's search glyph (DiscoveryIcon "search"), not a ring with a dot that read as a „Q” (polish 20 Nov, L3). */
+.qb-search::before{content:"";width:16px;height:16px;flex:none;background:var(--muted);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 4 4'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 4 4'/%3E%3C/svg%3E") center/contain no-repeat}
 .qb-search input{flex:1;min-width:0;border:0;background:transparent;outline:0;color:var(--ink);font:400 15px/1.4 var(--body)}
 .qb-search input::placeholder{color:var(--muted);font-size:13px}
 .qb-search.is-focus,.qb-search:focus-within{outline:3px solid var(--orange);outline-offset:2px}
@@ -502,6 +503,7 @@ button.qb-mix-row:hover,button.qb-mix-row:focus-visible{background:var(--fk-chip
 button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-only-w{opacity:1}
 .qb-mix-foot{margin:8px 0 0;color:var(--muted);font-size:12px}
 .qb-kinds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 10px}
+.qb-kinds-end{display:inline-flex;align-items:center;gap:6px}
 .qb-kind{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:5px 11px;border:1px solid var(--fk-chip-line);border-radius:999px;background:var(--fk-chip-bg);color:var(--ink2);font-size:13px}
 .qb-kind:hover{background:var(--fk-chip-hover)}
 .qb-kind b{font-weight:600;color:var(--ink)}

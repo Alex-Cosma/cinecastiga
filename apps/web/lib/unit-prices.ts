@@ -307,7 +307,9 @@ export function priceBuyerSource(q: DbSql, slug: string, pack: string, year: num
       from: q`marts.unit_price_buyers b`,
       where: q`b.family = ${slug} and b.pack = ${pack} ${yearIs(q, year)} and b.ratio is not null${onlyLeads ? q` and b.lead` : q``}`,
       bindings: {
-        institutie: { kind: "list", value: q`b.authority_id::text`, match: (ids) => q`b.authority_id = any(${q.array(ids)}::bigint[])`,
+        // Its funnel lists the institutions by lei above the median, as the table opens (polish, 20 November 2026: the
+        // options read in no visible order).
+        institutie: { kind: "list", value: q`b.authority_id::text`, weight: q`greatest(b.excess, 0)`, match: (ids) => q`b.authority_id = any(${q.array(ids)}::bigint[])`,
           names: { lookup: named("authority"), search: (term) => q`b.authority_id in ${matching(term)}` } },
         an: { kind: "list", value: q`b.year::text`, match: (ys) => q`b.year = any(${q.array(ys.map(Number))}::int[])` },
         judet: { kind: "list", value: q`b.county` },

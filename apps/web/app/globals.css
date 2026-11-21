@@ -1119,12 +1119,10 @@ main { padding: 30px 0 56px; }
 }
 .btn:hover { background: var(--sunk); text-decoration: none; transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn:active { transform: translateY(0) scale(.98); box-shadow: none; }
-.btn.pri {
-  color: var(--on-accent); border-color: var(--accent);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white) 0%, var(--accent) 100%);
-  box-shadow: 0 1px 2px rgba(32,76,60,.3), inset 0 1px 0 rgba(255,255,255,.18);
-}
-.btn.pri:hover { background: var(--accent); box-shadow: 0 6px 16px -6px rgba(32,76,60,.45); }
+/* Flat, as every other primary button (login, /metodologie, feedback); hover changes the colour only (polish M13,
+   20 November 2026). */
+.btn.pri { color: var(--on-accent); border-color: var(--accent); background: var(--accent); box-shadow: none; }
+.btn.pri:hover { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); border-color: color-mix(in srgb, var(--accent) 88%, var(--ink)); box-shadow: none; }
 .btn.sm { padding: 4px 9px; font-size: 12.5px; }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn[disabled] { opacity: .5; cursor: default; transform: none; box-shadow: none; }
@@ -1288,6 +1286,11 @@ table.rank { font-size: 14px; }
 table.rank th { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line2); }
 table.rank td { padding: 9px 10px; transition: background var(--fast); }
 table.rank tbody tr:hover td { background: var(--sunk); }
+/* The years table of the coverage (DataCoverage): its year is a row's label in body type, on the numbers' line, and the
+   row's hover starts at it (polish M10, 20 November 2026). */
+table.rank.coverage-years tbody th { font: inherit; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; text-align: left; vertical-align: middle; padding: 9px 10px; border-bottom: 1px solid var(--line); transition: background var(--fast); }
+table.rank.coverage-years td { vertical-align: middle; }
+table.rank.coverage-years tbody tr:hover th { background: var(--sunk); }
 table.rank .county { font-size: 12.5px; }
 .cri-pill { font-family: var(--mono); font-weight: 600; transition: transform var(--fast) var(--ease); }
 tr:hover .cri-pill { transform: scale(1.06); }
@@ -1422,7 +1425,7 @@ th.on a { color: var(--ink); }
 .admin-actions button { color: var(--accent); }
 .err-page { max-width: 560px; margin: 60px auto; text-align: center; }
 .err-page .page-title { font-size: 34px; }
-.err-page .page-sub { margin-left: auto; margin-right: auto; }
+.err-page .page-sub { margin-left: auto; margin-right: auto; text-wrap: balance; }
 .err-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .err-page .nowrap { white-space: nowrap; }
 .err-tech { margin-top: 28px; font-size: 13px; color: var(--muted); }

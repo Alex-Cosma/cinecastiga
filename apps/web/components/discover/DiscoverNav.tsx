@@ -9,8 +9,9 @@ import "./discover-nav.css";
  * „Prețuri” left this row on 20 November 2026 (owner): it is a section of its own in the site's menu.
  * „Atribuiri TED” (/supra-prag) belongs to Complet: Esențial hides its link, with the dot before it (owner, 18 November
  * 2026); the page itself, opened from a link, shows whole.
+ * „Caută” joined the row on 21 November 2026 (owner): /cauta had its own „Descoperă / Caută” crumbs.
  */
-export type DiscoverPage = "semnale" | "domenii" | "supra-prag";
+export type DiscoverPage = "semnale" | "domenii" | "cauta" | "supra-prag";
 
 /** Pages that belong to Complet (lib/view-mode.ts): their links are hidden in Esențial. */
 const COMPLET_ONLY = new Set<DiscoverPage>(["supra-prag"]);
@@ -19,6 +20,7 @@ const only = (key: DiscoverPage, current: DiscoverPage) => COMPLET_ONLY.has(key)
 const PAGES: [DiscoverPage, string, string][] = [
   ["semnale", "/semnale", "Semnale"],
   ["domenii", "/domenii", "Domenii"],
+  ["cauta", "/cauta", "Caută"],
   ["supra-prag", "/supra-prag", "Atribuiri TED"],
 ];
 

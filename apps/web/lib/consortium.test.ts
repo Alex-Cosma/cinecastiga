@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   consortiumExplanation, consortiumFraction, consortiumMembersLabel, consortiumPhrase, consortiumPhraseParts,
-  consortiumRankingNote, consortiumShareLabel, isConsortium,
+  consortiumRankingNote, consortiumShareLabel, consortiumShareParts, isConsortium,
 } from "./consortium";
 import { roCount } from "./ro-count";
 
@@ -22,6 +22,9 @@ describe("consortium share labels", () => {
     expect(consortiumShareLabel(null, "1.000 lei")).toBeNull();
     expect(consortiumShareLabel(3, null)).toBe("⅓ din contract · consorțiu de 3");
     expect(consortiumShareLabel(9, null)).toBe("parte egală din contract · consorțiu de 9");
+    // the narrow column's two lines: neither breaks inside itself (polish H3)
+    expect(consortiumShareParts(4, "9.059.483.352 lei")).toEqual(["¼ din 9.059.483.352\u00a0lei", "consorțiu\u00a0de\u00a04"]);
+    expect(consortiumShareParts(1, "1.000 lei")).toBeNull();
     expect(isConsortium(2)).toBe(true);
     expect(isConsortium(1.5)).toBe(false);
   });

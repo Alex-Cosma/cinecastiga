@@ -196,9 +196,18 @@
    hidden, the funnels wrap in one row of words over the list. */
 .sg-case-head .th-filter{display:inline-flex;align-items:center;flex-wrap:wrap;gap:0 2px}
 .sg-case-head .r.th-filter,.sg-case-head .r .th-filter{justify-content:flex-end}
+/* polish M3: a head is words that wrap between them, its last word and funnel held together (SignalsExplorer headWords) */
+.sg-case-head .th-filter{display:block;white-space:normal}
+.sg-case-head .r,.sg-case-head .r .th-filter{text-align:right}
+.sg-case-head .sg-head-tail{display:inline-flex;align-items:center;gap:2px;white-space:nowrap;vertical-align:middle}
 .sg-head-dot{margin:0 6px;color:var(--faint)}
 .sg-funnels{display:none}
 @media(max-width:700px){
   .sg-funnels{display:flex;flex-wrap:wrap;gap:2px 14px;padding:4px 0 8px;border-bottom:1px solid var(--line);font-size:13px;font-weight:500;color:var(--muted)}
   .sg-funnels .th-filter{min-height:44px}
 }
+/* polish M9: a fact of a row's meta line stays whole (SignalsExplorer metaPieces) */
+.sg-meta .sg-nw{white-space:nowrap}
+/* polish L9 (20 November 2026): the county menu beside the type control speaks the same way, its weight and a thin
+   chevron drawn like the type control's, not the browser's own */
+.sg-explorer .sg-filters select{-webkit-appearance:none;appearance:none;font-weight:600;padding-right:38px;background-image:linear-gradient(45deg,transparent calc(50% - .5px),var(--ink2) calc(50% - .5px),var(--ink2) calc(50% + .5px),transparent calc(50% + .5px)),linear-gradient(-45deg,transparent calc(50% - .5px),var(--ink2) calc(50% - .5px),var(--ink2) calc(50% + .5px),transparent calc(50% + .5px));background-size:6px 6px;background-position:calc(100% - 21px) 52%,calc(100% - 15px) 52%;background-repeat:no-repeat}

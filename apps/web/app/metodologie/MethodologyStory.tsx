@@ -37,7 +37,7 @@ function scoreRoles(code: string): string | null {
 
 /** The version in force and its day; both change together with FLAGS_METHODOLOGY_VERSION (packages/db). */
 const VERSION = FLAGS_METHODOLOGY_VERSION;
-const VERSION_SINCE = "13 noiembrie 2026";
+const VERSION_SINCE = "20 noiembrie 2026";
 
 const longDate = (iso: string | null | undefined) =>
   iso ? new Intl.DateTimeFormat("ro-RO", { timeZone: "Europe/Bucharest", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso)) : null;
@@ -61,7 +61,7 @@ const KIND_ROW_LABEL: Record<KindKey, string> = {
   alte: "Alte instituții",
 };
 
-/** "Locul 30 din 720": Comuna Exemplara's place among the town halls of half to double its population. */
+/** "Locul 30 din 720": Comuna Vadu Podului's place among the town halls of half to double its population. */
 function exampleRank(f: MethodologyFigures | null): string {
   return f?.peers ? `Locul ${formatInt(f.peers.higher + 1)} din ${formatInt(f.peers.n + 1)}` : "Locul N din M";
 }
@@ -111,7 +111,7 @@ const CHAPTERS: { id: string; n: number | null; label: string }[] = [
   { id: "urma", n: 1, label: "O achiziție" },
   { id: "plafon", n: 2, label: "Plafonul" },
   { id: "adunam", n: 3, label: "Cum adunăm" },
-  { id: "anul", n: 4, label: "Tiparele Comunei Exemplara" },
+  { id: "anul", n: 4, label: "Tiparele Comunei Vadu Podului" },
   { id: "scorul", n: 5, label: "Cum se face scorul" },
   { id: "fata", n: 6, label: "Cu cine comparăm" },
   { id: "marime", n: null, label: "Ramură: firme mari, firme mici" },
@@ -151,7 +151,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           <a className="back mt-alone-back" href="/metodologie" data-go="scurt" data-only="esential">← Înapoi la ghid</a>
           <h1>Cum citim banii publici</h1>
           {/* Esențial keeps only step 1 of the year-long example: the year goes from the introduction. */}
-          <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Exemplara<span data-only="complet">, mai ales în 2024</span>.</p>
+          <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Vadu Podului<span data-only="complet">, mai ales în 2024</span>.</p>
           {/* The three lanes right under the introduction (UX audit Z7-30, variant A): a reader looking for a rule sees
               „Regulile” on the first screen; the four-step story opens the „Pe scurt” lane, nothing removed. In Esențial
               „Povestea” and „Regulile” belong to Complet: the row shows only while one of them is open whole, from a link
@@ -353,12 +353,14 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p className="mt-sr mt-st-live" aria-live="polite" />
           </section>
           {/* Esențial: the introduction already says the commune is invented; the firms appear only in Complet's parts. */}
-          <p className="mt-meta" data-only="complet">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
-          <div className="mt-go-row mt-top">
+          <p className="mt-meta" data-only="complet">Comuna Vadu Podului, Mobilier Vadu SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
+          {/* Esențial: one line under the card instead of a lone button (polish, 20 November 2026). */}
+          <p className="mt-also mt-go-line" data-only="esential"><a href="/semnale">Vezi semnalele <span aria-hidden="true">→</span></a></p>
+          <div className="mt-go-row mt-top" data-only="complet">
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
             {/* The most asked question, „de ce are primăria mea scorul X?”, in one step (UX audit Z7-32): the site's search
                 opens here (MethodologyBehavior); without JavaScript the link goes to /cauta. Esențial shows no score. */}
-            <a className="mt-go2" href="/cauta" data-open-search="" data-only="complet">Scorul unei instituții: caut-o</a>
+            <a className="mt-go2" href="/cauta" data-open-search="">Scorul unei instituții: caut-o</a>
           </div>
           <p className="mt-also" data-only="complet">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
           <section className="mt-brief" aria-labelledby="pe-scurt">
@@ -375,6 +377,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>La o <b>firmă</b>, suma se compară cu tot ce a câștigat ea direct: 1,5 milioane înseamnă un sfert pentru o firmă cu 6 milioane atribuite direct, dar doar 0,6% pentru una cu 240 de milioane. Un contract luat de trei firme împreună se împarte egal între ele. Respectarea plafonului e obligația cumpărătorului, nu a firmei.</span></li>
               <li data-only="complet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Comparația înseamnă un loc în clasament, de pildă „{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”. O primărie e pusă doar lângă <b>primăriile de mărime apropiată</b> (între jumătate și dublul populației ei), iar o firmă, lângă firmele din domeniul ei principal, dacă sunt cel puțin 100. <b>Spitalele nu au comparație.</b> Locul apare doar la scor moderat sau pronunțat.</span></li>
             </ul>
+            <p className="mt-terms-t">Cuvinte de pe site</p>
             <dl className="mt-terms">
               {BRIEF_TERMS.map((id) => (
                 <div key={id} id={id}>
@@ -385,7 +388,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             </dl>
           </section>
           <section className="mt-mini" aria-labelledby="mini-t" data-only="complet">
-            <h2 id="mini-t">Comuna Exemplara, în patru rânduri</h2>
+            <h2 id="mini-t">Comuna Vadu Podului, în patru rânduri</h2>
             <p className="mt-mini-cap">Punctele fiecărui tipar, ca pe pagina comunei</p>
             <ol className="mt-mini-l">
               <li><span>Trei comenzi de mobilier la aceeași firmă, adunate, trec de plafon</span><b>28</b></li>
@@ -414,11 +417,11 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <div className="mt-rb">
                 <p>Prezinți ca fapte înregistrarea din SEAP și tiparul. Scorul e un indicator: dacă îl folosești, spune sursa și data la care a fost calculat. Înainte să publici, cere punctul de vedere al instituției și al firmei.</p>
                 <div className="mt-write">
-                  <div className="mt-yes"><b>Așa da</b>„Potrivit datelor din SEAP, Comuna Exemplara a făcut la aceeași firmă trei comenzi de mobilier care, adunate, trec de plafon. Plafonul legal se raportează la valoarea estimată. E un tipar de verificat, nu o constatare. Am cerut primăriei documentele.”</div>
+                  <div className="mt-yes"><b>Așa da</b>„Potrivit datelor din SEAP, Comuna Vadu Podului a făcut la aceeași firmă trei comenzi de mobilier care, adunate, trec de plafon. Plafonul legal se raportează la valoarea estimată. E un tipar de verificat, nu o constatare. Am cerut primăriei documentele.”</div>
                   <div className="mt-yes"><b>Așa da, despre o firmă</b>„Un sfert din valoarea contractelor directe atribuite Firmei A din 2018 încoace a venit din achiziții declarate peste plafon, la două primării. Respectarea plafonului e obligația cumpărătorului. Am cerut punctul de vedere al primăriilor și al firmei.”</div>
-                  <div className="mt-no"><b>Așa nu</b>„Comuna Exemplara, printre cele mai riscante primării din țară.” Scorul nu e o vină, nu e o probă. În titlu, scrie tiparul, nu scorul sau locul în clasament.</div>
+                  <div className="mt-no"><b>Așa nu</b>„Comuna Vadu Podului, printre cele mai riscante primării din țară.” Scorul nu e o vină, nu e o probă. În titlu, scrie tiparul, nu scorul sau locul în clasament.</div>
                 </div>
-                <p className="mt-cite" id="cite-s">Comuna Exemplara: trei comenzi de mobilier la aceeași firmă, care, adunate, trec de plafon (tipar de verificat); scor 55 din 100 (moderat), un indicator, nu o constatare; versiunea metodologiei {VERSION}; scor calculat la {riskDay ?? "…"}, din datele SEAP de până atunci; cinecâștigă?, https://cinecastiga.ro/entitati/… (adresa paginii), consultat la {today}.</p>
+                <p className="mt-cite" id="cite-s">Comuna Vadu Podului: trei comenzi de mobilier la aceeași firmă, care, adunate, trec de plafon (tipar de verificat); scor 55 din 100 (moderat), un indicator, nu o constatare; versiunea metodologiei {VERSION}; scor calculat la {riskDay ?? "…"}, din datele SEAP de până atunci; cinecâștigă?, https://cinecastiga.ro/entitati/… (adresa paginii), consultat la {today}.</p>
                 <button type="button" className="mt-btn" data-copy="cite-s">Copiază modelul de citare</button>
                 <p className="mt-how">Pagina arată mereu cele mai noi date, așa că păstrează fișierul cu înregistrările, descărcat în ziua în care citezi.</p>
               </div>
@@ -433,7 +436,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 </div>
                 <p>Primăria ta e „fără semnal în scor”? Înseamnă doar că tiparele pe care le urmărim nu sunt destul de mari acolo, nu că totul e în regulă. Documentele se pot cere oricum.</p>
                 <p><b>Model de întrebare scrisă în consiliu</b></p>
-                <p className="mt-cite" id="intreb-s">Către Primăria Comunei Exemplara. În calitate de consilier local, vă rog să îmi comunicați, în scris, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; hotărârea de rectificare bugetară din … și data publicării acesteia. Vă rog să precizați, pentru fiecare document, data la care a fost întocmit.</p>
+                <p className="mt-cite" id="intreb-s">Către Primăria Comunei Vadu Podului. În calitate de consilier local, vă rog să îmi comunicați, în scris, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; hotărârea de rectificare bugetară din … și data publicării acesteia. Vă rog să precizați, pentru fiecare document, data la care a fost întocmit.</p>
                 <button type="button" className="mt-btn" data-copy="intreb-s">Copiază întrebarea</button>
               </div>
             </details>
@@ -519,15 +522,15 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <path d="M8 11h36M8 20h24" stroke="var(--orange)" strokeWidth="3" strokeLinecap="round" />
               </g>
             </svg>
-            <p>Comuna Exemplara are 9.000 de locuitori. Ioana, reporteră la ziarul local, vrea să afle pe ce merg banii comunei.</p>
+            <p>Comuna Vadu Podului are 9.000 de locuitori. Ioana, reporteră la ziarul local, vrea să afle pe ce merg banii comunei.</p>
             <p>Prima achiziție pe care o găsește: în martie, primăria a cumpărat bănci pentru parcul din centru. Ca orice instituție publică, a trecut-o în SEAP, registrul public al achizițiilor. De acolo o preluăm noi.</p>
             <figure className="mt-fig">
               <span className="mt-stamp">Achiziție directă</span>
               <dl className="mt-receipt">
                 <dt>Cine cumpără</dt>
-                <dd>Comuna Exemplara</dd>
+                <dd>Comuna Vadu Podului</dd>
                 <dt>De la cine</dt>
-                <dd>Mobilier Exemplara SRL</dd>
+                <dd>Mobilier Vadu SRL</dd>
                 <dt>Ce</dt>
                 <dd>40 de bănci pentru parc</dd>
                 <dt>Când</dt>
@@ -633,15 +636,15 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           </section>
           <section className="mt-ch" id="anul" aria-labelledby="h-anul">
             <div className="mt-col mt-stack" style={{ marginBottom: "32px" }}>
-              <h2 id="h-anul"><span className="mt-ch-n">Capitolul 4</span>Tiparele Comunei Exemplara</h2>
+              <h2 id="h-anul"><span className="mt-ch-n">Capitolul 4</span>Tiparele Comunei Vadu Podului</h2>
               <p>Ioana trece de la o singură achiziție la toate. Pe pagina comunei găsește patru tipare și le ia pe rând.</p>
-              <p>Din 2018 încoace, Comuna Exemplara a făcut 210 achiziții directe, de 10,8 milioane de lei în total. Scorul ține cont de toți anii din 2018 încoace, nu de unul singur, și de achizițiile directe; doar la „Adunate, trec de plafon” contează și cât înseamnă ele din tot ce a contractat comuna. Ne uităm mai ales la 2024, anul cu cele mai multe <b>tipare</b> ale ei: lucruri care, o singură dată, nu spun nimic, dar care, repetate, merită verificate.</p>
-              <p>Un singur tipar poate da cel mult 60 de puncte. Comuna are tipare de două feluri: despre plafon și despre decembrie. <span aria-hidden="true">Caseta <b>Scorul Comunei Exemplara</b> arată cum crește scorul pe măsură ce afli tiparele. Pe calculator stă lângă text, iar pe telefon, într-o bandă sus. La final găsești punctele fiecărui tipar, așa cum apar pe pagina comunei.</span><span className="mt-sr">După fiecare tipar vei auzi noul scor, iar punctele fiecărui tipar sunt la finalul capitolului.</span></p>
+              <p>Din 2018 încoace, Comuna Vadu Podului a făcut 210 achiziții directe, de 10,8 milioane de lei în total. Scorul ține cont de toți anii din 2018 încoace, nu de unul singur, și de achizițiile directe; doar la „Adunate, trec de plafon” contează și cât înseamnă ele din tot ce a contractat comuna. Ne uităm mai ales la 2024, anul cu cele mai multe <b>tipare</b> ale ei: lucruri care, o singură dată, nu spun nimic, dar care, repetate, merită verificate.</p>
+              <p>Un singur tipar poate da cel mult 60 de puncte. Comuna are tipare de două feluri: despre plafon și despre decembrie. <span aria-hidden="true">Caseta <b>Scorul Comunei Vadu Podului</b> arată cum crește scorul pe măsură ce afli tiparele. Pe calculator stă lângă text, iar pe telefon, într-o bandă sus. La final găsești punctele fiecărui tipar, așa cum apar pe pagina comunei.</span><span className="mt-sr">După fiecare tipar vei auzi noul scor, iar punctele fiecărui tipar sunt la finalul capitolului.</span></p>
               <p><button type="button" className="mt-btn mt-allcalc" aria-pressed="false">Arată toate calculele</button></p>
             </div>
             <div className="mt-year">
               <aside className="mt-ledger" aria-hidden="true">
-                <h3>Scorul Comunei Exemplara</h3>
+                <h3>Scorul Comunei Vadu Podului</h3>
                 <p className="mt-lg-how">cum crește scorul</p>
                 <p className="mt-lg-cap">Cum crește scorul comunei</p>
                 <div className="mt-tot">
@@ -665,7 +668,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <article className="mt-ev" data-step="1" aria-labelledby="e1">
                   <span className="mt-when" aria-hidden="true">Martie – mai</span>
                   <h3 id="e1"><span className="mt-sr">Martie – mai: </span>Trei comenzi de mobilier, la aceeași firmă</h3>
-                  <p>Comuna cumpără mobilier pentru trei școli, de fiecare dată direct de la Mobilier Exemplara SRL: de trei ori câte 212.000 de lei. Luată separat, fiecare comandă e sub plafonul pentru produse. Adunate, fac 636.000 de lei.</p>
+                  <p>Comuna cumpără mobilier pentru trei școli, de fiecare dată direct de la Mobilier Vadu SRL: de trei ori câte 212.000 de lei. Luată separat, fiecare comandă e sub plafonul pentru produse. Adunate, fac 636.000 de lei.</p>
                   <figure className="mt-fig">
                     <div className="mt-blocks mt-b3" role="img" aria-label="Trei comenzi de câte 212.000 lei, puse una după alta: 636.000 lei, peste dublul plafonului de 270.120 lei">
                       <span className="mt-lim" style={{ left: "42.5%" }} aria-hidden="true"><b>plafon</b></span>
@@ -700,7 +703,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       <div><b>De ce poate conta</b>Legea interzice împărțirea unei achiziții pentru a evita procedura (Legea 98/2016, art. 11). Ea are în vedere necesarul estimat pe un an, indiferent de firmă, iar noi adunăm doar comenzile de același fel la aceeași firmă.</div>
                     </div>
                   </div>
-                  <p className="mt-sr">Scorul Comunei Exemplara ajunge la 30 din 100.</p>
+                  <p className="mt-sr">Scorul Comunei Vadu Podului ajunge la 30 din 100.</p>
                   <div className="mt-ask">
                     <p className="mt-q"><span className="mt-lead">Ce crezi?</span> Se poate spune, din aceste date, că primăria a încălcat legea?</p>
                     <div className="mt-opts" role="group" aria-label="Variante">
@@ -755,7 +758,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       <div><b>De ce poate conta</b>Dacă nevoia reală era mai mare, sumele fixate chiar sub limită pot ocoli procedura.</div>
                     </div>
                   </div>
-                  <p className="mt-sr">Scorul Comunei Exemplara ajunge la 38 din 100.</p>
+                  <p className="mt-sr">Scorul Comunei Vadu Podului ajunge la 38 din 100.</p>
                 </article>
                 <article className="mt-ev" data-step="3" aria-labelledby="e3">
                   <span className="mt-when" aria-hidden="true">Septembrie – octombrie</span>
@@ -789,7 +792,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       <div><b>De ce poate conta</b>Peste plafon, legea cere o procedură.</div>
                     </div>
                   </div>
-                  <p className="mt-sr">Scorul Comunei Exemplara ajunge la 46 din 100.</p>
+                  <p className="mt-sr">Scorul Comunei Vadu Podului ajunge la 46 din 100.</p>
                 </article>
                 <article className="mt-ev" data-step="4" aria-labelledby="e4">
                   <span className="mt-when" aria-hidden="true">Decembrie</span>
@@ -849,7 +852,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       <div><b>De ce poate conta</b>La final de an, bugetele se închid și contractele se înghesuie, iar fiecare devine mai greu de verificat. Merită întrebat de ce s-au încheiat atunci.</div>
                     </div>
                   </div>
-                  <p className="mt-sr">Scorul Comunei Exemplara ajunge la 55 din 100, un scor moderat.</p>
+                  <p className="mt-sr">Scorul Comunei Vadu Podului ajunge la 55 din 100, un scor moderat.</p>
                   <p className="mt-how">Ce a aflat Ioana când a cerut documentele citești în <a href="#epilog">epilog</a>.</p>
                 </article>
                 <div className="mt-split-box">
@@ -1026,7 +1029,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Vezi formula</summary>
               <ul className="mt-calc">
                 <li>Spus simplu: fiecare familie umple o parte din pătrățelele goale, iar scorul e numărul celor umplute.</li>
-                <li><p className="mt-math">scor = 100 × (1 − (1 − 0,2 × F₁) × (1 − 0,2 × F₂) × …)</p>F₁, F₂… sunt nivelurile familiilor. Pentru Comuna Exemplara: plafonul 1,52 + 0,4 × 1 + 0,4 × 1 = 2,32; decembrie 0,833; 100 × (1 − 0,536 × 0,833) = 55.</li>
+                <li><p className="mt-math">scor = 100 × (1 − (1 − 0,2 × F₁) × (1 − 0,2 × F₂) × …)</p>F₁, F₂… sunt nivelurile familiilor. Pentru Comuna Vadu Podului: plafonul 1,52 + 0,4 × 1 + 0,4 × 1 = 2,32; decembrie 0,833; 100 × (1 − 0,536 × 0,833) = 55.</li>
                 <li>Formula are forma probabilității reuniunii unor evenimente independente, dar nu o citim ca pe o probabilitate. Am ales-o pentru că fiecare familie nouă umple doar o parte din ce a rămas gol, iar scorul nu poate trece de 100.</li>
                 <li><a href="#formula">Toate regulile formulei</a></li>
               </ul>
@@ -1039,7 +1042,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <button type="button" className="mt-tg" data-k="round" aria-pressed="true"><i /><span>Multe sume imediat sub plafon<small>familia plafonului · singur 20</small></span></button>
                 <button type="button" className="mt-tg" data-k="above" aria-pressed="true"><i /><span>Declarate directe, peste plafon<small>familia plafonului · singur 20</small></span></button>
                 <button type="button" className="mt-tg" data-k="dec" aria-pressed="true"><i /><span>Mulți bani contractați în decembrie<small>familia decembrie · singur 17</small></span></button>
-                <button type="button" className="mt-tg" data-k="rel" aria-pressed="false"><i /><span>O firmă are mare parte din valoare<small>exemplu: comuna nu are acest tipar; dacă o firmă ar primi 75% din bani, singur 40</small></span></button>
+                <button type="button" className="mt-tg" data-k="rel" aria-pressed="false"><i /><span>O firmă are mare parte din valoare<small>exemplu: comuna nu are acest tipar; dacă o firmă ar câștiga 75% din valoare, singur 40</small></span></button>
               </div>
               <div className="mt-big-score" aria-hidden="true">
                 <b id="mx">55</b>
@@ -1187,7 +1190,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p>Redactorul o întreabă pe Ioana dacă 55 e mult. Ca să-i răspundă, Ioana caută primăriile de aceeași mărime.</p>
             <p>Un scor de 55 spune mai mult când îl compari cu instituții asemănătoare. Cine cu cine se compară:</p>
             <ul className="mt-plain">
-              <li><b>Primăriile:</b> cu primăriile care au între jumătate și dublul populației lor, fie că sunt comune, orașe sau municipii. Pentru Comuna Exemplara, între 4.500 și 18.000 de locuitori.</li>
+              <li><b>Primăriile:</b> cu primăriile care au între jumătate și dublul populației lor, fie că sunt comune, orașe sau municipii. Pentru Comuna Vadu Podului, între 4.500 și 18.000 de locuitori.</li>
               <li><b>Spitalele:</b> nu se compară, pentru că un spital județean și unul orășenesc nu se aseamănă.</li>
               <li><b>Școlile, consiliile județene, primăriile de sector din București, organizațiile utilizatorilor de apă pentru irigații:</b> fiecare se compară doar în categoria ei.</li>
               <li><b>Firmele:</b> cu firmele din domeniul lor principal, doar dacă în domeniu sunt cel puțin 100 de firme.</li>
@@ -1196,14 +1199,14 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <figure className="mt-fig">
                 {peers ? (
                   <>
-                    <div className="mt-pbar" role="img" aria-label={`Din ${countWords(peers.n, "altă primărie asemănătoare", "alte primării asemănătoare")}: ${formatInt(peers.zero)} au scorul 0, ${formatInt(peers.lower + peers.same)} au un scor mai mic sau egal cu al Comunei Exemplara, ${formatInt(peers.higher)} au un scor mai mare`}>
+                    <div className="mt-pbar" role="img" aria-label={`Din ${countWords(peers.n, "altă primărie asemănătoare", "alte primării asemănătoare")}: ${formatInt(peers.zero)} au scorul 0, ${formatInt(peers.lower + peers.same)} au un scor mai mic sau egal cu al Comunei Vadu Podului, ${formatInt(peers.higher)} au un scor mai mare`}>
                       <i className="mt-z" style={{ flex: String(peers.zero) }}>{formatInt(peers.zero)} au 0</i>
                       <i className="mt-l" style={{ flex: String(peers.lower + peers.same) }}>{formatInt(peers.lower + peers.same)}</i>
                       <i className="mt-me" style={{ flex: "0 0 12px" }} />
                       <i className="mt-h" style={{ flex: String(peers.higher) }}>{formatInt(peers.higher)}</i>
                     </div>
-                    <p className="mt-pbar-l" aria-hidden="true">Pe bară: {formatInt(peers.zero)} au 0, {formatInt(peers.lower + peers.same)} au un scor mai mic{peers.same ? " sau egal" : ""}, linia neagră e Comuna Exemplara ({EXAMPLE_TOWN.score}), iar ultimele {formatInt(peers.higher)} au un scor mai mare.</p>
-                    <figcaption>{peers.n === 1 ? "O altă primărie asemănătoare" : countWords(peers.n, "altă primărie asemănătoare", "alte primării asemănătoare")}, cu scorurile din {riskDay}. {formatInt(peers.higher)} au un scor mai mare decât Comuna Exemplara, așa că pe pagina ei vezi <b>„{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”</b> ({formatInt(peers.n + 1)} = cele {formatInt(peers.n)} și comuna). Locul se socotește doar după primăriile cu scor mai mare, așa că cele {formatInt(peers.zero)} cu 0 nu-l umflă.</figcaption>
+                    <p className="mt-pbar-l" aria-hidden="true">Pe bară: {formatInt(peers.zero)} au 0, {formatInt(peers.lower + peers.same)} au un scor mai mic{peers.same ? " sau egal" : ""}, linia neagră e Comuna Vadu Podului ({EXAMPLE_TOWN.score}), iar ultimele {formatInt(peers.higher)} au un scor mai mare.</p>
+                    <figcaption>{peers.n === 1 ? "O altă primărie asemănătoare" : countWords(peers.n, "altă primărie asemănătoare", "alte primării asemănătoare")}, cu scorurile din {riskDay}. {formatInt(peers.higher)} au un scor mai mare decât Comuna Vadu Podului, așa că pe pagina ei vezi <b>„{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”</b> ({formatInt(peers.n + 1)} = cele {formatInt(peers.n)} și comuna). Locul se socotește doar după primăriile cu scor mai mare, așa că cele {formatInt(peers.zero)} cu 0 nu-l umflă.</figcaption>
                   </>
                 ) : (
                   <figcaption>Grupul de comparație nu a putut fi citit acum.</figcaption>
@@ -1226,7 +1229,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           </section>
           <section className="mt-ch mt-col mt-stack" id="marime" aria-labelledby="h-marime">
             <h2 id="h-marime"><span className="mt-ch-n">Ramură, pentru firme</span>Firme mari, firme mici</h2>
-            <p>Ioana se uită și la Mobilier Exemplara SRL, firma cu cele trei comenzi. Vrea să știe cum se citește scorul unei firme.</p>
+            <p>Ioana se uită și la Mobilier Vadu SRL, firma cu cele trei comenzi. Vrea să știe cum se citește scorul unei firme.</p>
             <details suppressHydrationWarning className="mt-branch" id="marime-d">
               <summary>Deschide ramura despre firme <span className="mt-bs">cam 5 minute</span></summary>
               <div className="mt-stack">
@@ -1336,18 +1339,18 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <details suppressHydrationWarning className="mt-sock mt-tpl">
               <summary>Model de cerere (Legea 544/2001)</summary>
               <p className="mt-how">Numerele și datele achizițiilor le iei din fișierul „Descarcă înregistrările”.</p>
-              <p className="mt-cite" id="req">Către Primăria Comunei Exemplara. În temeiul Legii nr. 544/2001 privind liberul acces la informațiile de interes public, vă rog să îmi comunicați, în format electronic, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; contractele, procesele-verbale de recepție și documentele de plată aferente acestora. Vă mulțumesc. Nume, prenume, adresa de e-mail.</p>
+              <p className="mt-cite" id="req">Către Primăria Comunei Vadu Podului. În temeiul Legii nr. 544/2001 privind liberul acces la informațiile de interes public, vă rog să îmi comunicați, în format electronic, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; contractele, procesele-verbale de recepție și documentele de plată aferente acestora. Vă mulțumesc. Nume, prenume, adresa de e-mail.</p>
               <button type="button" className="mt-btn" data-copy="req">Copiază cererea</button>
             </details>
             <div className="mt-press" id="citeaza-p">
               <h3>Ești jurnalist?</h3>
               <p className="mt-how">Ca fapt, citezi înregistrarea din SEAP și tiparul. Scorul e un indicator: dacă îl folosești, precizează de unde provine și din ce zi e. Înainte să publici, cere punctul de vedere al instituției și al firmei.</p>
               <div className="mt-write">
-                <div className="mt-yes"><b>Așa da</b>„Potrivit datelor din SEAP, Comuna Exemplara a făcut la aceeași firmă trei comenzi de mobilier care, adunate, trec de plafon. Plafonul legal se raportează la valoarea estimată. E un tipar de verificat, nu o constatare. Am cerut primăriei documentele.”</div>
+                <div className="mt-yes"><b>Așa da</b>„Potrivit datelor din SEAP, Comuna Vadu Podului a făcut la aceeași firmă trei comenzi de mobilier care, adunate, trec de plafon. Plafonul legal se raportează la valoarea estimată. E un tipar de verificat, nu o constatare. Am cerut primăriei documentele.”</div>
                 <div className="mt-yes"><b>Așa da, despre o firmă</b>„Un sfert din valoarea contractelor directe atribuite Firmei A din 2018 încoace a venit din achiziții declarate peste plafon, la două primării. Respectarea plafonului e obligația cumpărătorului. Am cerut punctul de vedere al primăriilor și al firmei.”</div>
-                <div className="mt-no"><b>Așa nu</b>„Comuna Exemplara, printre cele mai riscante primării din țară.” Scorul nu e o vină, nu e o probă. În titlu, scrie tiparul, nu scorul sau locul în clasament.</div>
+                <div className="mt-no"><b>Așa nu</b>„Comuna Vadu Podului, printre cele mai riscante primării din țară.” Scorul nu e o vină, nu e o probă. În titlu, scrie tiparul, nu scorul sau locul în clasament.</div>
               </div>
-              <p className="mt-cite" id="cite">Comuna Exemplara: trei comenzi de mobilier la aceeași firmă, care, adunate, trec de plafon (tipar de verificat); scor 55 din 100 (moderat), un indicator, nu o constatare; versiunea metodologiei {VERSION}; scor calculat la {riskDay ?? "…"}, din datele SEAP de până atunci; cinecâștigă?, https://cinecastiga.ro/entitati/… (adresa paginii), consultat la {today}.</p>
+              <p className="mt-cite" id="cite">Comuna Vadu Podului: trei comenzi de mobilier la aceeași firmă, care, adunate, trec de plafon (tipar de verificat); scor 55 din 100 (moderat), un indicator, nu o constatare; versiunea metodologiei {VERSION}; scor calculat la {riskDay ?? "…"}, din datele SEAP de până atunci; cinecâștigă?, https://cinecastiga.ro/entitati/… (adresa paginii), consultat la {today}.</p>
               <button type="button" className="mt-btn" data-copy="cite">Copiază modelul de citare</button>
               <p className="mt-how">Pagina arată mereu datele cele mai noi. Păstrează fișierul cu înregistrările, descărcat în ziua în care citezi, și notează versiunea și data, pentru că la o versiune nouă scorul se poate schimba.</p>
             </div>
@@ -1364,7 +1367,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 </div>
                 <p>Primăria ta e „fără semnal în scor”? Înseamnă doar că tiparele pe care le urmărim nu sunt destul de mari acolo, nu că totul e în regulă. Documentele se pot cere oricum.</p>
                 <p><b>Model de întrebare scrisă în consiliu</b></p>
-                <p className="mt-cite" id="intreb">Către Primăria Comunei Exemplara. În calitate de consilier local, vă rog să îmi comunicați, în scris, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; hotărârea de rectificare bugetară din … și data publicării acesteia. Vă rog să precizați, pentru fiecare document, data la care a fost întocmit.</p>
+                <p className="mt-cite" id="intreb">Către Primăria Comunei Vadu Podului. În calitate de consilier local, vă rog să îmi comunicați, în scris, următoarele documente: programul anual al achizițiilor publice pentru anul 2024, inclusiv anexa privind achizițiile directe; referatele de necesitate și, acolo unde normele le cer, notele justificative pentru achizițiile directe nr. … din data de …; hotărârea de rectificare bugetară din … și data publicării acesteia. Vă rog să precizați, pentru fiecare document, data la care a fost întocmit.</p>
                 <button type="button" className="mt-btn" data-copy="intreb">Copiază întrebarea</button>
               </div>
             </div>
@@ -1397,7 +1400,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             </div>
           </section>
           <section className="mt-ch mt-col mt-stack" id="epilog" aria-labelledby="h-epilog">
-            <h2 id="h-epilog"><span className="mt-ch-n">Epilog</span>Ce s-a aflat la Comuna Exemplara</h2>
+            <h2 id="h-epilog"><span className="mt-ch-n">Epilog</span>Ce s-a aflat la Comuna Vadu Podului</h2>
             <p>Ioana a văzut semnalele și a trimis primăriei o cerere în baza Legii 544. Primăria a cerut prelungirea termenului și, după trei săptămâni, i-a trimis 31 de pagini.</p>
             <svg className="mt-scene mt-sm" viewBox="0 0 680 130" role="img" aria-label="Desen: pe birou, dosarul deschis primit de la primărie, un teanc de 31 de pagini și carnetul cu titlul articolului">
               <path d="M0 118h680" stroke="var(--line2)" strokeWidth="2" />
@@ -1442,7 +1445,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <li>Scor = 100 × (1 − 0,616 × 0,833) = 48,7 ≈ <b>49</b>. Cu nivelul rotunjit la 1,5 ar ieși 48; pagina comunei folosește cifrele exacte.</li>
               </ul>
             </details>
-            <p>Un tipar s-a lămurit, unul a scăzut la un singur caz, iar două au rămas întrebări deschise. Ioana a scris despre ce a aflat, cu răspunsul primăriei alături, și a spus clar ce nu se știe încă. Titlul ei: „Comuna Exemplara: o achiziție directă peste plafon, încă fără explicație”. Acesta e rostul unui semnal: să te ducă la documente, nu la o concluzie.</p>
+            <p>Un tipar s-a lămurit, unul a scăzut la un singur caz, iar două au rămas întrebări deschise. Ioana a scris despre ce a aflat, cu răspunsul primăriei alături, și a spus clar ce nu se știe încă. Titlul ei: „Comuna Vadu Podului: o achiziție directă peste plafon, încă fără explicație”. Acesta e rostul unui semnal: să te ducă la documente, nu la o concluzie.</p>
           </section>
           <section className="mt-ch mt-col mt-stack" id="cuvinte" aria-labelledby="h-cuvinte">
             <h2 id="h-cuvinte">Cuvintele din pagină</h2>
@@ -2063,7 +2066,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           </section>
           <section className="mt-col mt-despre" id="despre" aria-labelledby="h-despre">
             <h2 id="h-despre">Despre cinecâștigă?</h2>
-            <p>Un proiect independent. Codul e public: <a href="https://github.com/Alex-Cosma/cinecastiga">github.com/Alex-Cosma/cinecastiga</a>. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare. <a href="/despre">Despre și contact</a></p>
+            <p>Un proiect independent. Codul e public: <a href="https://github.com/Alex-Cosma/cinecastiga">github.com/Alex-Cosma/cinecastiga</a>. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare. Mai multe: <a href="/despre">Despre și contact</a>.</p>
             <p>Datele despre administratorii firmelor vin din Registrul Comerțului (nume, dată de naștere, localitate) și le folosim doar ca să recunoaștem aceeași persoană în mai multe firme. Lângă nume apar anul și localitatea nașterii; ziua și luna nu se publică. Ce ținem și cum ceri corectarea sau ștergerea: <a href="/date-personale">Date personale</a>.</p>
           </section>
         </div>

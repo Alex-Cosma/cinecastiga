@@ -855,3 +855,42 @@
 .mt .mt-prog i{width:100%;transform-origin:0 50%;transform:scaleX(var(--mt-prog,0));transition:none}
 @supports (animation-timeline:scroll()){.mt .mt-prog i{animation:mt-prog linear both;animation-timeline:scroll(root block)}}
 @keyframes mt-prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Polish, 20 November 2026 (records report). */
+/* M4: the inline "?" is the site's outlined "?" (guide.css .term-mark), and the dotted line runs under the word only,
+   so punctuation sits right after the "?" with no visual gap. */
+.mt .mt-term{border-bottom:0;text-decoration:underline dotted var(--accent);text-decoration-thickness:1.5px;text-underline-offset:5px}
+.mt .mt-term::after{width:1.35em;height:1.35em;margin-left:.3em;border:1px solid currentColor;border-radius:50%;background:none;color:inherit;font-size:.78em;font-weight:600;line-height:1;vertical-align:.08em;box-sizing:border-box}
+/* M2: the two buttons at the end of the story sit on one line. */
+.mt .mt-lane-end .mt-go{margin-top:0}
+/* M3: „Despre cinecâștigă?” keeps air under its title and between its paragraphs. */
+.mt .mt-despre h2{margin-bottom:10px}
+.mt .mt-despre p+p{margin-top:12px}
+/* Low: the text above and below the brief does not touch its neighbours. */
+.mt .mt-go-row.mt-top{margin:0 0 16px}
+.mt .mt-also{margin-bottom:20px}
+/* Low: on a wide screen the right-hand chapter list is the one way to jump; the card keeps the page's 40 px gutter. */
+@media(min-width:1180px){.mt .mt-toc-wrap{display:none}}
+@media(min-width:1280px){.mt .mt-year{grid-template-columns:250px minmax(0,680px) 250px;gap:10px}}
+/* Low: the steps share the tallest step's height (the stage does not jump); a shorter step keeps its caption right under
+   its drawing and the spare room goes under the caption. */
+.mt .mt-fr{align-content:start}
+/* Low: on a phone „Pe scurt” gives its text more of the width. */
+@media(max-width:560px){
+.mt .mt-brief{padding:18px 16px}
+.mt .mt-points li{grid-template-columns:20px 1fr;gap:10px}
+.mt .mt-points li svg{width:18px;height:18px}
+}
+.mt .mt-go-line{margin:4px 0 20px;font-weight:600}
+.mt .mt-go-row.mt-top{margin:16px 0 16px}
+/* Low: a legend's swatch or number sits on its label's first line, not mid-height of a two-line label. */
+.mt .mt-legend-l li{align-items:flex-start}
+.mt .mt-legend-l .mt-sw{flex:none;margin-top:.22em}
+.mt .mt-legend-l li>b:first-child{flex:none}
+/* M5: the three words under „Pe scurt” have a label. */
+.mt .mt-terms-t{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.mt .mt-terms-t+.mt-terms{margin-top:10px;padding-top:0;border-top:0}
+/* Low: the correction's two buttons have one size and one shape: an outline each, the accent on „Trimite o corectură”. */
+.mt .mt-cta>a.mt-report,.mt .mt-cta>a.mt-s{min-height:52px;padding:0 22px;font-size:16px;font-weight:600;background:var(--surface)}
+/* The drawing sits on the frame's floor at its own height, not centred in a taller box (the gap above the caption). */
+.mt .mt-fr .mt-art>svg{height:auto;max-height:100%;align-self:end}

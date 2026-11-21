@@ -15,7 +15,7 @@ const CHECK = '<svg class="mo-done-check" viewBox="0 0 16 16" aria-hidden="true"
 // rf-2026.22 (packages/db/src/profile-flags.ts): a family is its strongest pattern plus 0.4 × the others (caps:
 // threshold avoidance 4, relation 2, December 1.25); score = 100 × (1 − Π(1 − 0.2·F)). The points of each pattern are
 // split as on the entity page (scorePoints): each family's share of −ln(1 − 0.2·F), split inside the family by what each
-// pattern adds, rounded by the largest remainders. The levels are Comuna Exemplara's.
+// pattern adds, rounded by the largest remainders. The levels are Comuna Vadu Podului's.
 type Code = "split" | "round" | "above" | "dec" | "rel";
 type On = Partial<Record<Code, boolean>>;
 const X: Record<Code, number> = { split: 1.5215, round: 1.0, above: 1.0, dec: 0.8333, rel: 2.0 };
@@ -122,7 +122,7 @@ function mount(root: HTMLElement): () => void {
     );
   });
 
-  // Chapter 4: the ledger follows the four patterns of Comuna Exemplara as they scroll past.
+  // Chapter 4: the ledger follows the four patterns of Comuna Vadu Podului as they scroll past.
   const P4 = points({ split: true, round: true, above: true, dec: true });
   const SPLIT4 = (["split", "round", "above", "dec"] as Code[]).map((k) => P4[k]).join(" + ");
   const LAST = STEPS.map((s) => NAMES[s[s.length - 1]!]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SignalInstance, SignalPage, SignalRiskGroup } from "@/lib/signals";
@@ -70,6 +70,13 @@ function TypeChooser({ code, role, counts, choose, close }: { code: string; role
 function County({ value, role, onChange, id }: { value: string | null; role: SignalState["role"]; onChange: (value: string | null) => void; id: string }) {
   return <label htmlFor={id}><span className="sg-label">{role === "authority" ? "Județul instituției" : "Județul firmei"}</span><select id={id} value={value ?? ""} onChange={e => onChange(e.target.value || null)}><option value="">Toate județele</option>{value && !COUNTIES.includes(value) && <option>{value}</option>}{COUNTIES.map(c => <option key={c}>{c}</option>)}</select></label>;
 }
+/** A row's facts joined by „·”, each kept whole: an amount never breaks from its unit (polish M9, 20 November 2026);
+ *  a segment too narrow for its points shows none (they are in the bar's label). */
+function metaPieces(pieces: string[]): ReactNode {
+  // the „·” ends its line with the fact before it, never starts the next one
+  return pieces.map((piece, i) => <Fragment key={i}>{i ? " " : ""}<span className="sg-nw">{piece}{i < pieces.length - 1 ? "\u00a0·" : ""}</span></Fragment>);
+}
+
 export default function SignalsExplorer({ state, signals, risk, counts, distribution, error }: {
   state: SignalState; signals: SignalPage | null; risk: SignalRiskGroup | null;
   counts: Record<string, number>; distribution: { bin: number; n: number }[]; error?: string | undefined;
@@ -155,6 +162,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       facetUrl={(term) => facetUrl(key, active.filters, term)} onFacet={(facet) => names.learn(key, facet)} align={align} /> : null;
   };
   const has = (key: string) => columns.some((c) => c.key === key);
+  /** A head's last word and its funnel never part: a long head wraps between its words (polish M3, 20 November 2026). */
+  const headWords = (label: string, f: ReactNode) => {
+    const cut = label.lastIndexOf(" ");
+    return <>{cut > 0 ? label.slice(0, cut + 1) : ""}<span className="sg-head-tail">{label.slice(cut + 1)}{f}</span></>;
+  };
   /** On a phone the heads are hidden: the funnels wrap in one row of words over the list. */
   const phoneFunnels = <div className="sg-funnels" role="group" aria-label="Filtre pe coloane">{columns.map((c) => <span key={c.key} className="th-filter">{c.label}{funnel(c.key)}</span>)}</div>;
   /*
@@ -276,11 +288,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {signals && (total > 0 || filtered) && <>
           {/* Without the picture its title stands over the number (owner, 18 November 2026); each title has its funnel. */}
           <div className="sg-case-head" role="group" aria-label="Filtrează lista">
-            <span className="th-filter">{heads.entity}{funnel("cine")}{has("an") && <><span className="sg-head-dot" aria-hidden="true">·</span>Anul{funnel("an")}</>}</span>
-            <span className="th-filter">{heads.partner}{funnel("partener")}</span>
-            <span className="th-filter" data-only="complet">{heads.meter || (has("masura") ? columns.find((c) => c.key === "masura")!.label : "")}{funnel("masura")}</span>
-            <span className="r th-filter">{heads.amount}{funnel("valoare", "end")}</span>
-            <span className="r"><span className="th-filter" data-only="esential">{heads.meter}{funnel("masura", "end")}</span></span><span />
+            <span className="th-filter">{headWords(heads.entity, funnel("cine"))}{has("an") && <> <span className="sg-head-tail"><span className="sg-head-dot" aria-hidden="true">·</span>Anul{funnel("an")}</span></>}</span>
+            <span className="th-filter">{headWords(heads.partner, funnel("partener"))}</span>
+            <span className="th-filter" data-only="complet">{headWords(heads.meter || (has("masura") ? columns.find((c) => c.key === "masura")!.label : ""), funnel("masura"))}</span>
+            <span className="r th-filter">{headWords(heads.amount, funnel("valoare", "end"))}</span>
+            <span className="r"><span className="th-filter" data-only="esential">{headWords(heads.meter, funnel("masura", "end"))}</span></span><span />
           </div>
         </>}
         {total > 0 ? <>
@@ -292,11 +304,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
             return <article className="sg-result sg-rank-row" key={r.entityId} style={{ "--i": row } as CSSProperties}>
               <div className="sg-entity"><div className="sg-entity-name"><EntityName id={r.entityId} role={active.role}>{cleanName(r.name)}</EntityName>
                 {/* Listed when asked for: an inactive profile says so, its last month, the rest on hover or a tap (historicFact). */}
-                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip hold="box" className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {countWords(r.nDas, "achiziție directă", "achiziții directe")} · {formatRon(r.totalRon)}</p></div>
+                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip hold="box" className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{metaPieces([countyLabel(r.county) ?? "Județ neprecizat", countWords(r.nDas, "achiziție directă", "achiziții directe"), formatRon(r.totalRon)])}</p></div>
               <div className="sg-comp-col">{parts.length ? <>
                 {/* The composition is revealed as one bar, with a clip (never scaled: its numbers stay their size). */}
-                <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}><span>{formatInt(points[c] ?? 0)}</span></i>)}</div>
-                <p className="sg-meta">{parts.map(flagLabel).join(" · ")}</p></> : <p className="sg-meta">{r.flags.length ? r.flags.map(flagLabel).join(" · ") : "fără tipare"}</p>}</div>
+                <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}>{(points[c] ?? 0) >= ((points[c] ?? 0) >= 10 ? 7 : 5) && <span>{formatInt(points[c] ?? 0)}</span>}</i>)}</div>
+                <p className="sg-meta">{metaPieces(parts.map(flagLabel))}</p></> : <p className="sg-meta">{r.flags.length ? r.flags.map(flagLabel).join(" · ") : "fără tipare"}</p>}</div>
               <div className="sg-score"><strong className={`cri-pill ${RISK_BAND_CLASS[riskBand(r.score)]}`}>{riskScoreText(r.score)}</strong><small>{RISK_BAND_WORD[riskBand(r.score)]}</small></div>
               <Link href={href} className="sg-open" aria-label={`Deschide tiparele: ${cleanName(r.name)}`}><span aria-hidden="true">→</span></Link>
             </article>;

@@ -17,3 +17,8 @@
 .contract-publication-previous { padding-top: 8px; border-top: 1px solid var(--line); }
 .contract-publications details > .note { max-width: none; }
 .contract-publications summary { min-height: 40px; }
+/* The record pages' one disclosure marker, after the words (polish, 20 November 2026). */
+.contract-publications summary { display: flex; align-items: center; list-style: none; }
+.contract-publications summary::-webkit-details-marker { display: none; }
+.contract-publications summary::after { content: "▾"; margin-left: 6px; font-size: 14px; }
+.contract-publications details[open] > summary::after { content: "▴"; }

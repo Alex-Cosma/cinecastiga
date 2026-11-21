@@ -12,6 +12,9 @@ import './excluderi.css';
 export const dynamic='force-dynamic';
 export const metadata={title:'Excluderi temporare din totaluri'};
 
+/** The institutions on one page of the list. */
+const INSTITUTIONS_PAGE=50;
+
 type Params={pagina?:string;grup?:string;institutie?:string;nume?:string;din?:string};
 
 /**
@@ -37,21 +40,30 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
  if(!params.grup&&!institution){
   const words=(params.nume??'').trim().slice(0,100);
   const data=await getExclusionInstitutions(words);
+  // Fifty institutions a page (polish, 20 November 2026: all 279 made one page of 21.000 px, 30.000 on a phone).
+  const pages=Math.max(1,Math.ceil(data.shown.length/INSTITUTIONS_PAGE));
+  const page=Math.min(pages,Math.max(1,Math.floor(Number(params.pagina))||1));
+  const listHref=(p:number)=>`/metodologie/excluderi?${new URLSearchParams({...(words?{nume:words}:{}),...(p>1?{pagina:String(p)}:{})}).toString()}#grupuri`;
   return <CompletOnly>
    {head}
    <p id="grupuri" className="list-anchor excl-count">{countWords(data.total,'grup de verificat','grupuri de verificat')}, la {countWords(data.institutions,'instituție','instituții')}. <span>Lista nu este un semnal de neregulă.</span></p>
    <form className="excl-filter" action="/metodologie/excluderi" method="get" role="search">
     <label htmlFor="excl-nume">Instituția</label>
-    <div><input id="excl-nume" type="search" name="nume" defaultValue={words} maxLength={100} placeholder="De exemplu: spitalul, primăria Cluj"/>
+    <div><input id="excl-nume" type="search" name="nume" defaultValue={words} maxLength={100} placeholder="Ex.: spital, primăria Cluj"/>
      <button type="submit" className="btn">Caută</button></div>
    </form>
    {words&&<p className="excl-shown">{data.shown.length?`${countWords(data.shown.length,'instituție','instituții')} cu „${words}” în nume`:`Nicio instituție cu „${words}” în nume.`} · <Link href="/metodologie/excluderi">Toate</Link></p>}
    {!data.total&&<p className="note">Nu există grupuri excluse temporar în această versiune a datelor. Aceasta nu confirmă completitudinea colectării.</p>}
-   <ul className="excl-institutions">{data.shown.map(i=><li key={i.authorityId??'none'}>
+   <ul className="excl-institutions">{data.shown.slice((page-1)*INSTITUTIONS_PAGE,page*INSTITUTIONS_PAGE).map(i=><li key={i.authorityId??'none'}>
     <p className="excl-name">{i.authorityId?<EntityName id={i.authorityId} role="authority">{i.authority??'Instituție'}</EntityName>:'Instituție neidentificată'}</p>
     <p className="excl-meta">{countWords(i.groups,'grup','grupuri')} · {countWords(i.reasons,'motiv','motive')}</p>
     <Link prefetch={false} className="excl-open" href={`/metodologie/excluderi?institutie=${i.authorityId??'none'}`}>Vezi grupurile <span aria-hidden="true">→</span></Link>
    </li>)}</ul>
+   {pages>1&&<nav className="record-pager" aria-label="Paginarea instituțiilor">
+    {page>1&&<Link href={listHref(page-1)}>← Anterior</Link>}
+    <span>Pagina {formatInt(page)} din {formatInt(pages)}</span>
+    {page<pages&&<Link href={listHref(page+1)}>Următor →</Link>}
+   </nav>}
   </CompletOnly>;
  }
 

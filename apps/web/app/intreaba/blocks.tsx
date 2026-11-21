@@ -143,10 +143,13 @@ export function BreakdownBlock({
     <div>
       {t.el}
       {kinds && kinds.length > 1 && <div className="qb qb-kinds qb-tipwrap" role="group" aria-label="Tipul achiziției" data-only="complet">
-        {kinds.map((kind) => <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
-          {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
-        </button>)}
-        <HelpTip tip={{ id: "tip-achizitie" }} />
+        {kinds.map((kind, i) => {
+          const pill = <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
+            {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
+          </button>;
+          // The (?) goes with the last pill, never alone on a line of its own (polish 20 Nov, L1).
+          return i < kinds.length - 1 ? pill : <span key={kind.kind} className="qb-kinds-end">{pill}<HelpTip tip={{ id: "tip-achizitie" }} /></span>;
+        })}
       </div>}
       {!single && <div ref={barRef} className={`ask-comp ${drilled ? "is-drilled" : motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root} data-only="complet">
         {items.map((s, i) => {
@@ -209,7 +212,8 @@ export function BreakdownBlock({
             </span>
             <span className={`ask-compbar${single ? " is-single" : ""}`} aria-hidden="true"><i style={{ width: `${Math.min(100, (amount(s) / measureTotal) * 100)}%`, background: s.color }} /></span>
             <span className="vv num">
-              <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)}<span data-only="complet"> · {formatShare(amount(s) / measureTotal)}</span></span>
+              {/* A sum and its share stay on one line (a phone puts the records under them when they do not fit). */}
+              <span className={byCount ? undefined : "vv-sum"}>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)}<span data-only="complet"> · {formatShare(amount(s) / measureTotal)}</span></span>
               {evidence && (
                 <button
                   type="button"
@@ -248,8 +252,8 @@ const BREAKDOWN_GHOST_NAMES = [46, 22, 38, 30, 18, 52, 26, 34, 16];
 export function BreakdownGhost({ spec }: { spec: AskSpec }) {
   return <div aria-hidden="true">
     {!spec.filters.purchaseKind && <div className="qb qb-kinds g-quiet" inert data-only="complet">
-      {(["produse", "servicii", "lucrari"] as const).map((kind) => <button type="button" key={kind} className="qb-kind">{PURCHASE_KIND_WORDS[kind].label} <G.Line inline w="4ch" /></button>)}
-      <HelpTip tip={{ id: "tip-achizitie" }} />
+      {(["produse", "servicii"] as const).map((kind) => <button type="button" key={kind} className="qb-kind">{PURCHASE_KIND_WORDS[kind].label} <G.Line inline w="4ch" /></button>)}
+      <span className="qb-kinds-end"><button type="button" className="qb-kind">{PURCHASE_KIND_WORDS.lucrari.label} <G.Line inline w="4ch" /></button><HelpTip tip={{ id: "tip-achizitie" }} /></span>
     </div>}
     <div className="ask-comp" data-only="complet">{BREAKDOWN_GHOST_SEGS.map((w, i) => <span key={i} className="seg g-block" style={{ width: w, borderRadius: 0, marginRight: 2 }} />)}</div>
     <div className="qb qb-legend-head g-quiet" inert data-only={spec.measure === "count" ? undefined : "complet"}>

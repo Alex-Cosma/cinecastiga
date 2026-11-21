@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { titleName } from "@/lib/tidy-name";
 import { notFound } from "next/navigation";
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
@@ -55,7 +56,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   if (!validId(id)) return { title: "Semnale" };
   const r = await resolve(id, await searchParams).catch(() => null);
   // „Reprezentant comun” lists people by name (owner, 18 November 2026, legal audit): out of search engines, links followed.
-  return { title: r ? `${r.none ? "Semnale" : flagLabel(r.state.code)} · ${cleanName(r.profile.name)}` : "Semnale",
+  return { title: r ? `${r.none ? "Semnale" : flagLabel(r.state.code)} · ${titleName(r.profile.name)}` : "Semnale",
     ...(r && !r.none && r.state.code === "net_shared_admin" ? { robots: { index: false, follow: true } } : {}) };
 }
 

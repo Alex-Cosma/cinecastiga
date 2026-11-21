@@ -118,7 +118,8 @@ export function yearsWord(years: readonly number[]): string {
 
 /** „1,28 lei/kg”, or „1,20–1,31 lei/kg” when the medians of several years differ. */
 export function medianRange(lo: number, hi: number, per: string): string {
-  return Math.abs(hi - lo) < 0.005 ? `${formatUnitPrice(lo)} ${per}` : `${formatUnitPrice(lo)}–${formatUnitPrice(hi)} ${per}`;
+  // A no-break space keeps the unit with its figure (polish, 20 November 2026: „lei/buc.” fell alone to a line).
+  return Math.abs(hi - lo) < 0.005 ? `${formatUnitPrice(lo)}\u00a0${per}` : `${formatUnitPrice(lo)}–${formatUnitPrice(hi)}\u00a0${per}`;
 }
 
 /**

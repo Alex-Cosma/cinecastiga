@@ -52,7 +52,7 @@ describe("risk score on the pages", () => {
   it("says why a profile with signals has no score (rf-2026.22)", () => {
     expect(riskNoScoreReason({ nDas: 7, scoreNote: null, score: 0 })).toBe("Sub 10 achiziții directe: semnalele se văd, dar nu fac un scor.");
     expect(riskNoScoreReason({ nDas: 300, scoreNote: "private_buyer", score: 0 })).toMatch(/^Cumpărător privat/);
-    expect(riskNoScoreReason({ nDas: 300, scoreNote: null, score: 0 })).toBe("Tiparele găsite aduc sub 10 puncte: fără semnal în scor.");
+    expect(riskNoScoreReason({ nDas: 300, scoreNote: null, score: 0 })).toBe("Tiparele găsite aduc sub 10 puncte, prea puțin pentru un scor.");
     expect(riskNoScoreReason({ nDas: 300, scoreNote: null, score: 24 })).toBeNull();
   });
 

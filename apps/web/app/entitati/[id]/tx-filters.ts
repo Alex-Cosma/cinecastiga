@@ -9,16 +9,16 @@ import type { TxType } from "../../../lib/entity-tx-columns";
  */
 
 const NOUNS: Record<TxType, [string, string]> = {
-  directe: ["o achiziție directă", "achiziții directe"],
-  contracte: ["un contract", "contracte"],
-  excluse: ["o achiziție directă exclusă din total", "achiziții directe excluse din total"],
+  directe: ["1 achiziție directă", "achiziții directe"],
+  contracte: ["1 contract", "contracte"],
+  excluse: ["1 achiziție directă exclusă din total", "achiziții directe excluse din total"],
 };
 
-/** The records counted: „6 contracte” when the type filter names one type, „4.536 de înregistrări” otherwise. */
+/** The records counted, in digits like the rest of the site (polish L12): „1 contract”, „4.536 de înregistrări”. */
 export function recordsWord(n: number, state: FilterState): string {
   const type = state["tip"];
   const only = type?.kind === "options" && type.values.length === 1 ? (type.values[0] as TxType) : null;
-  const [one, many] = only && NOUNS[only] ? NOUNS[only] : ["o înregistrare", "înregistrări"];
+  const [one, many] = only && NOUNS[only] ? NOUNS[only] : ["1 înregistrare", "înregistrări"];
   return roCount(n, one, many);
 }
 
@@ -31,8 +31,8 @@ export function statusLine(total: number, state: FilterState, rows: number = tot
   if (rows >= total) return recordsWord(total, state);
   const type = state["tip"];
   const contracts = type?.kind === "options" && type.values.length === 1 && type.values[0] === "contracte";
-  const [one, many] = contracts ? NOUNS.contracte : ["o achiziție", "achiziții"];
-  return `${roCount(rows, one, many)} (${roCount(total, "o înregistrare", "înregistrări")})`;
+  const [one, many] = contracts ? NOUNS.contracte : ["1 achiziție", "achiziții"];
+  return `${roCount(rows, one, many)} (${roCount(total, "1 înregistrare", "înregistrări")})`;
 }
 
 /** An empty table: what it says, and the filters to take out one by one (each a chip of the band). */

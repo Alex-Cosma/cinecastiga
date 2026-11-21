@@ -1231,18 +1231,23 @@
 .cq-rank-name > strong + .cq-rank-facts,
 .cq-rank-name > .cq-rank-title + .cq-rank-facts { margin: -3px 0 7px; }
 .cq-bar-track { height: 5px; }
-.cq-rank-value { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 16px; width: 360px; }
+/* A row's facts line held while they load, and kept empty where a row has none (polish 20 Nov, M1): one chip tall. */
+.cq-rank-facts.is-held { display: block; height: 22px; }
+/* Polish 20 Nov (H2): two columns, so every sum ends on one line whatever the width of its records beside it. */
+.cq-rank-value { display: grid; grid-template-columns: minmax(0, 1fr) 10em; justify-items: end; align-items: baseline; gap: 2px 16px; width: 400px; }
 .cq-rank-value .cq-rank-records { display: inline; margin: 0; padding: 2px 0; white-space: nowrap; }
 .cq-rank-share { font-size: 13px; font-weight: 400; color: var(--muted); }
 .cq-rank-rest { padding: 10px 12px; }
-.cq-rank-rest .cq-rank-value small { margin: 0; font-size: 12px; }
+.cq-rank-rest .cq-rank-value small { margin: 0; font-size: 12px; white-space: nowrap; }
+/* The rows' „⋯” (Complet) takes 54 px at their end: the rest's sum ends where theirs do. */
+html:not([data-mode="esential"]) .cq-ranking:has(> .cq-rank-row > .cq-rank-menu) > .cq-rank-rest::after { content: ""; flex: none; width: 34px; }
 .cq-rank-row.is-found,
 .cq-ranking > .cq-rank-main.is-found { background: var(--accent-soft); outline: 1px solid var(--accent-line); outline-offset: -1px; border-radius: 8px; }
 .cq-rank-pinned { margin-top: 8px; }
 /* The pinned row has no "⋯": its bar ends where the others' do (the "⋯" is 44 px, Z3-30). */
 .cq-rank-pinned::after { content: ""; flex: none; width: 50px; }
 @media (max-width: 850px) {
-  .cq-rank-value { flex-direction: column; align-items: flex-end; gap: 2px; width: 200px; }
+  .cq-rank-value { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; width: 200px; }
   .cq-rank-share-of { display: none; }
 }
 @media (max-width: 600px) {
@@ -1277,9 +1282,11 @@
   .cq-result .ask-complegend .sw { grid-area: sw; margin-top: 0; }
   .cq-result .ask-complegend .nm { grid-area: nm; }
   .cq-result .ask-complegend .ask-compbar { grid-area: bar; }
-  .cq-result .ask-complegend .vv { grid-area: vv; display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+  /* Polish 20 Nov (H1): the records never run past the gutter; when they do not fit beside the sum they drop under it. */
+  .cq-result .ask-complegend .vv { grid-area: vv; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 12px; }
   .cq-result .ask-complegend .vv > span { text-align: left; }
-  .cq-result .ask-complegend .vv .cq-record-link { min-height: 44px; white-space: nowrap; }
+  .cq-result .ask-complegend .vv > .vv-sum { white-space: nowrap; }
+  .cq-result .ask-complegend .vv .cq-record-link { flex: none; margin-left: auto; min-height: 44px; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { .cq-result .ask-comp > .seg { transition: none; } }
 

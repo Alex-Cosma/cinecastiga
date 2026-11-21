@@ -33,7 +33,6 @@ import { readableCpvName } from "@/lib/entity-summary";
 import { countyKey } from "@/lib/map-capita-shared";
 import { askHref } from "@/lib/discovery-links";
 import { domainContextSpec } from "@/lib/ask/site-links";
-import { softName } from "@/lib/soft-name";
 import type { PeerMember, PeerMethod, PeerPoint, PeerSelectionMember, PeersResponse } from "@/lib/peers-shared";
 import { scrollMotion } from "../../../../components/motion/scroll";
 
@@ -77,7 +76,9 @@ const KIND_PLURAL: Record<string, string> = { spital: "Spitalele", scoala: "Șco
 /** A long name in the title: two lines, the whole of it on hover, focus or a tap (UX audit Z4-27). */
 function Named({ name }: { name: string }) {
   const long = name.length > 70;
-  return <span className={long ? "pxs-h1-name is-long" : "pxs-h1-name"} tabIndex={long ? 0 : undefined}>{name}</span>;
+  // A hyphenated word („Cluj-Napoca”) never breaks at its hyphen (polish M7).
+  const words = name.split(/(\S*-\S*)/).map((w, i) => (w.includes("-") ? <span key={i} className="pxs-nobreak">{w}</span> : w));
+  return <span className={long ? "pxs-h1-name is-long" : "pxs-h1-name"} tabIndex={long ? 0 : undefined}>{words}</span>;
 }
 
 /**
@@ -96,7 +97,7 @@ function UnknownType({ focal, division, county, year, pageHref, onSources, busy 
     <h2>Nu știm sigur ce fel de instituție e, deci n-o putem compara automat. <Term tip id="tip-institutie" /></h2>
     <p>Comparația pune laolaltă instituții de același tip (spitale, școli, primării).{ask ? <> Pentru ea, poți vedea cine cumpără același lucru {where ? "în județ" : "în țară"}.</> : null}</p>
     <div className="pxs-acts pxs-acts--out">
-      {ask && division && <Link className="pxs-btn p" href={ask} prefetch={false}>Cine cumpără {lowerFirst(division.name)} {where ? `în județul ${where}` : "în țară"} ›</Link>}
+      {ask && division && <Link className="pxs-btn p" href={ask} prefetch={false}>Cine cumpără {lowerFirst(division.name)} {where ? `în județul ${where}` : "în țară"} →</Link>}
       <Link className={ask ? "pxs-btn" : "pxs-btn p"} href={pageHref}>Pagina instituției →</Link>
       {onSources && focal && <button type="button" className="pxs-btn" disabled={busy || focal.recordCount === 0} onClick={onSources}>Sursele ei · {count(focal.recordCount)}</button>}
     </div>
@@ -105,7 +106,8 @@ function UnknownType({ focal, division, county, year, pageHref, onSources, busy 
 
 /** "1,89 mld." · "1,5 mil." · "23 mii": an amount at the size of the eye, the exact one stays on hover. */
 function short(value: number): string {
-  const f = (n: number, d: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: d, maximumFractionDigits: d });
+  // no trailing zero: „97 mil.”, not „97,0 mil.” (polish L7)
+  const f = (n: number, d: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: 0, maximumFractionDigits: d });
   if (value >= 1e9) return `${f(value / 1e9, 2)} mld.`;
   if (value >= 1e6) return `${f(value / 1e6, value >= 1e8 ? 0 : 1)} mil.`;
   if (value >= 1e3) return `${f(value / 1e3, 0)} mii`;
@@ -329,8 +331,12 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf,
   const focalWords = `${phone ? "" : `${focal.name} · `}${short(focal.value)} · locul ${count(rank)}`;
   const medianWords = median !== null && median > 0 ? `mediana ${short(median)}` : "";
   const glyph = 6.8, focalSpan = right ? [fx + 4 - focalWords.length * glyph, fx + 4] : [fx - 4, fx - 4 + focalWords.length * glyph];
-  const mx = layout && medianWords ? layout.x(median!) + 6 : -1;
-  const clash = mx >= 0 && focalSpan[0]! < mx + medianWords.length * glyph + 8 && focalSpan[1]! > mx - 8;
+  // The median's words go right of its line; when the entity's words would run into them they go left of it, and only
+  // when both sides clash does the entity's label climb a line (polish M7: they touched on phones).
+  const mLine = layout && medianWords ? layout.x(median!) : -1, mLen = medianWords.length * glyph;
+  const hits = (a: number, b: number) => focalSpan[0]! < b + 8 && focalSpan[1]! > a - 8;
+  const medianLeft = mLine >= 0 && hits(mLine + 6, mLine + 6 + mLen) && mLine - 6 - mLen >= 0 && !hits(mLine - 6 - mLen, mLine - 6);
+  const clash = mLine >= 0 && !medianLeft && hits(mLine + 6, mLine + 6 + mLen);
   const unit = metric === "total" ? "lei" : "lei pe înregistrare";
   const ring = layout ? layout.r + (phone ? 4 : 5) : 8;
   useEffect(() => { if (layout && !drawn) setDrawn(true); }, [layout, drawn]);
@@ -353,12 +359,13 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf,
       {layout.dots.length >= 4 && <rect className="pxs-band cm-fade" x={layout.x(layout.q1)} y={TOP - 6} width={Math.max(2, layout.x(layout.q3) - layout.x(layout.q1))} height={H - TOP - AXIS + 6} />}
       <line className="pxs-axis" x1={0} x2={width} y1={H - AXIS + 2} y2={H - AXIS + 2} />
       {layout.ticks.map((t, i) => {
-        const tx = layout.x(t), skip = phone && i % 2 === 1 && i !== layout.ticks.length - 1;
+        // a phone thins the ticks only when there are many: four keep every label (polish M7)
+        const tx = layout.x(t), skip = phone && layout.ticks.length > 5 && i % 2 === 1 && i !== layout.ticks.length - 1;
         return <g key={t}><line className="pxs-axis" x1={tx} x2={tx} y1={H - AXIS + 2} y2={H - AXIS + 7} />
           {!skip && <text className="pxs-tick" x={tx} y={H - 8} textAnchor={i === 0 ? "start" : i === layout.ticks.length - 1 ? "end" : "middle"}>{tick(t)}{i === 0 ? " lei" : ""}</text>}</g>;
       })}
       {median !== null && median > 0 && <g className="pxs-median cm-fade"><line x1={layout.x(median)} x2={layout.x(median)} y1={TOP - 22} y2={H - AXIS} />
-        <text x={layout.x(median) + 6} y={TOP - 12}>{medianWords}</text></g>}
+        <text x={layout.x(median) + (medianLeft ? -6 : 6)} y={TOP - 12} textAnchor={medianLeft ? "end" : "start"}>{medianWords}</text></g>}
       <SwarmDots key={many ? `v${version.n}` : "dots"} many={many} born={!drawn ? (crowd ? "cm-fade" : "") : many ? "cm-in" : ""}>
         {drawOrder.map(([d, i]) => many ? <circle key={d.p.id} className={i === hover ? "pxs-dot on" : "pxs-dot"} cx={d.x} cy={d.y} r={i === hover ? layout.r + 2 : layout.r} />
           : <SwarmDot key={d.p.id} born={!drawn ? (crowd ? "" : "cm-pt") : "cm-in"} x={d.x} y={d.y} r={i === hover ? layout.r + 2 : layout.r} on={i === hover} />)}
@@ -366,21 +373,21 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf,
       {/* The entity's words sit above the dots, on the median's line, tied to its ring by a short rule; a phone drops the name (the title says it). */}
       <line className="pxs-focal-rule cm-yd cm-late" x1={fx} x2={fx} y1={clash ? TOP - 22 : TOP - 6} y2={mid - ring - 1} />
       <circle className="pxs-focal cm-pt cm-late" cx={fx} cy={mid} r={ring} />
-      <text className="pxs-focal-t cm-fade cm-late" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 28 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
+      <text className="pxs-focal-t cm-fade cm-late" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 30 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
     </svg>}
     {shown && <div className={`pxs-tip tipcard${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}${hover === null && pinned !== null ? " is-pinned" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden={hover !== null || pinned === null ? true : undefined}>
       <b className="tipcard-t">{nameOf(shown.p.id, shown.p.name) || "—"}</b>
       <span className="pxs-tip-v">{formatEvidenceAmount(metric === "total" ? shown.p.totalExact : shown.p.meanExact, true)}{metric === "mean" ? " pe înregistrare" : ""}</span>
       <span>{rankOf.has(shown.p.id) ? `locul ${count(rankOf.get(shown.p.id)!)} · ` : ""}{recordsWords(shown.p.records)}</span>
       {hover === null && pinned !== null
-        ? <Link className="pxs-tip-go" href={entityHref(shown.p.id, role)} onClick={() => rememberVisit(shown.p.id)}>Deschide ›</Link>
+        ? <Link className="pxs-tip-go" href={entityHref(shown.p.id, role)} onClick={() => rememberVisit(shown.p.id)}>Deschide →</Link>
         : <span className="pxs-tip-go">Apasă: pagina ei →</span>}
     </div>}
   </div>;
 }
 
-export default function PeersExplorer({ entityId, entityName, county = null, role, bothRoles = false, initial: fromServer, place = null }: {
-  entityId: string; entityName: string; county?: string | null; role: ConnectionRole; bothRoles?: boolean; initial: Record<string, string>;
+export default function PeersExplorer({ entityId, entityName, titleName = entityName, county = null, role, bothRoles = false, initial: fromServer, place = null }: {
+  entityId: string; entityName: string; /** The name as the title reads it (lib/tidy-name.ts, on the server). */ titleName?: string; county?: string | null; role: ConnectionRole; bothRoles?: boolean; initial: Record<string, string>;
   /** A town hall's place on the map (page.tsx townHallPlace), for the way there. */
   place?: { county: string; siruta: number | null } | null;
 }) {
@@ -571,7 +578,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const band = data ? `${count(data.cohort.minimumRecords)}–${count(data.cohort.maximumRecords)}${de(data.cohort.maximumRecords)} înregistrări` : "";
   // Its name (UX audit Z4-27, Z4-34): a town hall's place as the map writes it („Cisnădie”), else its name without the
   // capitals of the source; the breadcrumb and its page keep the page's name.
-  const shownName = focal?.population?.placeName ?? softName(currentName);
+  const shownName = focal?.population?.placeName ?? titleName;
   const unknownType = data?.cohort.status === "unknown_authority_type";
   // The group drawn and ranked: a place among members with records (UX audit Z4-37: never „locul 1 între 0”).
   const ranking = !!focal && comparisonAvailable && observedCount > 0 && focal.recordCount > 0;
@@ -706,7 +713,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
             {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
             <button type="button" className="pxs-btn" onClick={() => void copyLink()}>{linkCopied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
             <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
-            {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
+            {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} →</Link>}
             {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
             {!canCapture && comparisonAvailable && <InfoMark title="Sursele comparației" label="De ce lipsesc sursele comparației" text="Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație." />}
           </div>

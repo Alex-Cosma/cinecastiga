@@ -75,7 +75,7 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
 function ExampleButton({ example, onPick }: { example: AskExample; onPick: (example: AskExample) => void }) {
   return (
     <button type="button" className="ia-example" onClick={() => onPick(example)}>
-      <span>{example.text}</span>
+      <span>{example.text}{example.cue && <small className="ia-example-cue"> {example.cue}</small>}</span>
       {/* A pencil puts the half-written question in the box; an arrow asks it. */}
       <span className="ia-example-go" aria-hidden="true"><DiscoveryIcon name={example.fill ? "pencil" : "arrow"} /></span>
     </button>
@@ -91,8 +91,9 @@ export function AskExamples({ onPick }: { onPick: (example: AskExample) => void 
           <div className="ia-group" key={group.id}>
             <AskExampleArt id={group.id} />
             <h3>{group.title}</h3>
-            {group.note && <p className="ia-group-note">{group.note}</p>}
+            {/* The note under the questions, so the rows of cards side by side start at one height (polish 20 Nov, L4). */}
             {group.examples.map((example) => <ExampleButton key={example.text} example={example} onPick={onPick} />)}
+            {group.note && <p className="ia-group-note">{group.note}</p>}
           </div>
         ))}
       </div>

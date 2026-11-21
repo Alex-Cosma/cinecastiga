@@ -53,8 +53,9 @@ describe("the sentence (1), the fixed phrase (1b) and the presentation line (P5)
     const markup = html(Sentence, { tokens, as: "h3" });
     expect(markup).not.toMatch(/×|Scoate|Elimină/);
     expect(markup).toContain('<span class="qb-nowrap"><button');
-    expect(markup).toMatch(/Cluj-Napoca<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button>,<\/span> în /);
-    expect(markup).toMatch(/2025<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button>\?<\/span><\/h3>$/);
+    expect(markup).toMatch(/Cluj-Napoca<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button>,<\/span> <span class="qb-nowrap"><span class="qb-nowrap">în <button/);
+    // A short word before a short phrase stays on its line („în [2025]”: polish 20 Nov, L1).
+    expect(markup).toMatch(/2025<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button><\/span>\?<\/span><\/h3>$/);
     expect(text(markup)).toBe("Ce firme câștigă achizițiile făcute de primăria Cluj-Napoca , în 2025 ?");
   });
   it("draws a fixed phrase as text and keeps the closing words together", () => {

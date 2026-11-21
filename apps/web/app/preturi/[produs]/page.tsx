@@ -70,7 +70,8 @@ export default async function ProdusPage({ params, searchParams }: {
       daId: l.daId, date: l.date ? formatCalendarDate(l.date) : null, name: l.name, unit: l.unit,
       quantity: l.quantity == null ? "—" : new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 3 }).format(l.quantity),
       unitPrice: l.unitPrice == null ? "—" : `${formatUnitPrice(l.unitPrice)} lei`,
-      perUnit: l.pricePerUnit == null ? "—" : formatUnitPrice(l.pricePerUnit),
+      // With its unit, as the unit price beside it (polish, 20 November 2026: „Pe bucată: 0,997” had none).
+      perUnit: l.pricePerUnit == null ? "—" : `${formatUnitPrice(l.pricePerUnit)} lei`,
       note: l.measure != null && l.measureSource ? measureNote(family, { measure: l.measure, source: l.measureSource as MeasureSource }) : "",
     })),
   }));

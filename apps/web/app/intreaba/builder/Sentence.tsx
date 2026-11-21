@@ -49,6 +49,9 @@ const LEADING_PUNCTUATION = /^([?!.,;:…»”)]+)(.*)$/s;
  */
 export function sentenceNodes({ tokens, onOpen, openId, after }: TokenProps): ReactNode[] {
   const nodes: ReactNode[] = [];
+  // A short word before a short phrase („în [toți anii]”) goes to the line of its phrase, never left at a line's end
+  // alone (polish 20 Nov, L1). A long phrase keeps its own wrapping.
+  let lead: string | null = null;
   tokens.forEach((token, index) => {
     const key = `t${index}`;
     if (token.kind === "text") {
@@ -61,7 +64,10 @@ export function sentenceNodes({ tokens, onOpen, openId, after }: TokenProps): Re
         text = glued[2] ?? "";
       }
       const closing = index === tokens.length - 1 && /\S\s+\S+\?$/.test(text) ? /^(.*?)(\S+\s+\S+\?)$/s.exec(text) : null;
+      const next = tokens[index + 1];
+      const short = next?.kind === "slot" && next.value.length <= 24 ? /^(.*\s)?(\S{1,4})\s$/s.exec(text) : null;
       if (closing) nodes.push(closing[1], <span className="qb-nowrap" key={`${key}c`}>{closing[2]}</span>);
+      else if (short) { if (short[1]) nodes.push(short[1]); lead = short[2] ?? null; }
       else if (text) nodes.push(text);
       return;
     }
@@ -75,7 +81,9 @@ export function sentenceNodes({ tokens, onOpen, openId, after }: TokenProps): Re
       const phrase = <Phrase key={key} token={token} open={openId === token.id} {...(onOpen ? { onOpen } : {})} />;
       const next = after?.(token);
       // One box on the line: a long name wraps inside its phrase and the „→” stays beside it.
-      nodes.push(next ? <span className="qb-phrase-pair" key={key}>{phrase}{next}</span> : phrase);
+      const node = next ? <span className="qb-phrase-pair" key={key}>{phrase}{next}</span> : phrase;
+      nodes.push(lead ? <span className="qb-nowrap" key={`${key}l`}>{lead}{" "}{node}</span> : node);
+      lead = null;
     }
   });
   return nodes;

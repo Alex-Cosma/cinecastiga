@@ -86,6 +86,12 @@
 .sc-risk .cri-pill{font-size:12.5px;padding:2px 9px}
 .sc-risk small{font-size:11.5px;color:var(--muted)}
 .sc-rec{justify-self:end;white-space:nowrap}
+/* Polish 20 Nov (L2): on a wide row the value, the score and the records sit on the name's line (its 28 px), centred as it is. */
+@media (min-width:641px){
+  .sc-row .sc-val{display:flex;align-items:center;justify-content:flex-end;min-height:28px;padding-top:0}
+  .sc-row .sc-risk{padding-top:2px}
+  .sc-row .sc-rec{display:inline-flex;align-items:center;min-height:28px;padding-block:0}
+}
 .sc-more{margin:0}
 .sc-none{margin:0;font-size:13px;color:var(--muted)}
 
@@ -143,6 +149,11 @@
 .sc-ramp i.s4{background:var(--accent)}
 /* The signal: pills on a wide screen, one menu on a phone (the same choice, the same counts). */
 .sc-signal-pills{display:contents}
+/* Polish 20 Nov (L1): six signal pills in two rows of three, never five and one alone; seven or eight in rows of four. */
+@media (min-width:900px){
+  .sc-signal-pills .qb-pills:has(>:nth-child(6):last-child){display:grid;grid-template-columns:repeat(3,max-content)}
+  .sc-signal-pills .qb-pills:has(>:nth-child(7):last-child),.sc-signal-pills .qb-pills:has(>:nth-child(8):last-child){display:grid;grid-template-columns:repeat(4,max-content)}
+}
 .qb-field.sc-signal-select{display:none}
 @media (max-width:600px){
   .sc-signal-pills{display:none}
@@ -160,9 +171,14 @@
    acquisitions (the records link says it); the signals' tags take the width; the value and „N înregistrări →” share the
    last line. The wide row stays as it is. */
 @media (max-width:640px){
-  .sc-row{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:"rank name cri" ". meta cri" ". tags tags" ". val rec";column-gap:10px;row-gap:0}
+  /* Polish 20 Nov (L2): an empty flexible row under the kind and county takes what the score's column needs more,
+     so a one-line name keeps its subtitle right under it, as a two-line one does. */
+  .sc-row{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:"rank name cri" ". meta cri" ". fill cri" ". tags tags" ". val rec";grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:10px;row-gap:0}
   .sc-row .sc-who{display:contents}
-  .sc-row .sc-who>.sc-name{grid-area:name}
+  /* The name's link covers the whole row (::after), so its own box need not be 44 px: the subtitle sits right under
+     a name of one line as under one of two, and the rank keeps the name's first line. */
+  .sc-row .sc-who>.sc-name{grid-area:name;min-height:0;padding-top:10px}
+  .sc-row .sc-rank{min-height:0;padding-top:10px;align-items:flex-start}
   .sc-row .sc-who>small{grid-area:meta}
   .sc-row .sc-who>.qb-tags{grid-area:tags;margin-top:6px}
   .sc-row .sc-cri{grid-area:cri;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:2px;padding-top:10px;text-align:right}

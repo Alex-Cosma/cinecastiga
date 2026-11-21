@@ -1812,8 +1812,9 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
         <div className="cq-answer-more" data-only={completIf(!viewer.userId)}>
           <span className="qb cq-share-menu" data-only="complet"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
           <span className="cq-save-wrap"><button type="button" className="cq-save-question">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
-            <span>Salvează</span>
+            {/* As SaveQuestionButton draws it in the answer's head (compact): the star and „Păstrează”. */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" /></svg>
+            <span>Păstrează</span>
           </button></span>
           {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
         </div>
@@ -1883,6 +1884,8 @@ function RankingGhost({ spec }: { spec: AskSpec }) {
           <span className="cq-rank-number">{String(i + 1).padStart(2, "0")}</span>
           <span className="cq-rank-name">
             <span className="cq-rank-title"><G.Line w={`${[26, 18, 12, 22, 34, 16, 20, 28, 14, 24][i % 10]}ch`} /></span>
+            {/* Most firms carry a fact („în asociere”, „din străinătate”): their line is held, so the rows do not grow (polish 20 Nov, M1). */}
+            {rowFactsWanted(spec) && <span className="qb-tags cq-rank-facts is-held" />}
             <span className="cq-bar-track"><i className="g-block" style={{ width: rankWidth(i, 100, 9, 22), background: "var(--line)" }} /></span>
           </span>
           <span className="cq-rank-value">
@@ -1953,8 +1956,10 @@ function titleEntities(spec: AskSpec | null | undefined, townHall?: { id: string
   return out;
 }
 
-function FactTags({ tags }: { tags: readonly WinnerTag[] }) {
-  if (!tags.length) return null;
+function FactTags({ tags, hold = false }: { tags: readonly WinnerTag[]; hold?: boolean }) {
+  // A ranking whose rows get facts holds their line in every row (and in its ghost): the facts arrive after the rows,
+  // and rows of one height do not move when they do (polish 20 Nov, M1).
+  if (!tags.length) return hold ? <span className="qb-tags cq-rank-facts is-held" aria-hidden="true" /> : null;
   return <span className="qb-tags cq-rank-facts">{tags.slice(0, 3).map((tag) => <FactTag key={tag.text} fact={tag} />)}</span>;
 }
 
@@ -2011,6 +2016,7 @@ function RankingBars({
     document.querySelector(`#raspuns [data-rank-id="${CSS.escape(foundId)}"]`)?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }, [foundId]);
   const pinned = found && found.rank !== null && found.rank > rows.length && !rows.some((r) => r.entityId === found.id) ? found : null;
+  const holdFacts = rowFactsWanted(spec);
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -2041,7 +2047,7 @@ function RankingBars({
               {r.entityId
                 ? <EntityName id={r.entityId} role={spec.dim === "authority" ? "authority" : spec.dim === "supplier" ? "supplier" : null} className="cq-rank-title">{shown}</EntityName>
                 : <strong>{shown}</strong>}
-              <FactTags tags={[...byNameTag(r), ...(r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : [])]} />
+              <FactTags tags={[...byNameTag(r), ...(r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : [])]} hold={holdFacts && Boolean(r.entityId)} />
               <span className="cq-bar-track">
                 <i
                   className={`cm-tw ${motion.enter("cm-x")}`}
@@ -2087,8 +2093,12 @@ function RankingBars({
               <strong>Alte {entityNoun(spec.dim, rest.entities)}</strong>
             </span>
             <span className="cq-rank-value">
-              <strong>{spec.measure === "count" ? countWords(rest.count, "înregistrare", "înregistrări") : formatRonFull(rest.value)}</strong>
-              <small>{spec.measure === "count" ? formatRonFull(rest.value) : countWords(rest.count, "înregistrare", "înregistrări")}<span data-only="complet"> · {formatShare(rest.share)} din total</span></small>
+              {/* As the rows above: the sum with its share, the records' count in the records' column (polish 20 Nov, H2). */}
+              <strong>
+                {spec.measure === "count" ? countWords(rest.count, "înregistrare", "înregistrări") : formatRonFull(rest.value)}
+                {spec.measure !== "count" && <span className="cq-rank-share" data-only="complet"> · {formatShare(rest.share)}<span className="cq-rank-share-of"> din total</span></span>}
+              </strong>
+              <small>{spec.measure === "count" ? <>{formatRonFull(rest.value)}<span data-only="complet"> · {formatShare(rest.share)} din total</span></> : countWords(rest.count, "înregistrare", "înregistrări")}</small>
             </span>
           </div>
         )}

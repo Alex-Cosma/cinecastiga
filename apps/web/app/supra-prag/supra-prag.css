@@ -104,3 +104,17 @@ table.rank tr.tp-sep-row td{padding:14px 14px 8px;background:var(--sunk);font-si
   .tp-stack .obj-title:focus{display:block;-webkit-line-clamp:unset;outline:none}
   .tp-stack .badges{margin-top:6px}
 }
+/* ---- polish 20 November 2026 (M8, L8) ---- */
+/* the title's (?) stands a space off „TED” */
+.ted-title .tp-nowrap>.term{margin-left:.22em}
+/* the country chips read as choices, not as disabled: ink, with „Toate țările” as their quiet companion */
+.tp-countries a:not(.on){color:var(--ink)}
+.tp-all-countries{font-weight:500}
+/* the row's tags in sentence case, like the tags of the rest of the site */
+.tp-stack .badges :is(.badge,.ted-label){text-transform:none;letter-spacing:0}
+.tp-amount-words .tp-nowrap{white-space:nowrap}
+@media (max-width:720px){
+  /* two figures a row: no line after the second */
+  .ted-stats .stat:nth-child(2n){border-right:0}
+  .tp-stack .tp-value .tp-amount.tp-amount-words{font-size:14px;font-weight:500}
+}

@@ -172,11 +172,12 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
           <td className="record-num" data-label="Cantitate:">{formatQuantity(it.quantity)}</td>
           <td data-label="Unitate:">{it.unit ?? "—"}</td>
           <td className="record-num" data-label="Preț unitar:" data-only="complet">{it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "—"}</td>
-          <td className="record-num" data-label="Total:">{total != null ? `${formatExactDecimal(total)} lei` : "—"}</td>
-          <td className="record-item-line">{formatQuantity(it.quantity)} {it.unit ?? ""} × {it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "preț nepublicat"}{total != null && <> = <b>{formatExactDecimal(total)} lei</b></>}</td>
+          {/* Totals and their sum to the leu, exact on hover or tap; unit prices keep their bani (Decision A, polish H3). */}
+          <td className="record-num" data-label="Total:"><Lei value={total} /></td>
+          <td className="record-item-line">{formatQuantity(it.quantity)} {it.unit ?? ""} × {it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "preț nepublicat"}{total != null && <> = <b><Lei value={total} /></b></>}</td>
         </tr>; })}</tbody>
         {/* The sum's label spans the columns before Total: four in Complet, three in Esențial (no unit price). */}
-        {sums.counted > 0 && <tfoot><tr>{([[4, "complet"], [3, "esential"]] as const).map(([span, only]) => <td key={only} colSpan={span} data-only={only}>{sums.counted === sums.lines ? `Suma celor ${countWords(sums.lines, "linie", "linii")}` : `Suma celor ${countWords(sums.counted, "linie", "linii")} cu preț, din ${sums.lines}`}</td>)}<td className="record-num">{formatExactDecimal(sums.sum)} lei</td></tr></tfoot>}
+        {sums.counted > 0 && <tfoot><tr>{([[4, "complet"], [3, "esential"]] as const).map(([span, only]) => <td key={only} colSpan={span} data-only={only}>{sums.counted === sums.lines ? `Suma celor ${countWords(sums.lines, "linie", "linii")}` : `Suma celor ${countWords(sums.counted, "linie", "linii")} cu preț, din ${sums.lines}`}</td>)}<td className="record-num"><Lei value={sums.sum} /></td></tr></tfoot>}
       </table>
       {/* A sum equal to the closing value is seen in the sum row and the head's figure; a difference is said. */}
       {sums.note && sums.note !== "Egală cu valoarea de închidere." && <p className="record-items-note">{sums.note}</p>}

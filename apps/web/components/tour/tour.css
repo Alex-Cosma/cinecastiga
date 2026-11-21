@@ -160,7 +160,7 @@
 .tr-mode{position:relative;display:grid;gap:9px;align-content:start;text-align:left;border:1px solid var(--line2);background:var(--surface);color:var(--ink);border-radius:14px;padding:14px 14px 16px;cursor:pointer;font-family:var(--body);transition:border-color .2s,box-shadow .2s,transform .25s var(--tr-out)}
 .tr-mode svg{display:block;width:100%;height:auto;border-radius:9px;background:var(--paper);border:1px solid var(--line)}
 .tr-mode b{font:700 21px/1.1 var(--display);letter-spacing:-.015em;margin-top:5px}
-.tr-mode span{font-size:14px;line-height:1.45;color:var(--ink2);text-wrap:pretty}
+.tr-mode span{font-size:14px;line-height:1.45;color:var(--ink2);text-wrap:balance}
 .tr-mode::after{content:"";position:absolute;top:24px;right:24px;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line2);background:var(--surface)}
 .tr-mode[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
 .tr-mode[aria-checked="true"]::after{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 5px,var(--surface) 6px)}

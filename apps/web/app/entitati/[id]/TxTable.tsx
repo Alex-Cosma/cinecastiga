@@ -21,7 +21,7 @@ import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import { useEntityTable } from "./useEntityTable";
 import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 import { emptyState, statusLine } from "./tx-filters";
-import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
+import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareParts, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
@@ -332,7 +332,8 @@ export default function TxTable({
                   </span>
                   {isConsortium(t.nWinners) && (
                     <Term tip hold="line" className="cons-line" title="Consorțiu" text={consortiumExplanation(t.nWinners)}>
-                      {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
+                      {/* two lines in the narrow value column, never broken inside a piece (polish H3) */}
+                      {consortiumShareParts(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)?.map((piece) => <span key={piece} className="cons-piece">{piece}</span>)}
                     </Term>
                   )}
                   {(() => {

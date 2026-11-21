@@ -52,6 +52,7 @@
 @media(max-width:900px){.d-national-label+.d-national-item{border-left:0;padding-left:0}}
 @media(max-width:700px){
   .d-national-strip>.d-national-item{padding-left:13px}
+  .d-national-strip>.d-national-label+.d-national-item{padding-left:0}
   .d-national-item>small{line-height:1.5}
   .discovery-page .d-national-strip>.d-national-item:last-of-type{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding:16px 0 0}
   .term-def,.tipcard,.ev-hint:hover::after{font-size:12.5px}

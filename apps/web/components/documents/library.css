@@ -31,5 +31,21 @@
  .df-library .df-library-file .df-file-action{margin-top:6px}
  .df-category-more{min-height:44px}
 }
-.df-library .df-library-file .df-provenance>summary::before{content:"▸";margin-right:5px;font-size:11px}
-.df-library .df-library-file .df-provenance[open]>summary::before{content:"▾"}
+/* „Surse ▾”: the record pages' one disclosure marker, after the word (polish, 20 November 2026). */
+.df-library .df-library-file .df-provenance>summary{list-style:none}
+.df-library .df-library-file .df-provenance>summary::-webkit-details-marker{display:none}
+.df-library .df-library-file .df-provenance>summary::after{content:"▾";margin-left:5px;font-size:14px}
+.df-library .df-library-file .df-provenance[open]>summary::after{content:"▴"}
+/* The name and its tags on the left; the state and „Surse” stay one group in the right columns, on the name's first
+   line, however long the name (polish M8, 20 November 2026). An opened „Surse”, a warning or a progress take the row. */
+.df-library .df-library-file .df-file-name{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;min-width:0}
+.df-library .df-library-file .df-file-name h3{margin:0;font-size:15px}
+@media(min-width:761px){
+ .df-library .df-library-file .df-file-body{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;column-gap:12px;row-gap:4px}
+ .df-library .df-library-file .df-file-body>*{grid-column:1/-1}
+ .df-library .df-library-file .df-file-body>:is(.df-file-name,h3){grid-column:1}
+ .df-library .df-library-file .df-file-body>.df-status{grid-column:2;max-width:24em;margin:0;text-align:right}
+ .df-library .df-library-file .df-file-body>.df-provenance:not([open]){grid-column:3;grid-row:1}
+ .df-library .df-library-file .df-file-body>.df-status{grid-row:1}
+}
+@media(max-width:760px){.df-library .df-library-file .df-file-name{flex-basis:100%;column-gap:8px}}

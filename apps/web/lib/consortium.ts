@@ -27,11 +27,21 @@ export function isConsortium(nWinners: number | null | undefined): nWinners is n
  * `fullValue` is the whole contract amount, already formatted by the caller.
  */
 export function consortiumShareLabel(nWinners: number | null | undefined, fullValue: string | null): string | null {
+  const parts = consortiumShareParts(nWinners, fullValue);
+  return parts && `${parts[0]} · ${parts[1]}`.replace(/\u00a0/g, " ");
+}
+
+/**
+ * The same label in its two pieces, for a narrow column that sets them on two lines (polish H3, 20 November 2026):
+ * ["¼ din 9.059.483.352 lei", "consorțiu de 4"]. The amount keeps its "lei" (a no-break space) and the count its
+ * words, so neither piece breaks inside itself.
+ */
+export function consortiumShareParts(nWinners: number | null | undefined, fullValue: string | null): [string, string] | null {
   if (!isConsortium(nWinners)) return null;
   const fraction = consortiumFraction(nWinners);
   const part = fraction ?? "parte egală";
-  const of = fullValue ? `${part} din ${fullValue}` : fraction ? `${fraction} din contract` : "parte egală din contract";
-  return `${of} · consorțiu de ${nWinners}`;
+  const of = fullValue ? `${part} din ${fullValue.replace(/ (?=lei$)/, "\u00a0")}` : fraction ? `${fraction} din contract` : "parte egală din contract";
+  return [of, `consorțiu\u00a0de\u00a0${nWinners}`];
 }
 
 /**

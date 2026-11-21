@@ -19,7 +19,7 @@ describe("the lines of /semnale's lists (UX audit Z6-01)", () => {
 describe("the national list's column heads (Z6-17)", () => {
   it("names each column from the pattern and the role, as the rows fill them", async () => {
     const { signalListHeads } = await import("./signal-list-words");
-    expect(signalListHeads("da_dependence", "supplier")).toEqual({ entity: "Firma", partner: "Clientul public principal", meter: "Ponderea lui", amount: "Valoare înregistrată" });
+    expect(signalListHeads("da_dependence", "supplier")).toEqual({ entity: "Firma", partner: "Clientul public principal", meter: "Ponderea lui", amount: "Valoare" });
     expect(signalListHeads("da_split", "authority")).toMatchObject({ entity: "Instituția", partner: "Firma", meter: "Față de plafon" });
     expect(signalListHeads("da_split", "supplier")).toMatchObject({ entity: "Firma", partner: "Instituția" });
     expect(signalListHeads("award_single_bid", "supplier")).toEqual({ entity: "Instituția", partner: "Câștigătorii", meter: "", amount: "Valoare" });

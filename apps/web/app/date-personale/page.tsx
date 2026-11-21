@@ -34,7 +34,7 @@ export default function DatePersonalePage() {
         <div className="lg-text">
           <section>
             <h2>Cine răspunde de date</h2>
-            <p>Proiectul {SITE_NAME}. Asociația care îl va administra este în curs de înființare; numele și datele ei vor apărea aici. Până atunci, orice cerere se trimite la <a href={mailHref("Date personale")}>{CONTACT_EMAIL}</a>.</p>
+            <p>Răspunde proiectul {SITE_NAME} până la înființarea asociației care îl va administra; numele și datele ei vor apărea aici. Până atunci, orice cerere se trimite la <a href={mailHref("Date personale")}>{CONTACT_EMAIL}</a>.</p>
           </section>
 
           <section>

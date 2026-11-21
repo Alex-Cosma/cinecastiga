@@ -127,7 +127,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
       <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term hold="line" id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term hold="line" id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term hold="line" id="inregistrare-contract-furnizor" tip>înregistrări contract–{"\u2060"}furnizor</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term hold="line" id="valoare-inregistrata" tip>valoare înregistrată</Term></small></div>
     </section>
 

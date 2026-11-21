@@ -2,8 +2,8 @@
    Every selector starts with html[data-mode="esential"]. */
 
 /* The three record pages (a contract, a notice, a direct purchase: `.record-entry`), owner 18 November 2026. Their
-   identity line loses its internal number (a part marked Complet only): the last part left keeps no "·" after it. */
-html[data-mode="esential"] .record-entry .record-meta > span:not(:has(~ span:not([data-only="complet"])))::after { content: none; }
+   identity line loses its internal number (a part marked Complet only); its "·" leads each part (record.css), so the
+   last part left needs no rule. */
 
 /* A head with nothing shown after it (a contract or a purchase with no signal and no list) keeps no rule under it. */
 html[data-mode="esential"] .record-entry > .record-head:not(:has(~ :not([data-only="complet"]))) { border-bottom: 0; }

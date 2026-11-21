@@ -45,6 +45,6 @@ export function signalListHeads(code: string, role: "authority" | "supplier"): {
     entity: award ? "Instituția" : role === "authority" ? "Instituția" : "Firma",
     partner: award ? "Câștigătorii" : partner[code] ?? "",
     meter: meter[code] ?? "",
-    amount: award ? "Valoare" : "Valoare înregistrată",
+    amount: "Valoare", // polish M3: one short word keeps its funnel on its line (the amount's tip says „înregistrată”)
   };
 }

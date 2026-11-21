@@ -20,7 +20,11 @@
 .record-value-note:first-of-type { margin-top: 12px; }
 
 .record-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 6px 0; font-size: 14px; color: var(--ink2); }
-.record-meta > span:not(:last-child)::after { content: "·"; margin: 0 10px; color: var(--muted); }
+/* The separator leads its item, so a wrapped line never ends on a lone "·" (polish M7, 20 November 2026); the line
+   starts 24 px left of the page and that strip is clipped, so a wrapped line does not start with one either. */
+.record-meta { margin-left: -24px; clip-path: inset(-8px -8px -8px 18px); }
+.record-meta > span { position: relative; margin-left: 24px; }
+.record-meta > span + span::before { content: "·"; position: absolute; left: -15px; color: var(--muted); }
 .record-meta .record-kind { font-weight: 600; color: var(--ink); }
 .record-actions { grid-area: actions; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
 .record-actions .record-seap { display: inline-flex; align-items: center; min-height: 40px; font-weight: 600; text-underline-offset: 4px; }
@@ -104,6 +108,8 @@
 
 .record-sources ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .record-sources li a { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; text-underline-offset: 4px; overflow-wrap: anywhere; }
+/* A flex link drops the space before its arrow: the arrow keeps it, as in running text (polish, 20 November 2026). */
+:is(.record-sources li a, .record-actions .record-seap) > span[aria-hidden="true"] { margin-left: .3em; }
 .record-sources > p { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 72ch; }
 
 @media (max-width: 760px) {

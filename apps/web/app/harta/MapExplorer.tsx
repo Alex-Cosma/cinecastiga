@@ -689,11 +689,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             county; the whole box is the link to its page (its name, an EntityName, stretched over it). */}
         {county && loc?.city && <div className={`mx-city${loc.city.entityId ? " is-link" : ""}${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
           <b><EntityName id={loc.city.entityId} role="authority">{loc.city.name}</EntityName></b><span>tot orașul <InfoMark title="Tot orașul" text={`Primăria municipiului lucrează pentru tot orașul: cifra ei se împarte la ${withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}.${sub && loc.city.subValue ? ` Instituțiile ei: ${short(loc.city.subValue)} lei.` : ""}`} /></span>
-          <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
+          <em>{loc.city.perCapita === null ? "—" : int(loc.city.perCapita)}</em>
         </div>}
         {county && !dots && loc?.council && <div className={`mx-city${loc.council.entityId ? " is-link" : ""}${stale ? " g-stale" : ""}`}>
           <b><EntityName id={loc.council.entityId} role="authority">{loc.council.name}</EntityName></b><span>tot județul <InfoMark title="Tot județul" text={`Consiliul județean lucrează pentru tot județul: cifra lui se împarte la ${withDe(loc.council.denominator ?? 0, "locuitor", "locuitori")}.${sub && loc.council.subValue ? ` Instituțiile lui: ${short(loc.council.subValue)} lei.` : ""}`} /></span>
-          <em>{loc.council.perCapita === null ? "—" : `${int(loc.council.perCapita)} lei`}</em>
+          <em>{loc.council.perCapita === null ? "—" : int(loc.council.perCapita)}</em>
         </div>}
         <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}${metric === "perBed" || metric === "perPupil" ? " has-total" : metric === "value" ? " is-lei" : ""}`} ref={listRef} key={rankLevel}
           data-chart="" onAnimationEnd={rankMotion.onAnimationEnd} onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>

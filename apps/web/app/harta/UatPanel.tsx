@@ -342,9 +342,10 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
   const head = d && <>
     <p className="mx-p-kick">{d.uat.kind} · {d.county.name}{d.uat.population ? ` · ${withDe(d.uat.population, "locuitor", "locuitori")}` : ""}
       {d.townHalls.map((t) => <span key={t.id}> · <EntityName id={t.id} role="authority">{t.name}</EntityName></span>)}</p>
-    {/* The name is the door to the town hall's profile and looks like one (owner, 19 November 2026): underlined, with an arrow. */}
+    {/* The name is the door to the town hall's profile and looks like one (owner, 19 November 2026): underlined, with an
+        arrow; „→”, the site's arrow for its own pages („↗” only for other sites: polish 20 Nov, M7). */}
     <h2 id="mx-p-h">{d.townHalls[0] ? <Link href={entityHref(d.townHalls[0].id, "authority")}>{d.uat.name}<span className="d-sr-only">, profilul primăriei</span>
-      <svg className="mx-p-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17 17 7M8.5 7H17v8.5" /></svg>
+      <svg className="mx-p-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
     </Link> : d.uat.name}</h2>
   </>;
 

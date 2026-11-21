@@ -17,9 +17,10 @@
    bottom of the screen („Construiește întrebarea ta →”, „N înregistrări →”). The ≥1360px tab stays, slimmer (28px), in
    the page's 28px side margin. The round button above is no longer shown. */
 @media(min-width:721px) and (max-width:1359px){
-  .feedback-fab{top:50%;bottom:auto;right:0;transform:translateY(-50%);writing-mode:vertical-rl;width:auto;height:auto;padding:14px 6px 14px 5px;gap:8px;border:1px solid var(--accent-line);border-right:0;border-radius:8px 0 0 8px;font-size:13px}
+  /* 23 px wide, so a gap stays between it and the content's edge in the 28 px margin (polish, 20 November 2026). */
+  .feedback-fab{top:50%;bottom:auto;right:0;transform:translateY(-50%);writing-mode:vertical-rl;width:auto;height:auto;padding:14px 4px 14px 3px;gap:8px;border:1px solid var(--accent-line);border-right:0;border-radius:8px 0 0 8px;font-size:13px}
   .feedback-fab span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
-  .feedback-fab svg{width:16px;height:16px}
+  .feedback-fab svg{width:15px;height:15px}
   .site-footer{padding-bottom:0}
 }
 /* Phones (≤720px): a floating button covers right-aligned amounts in tables and cards, so the entry point
@@ -58,6 +59,8 @@
 .feedback-dialog button{min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:500 14px/1.5 var(--font-body);cursor:pointer}
 .feedback-dialog .feedback-close{flex-shrink:0;display:grid;place-items:center;padding:8px;min-width:44px;margin-top:-8px;margin-right:-8px;border:0}
 .feedback-dialog .feedback-primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+/* Under the 20 characters the button looks resting, not ready; a press still says what is missing (polish, 20 November 2026). */
+.feedback-dialog .feedback-primary.is-short{opacity:.55}
 .feedback-dialog button:hover:not(:disabled){filter:brightness(.96)}
 .feedback-dialog :disabled{opacity:.55;cursor:wait}
 .feedback-dialog :focus-visible{outline:2px solid var(--accent);outline-offset:3px}

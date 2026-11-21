@@ -40,8 +40,12 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
   /** The pointer of the press under way, and the dot whose card was already up when it began (a touch shows first). */
   const press = useRef<{ type: string; shown: string | null }>({ type: "mouse", shown: null });
   const peak = bins ? Math.max(1, ...bins) : 1;
-  // The dots come in the leads' one order (lei above the median first): the named ones are the first.
-  const tagged = dots.slice(0, named);
+  // The dots come in the leads' one order (lei above the median first): the named ones are the first, an institution
+  // once, by its largest year (polish M11, 20 November 2026: one name stacked three times read as a glitch).
+  const tagged = useMemo(() => {
+    const seen = new Set<string>();
+    return dots.filter((d) => !seen.has(d.id) && (seen.add(d.id), true)).slice(0, named);
+  }, [dots, named]);
   const href = (d: StripDot) => `${hrefBase}${hrefBase.includes("?") ? "&" : "?"}deschis=${d.id}-${d.year}#institutie-${d.id}-${d.year}`;
   /** The dots along the axis, for the arrows. */
   const along = useMemo(() => [...dots].sort((a, b) => a.ratio - b.ratio || b.excess - a.excess), [dots]);

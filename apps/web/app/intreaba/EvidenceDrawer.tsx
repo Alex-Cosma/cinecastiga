@@ -159,7 +159,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   // While the list loads, the phone's count keeps its place in the title (a line), so the header does not grow after.
   // The question fixes the buyers' county (a county, a locality, one institution): the rows leave it out (Z3-03).
   const sameCounty = countyFixed(spec, scope);
-  const titleCount = (result || busy) && <span className="ev-title-count"> · <span>{result ? records(result.sourceTotal) : <G.Line inline w="19ch" />}</span></span>;
+  const titleCount = (result || busy) && <span className="ev-title-count"> <span>· {result ? records(result.sourceTotal) : <G.Line inline w="19ch" />}</span></span>;
   /*
    * Esențial (lib/view-mode.ts, owner 18 November 2026): the list keeps its search, kind and order (the table's filters
    * stay everywhere), its rows with the SEAP link and its pages; the exports, the imported details and the risk score's

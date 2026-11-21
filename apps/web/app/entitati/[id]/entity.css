@@ -65,6 +65,9 @@
 .ent-risk-track>i:nth-child(2){background:color-mix(in srgb,var(--faint) 28%,var(--sunk))}
 .ent-risk-track>i:nth-child(3){background:var(--amber-soft)}
 .ent-risk-track>i:nth-child(4){background:var(--risk-soft)}
+/* polish L13: on the dark card the soft bands vanished; there they are mixed from the band colours */
+:root[data-theme="dark"] .ent-risk-track>i:nth-child(2){background:color-mix(in srgb,var(--faint) 50%,var(--sunk))}:root[data-theme="dark"] .ent-risk-track>i:nth-child(3){background:color-mix(in srgb,var(--amber) 42%,var(--sunk))}:root[data-theme="dark"] .ent-risk-track>i:nth-child(4){background:color-mix(in srgb,var(--risk) 42%,var(--sunk))}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ent-risk-track>i:nth-child(2){background:color-mix(in srgb,var(--faint) 50%,var(--sunk))}:root:not([data-theme="light"]) .ent-risk-track>i:nth-child(3){background:color-mix(in srgb,var(--amber) 42%,var(--sunk))}:root:not([data-theme="light"]) .ent-risk-track>i:nth-child(4){background:color-mix(in srgb,var(--risk) 42%,var(--sunk))}}
 .ent-risk-marker{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-50%);box-shadow:0 0 0 2px var(--surface)}
 /* the only moving mark on a static scale: it fades in where it is, shortly after the scale */
 .ent-risk-marker.cm-fade{--cm-d:120ms;--cm-dur:var(--med)}
@@ -192,11 +195,20 @@
 .cons-tag{display:inline-flex;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
 .ent-tx .cons-line{display:block;white-space:normal;overflow:visible;font:12px/1.4 var(--body);color:var(--muted);margin-top:2px}
 .ent-tx td.num .cons-line{text-align:right}
+/* polish H3: the share on its own line(s), „consorțiu de N” and its (?) under it; as a card, one line with „·” */
+.ent-tx .cons-line .cons-piece:first-child{display:block}
+@media (max-width:1000px){.ent-tx .cons-line .cons-piece:first-child{display:inline}.ent-tx .cons-line .cons-piece:first-child::after{content:" · "}}
 /* another page's bars enter shorter and together (the first page's grow top to bottom, components/motion/chart-motion.css) */
 .ent-partners.is-paged{--cm-dur:var(--med);--chart-step:0ms}
 .ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
 .ent-partners .bar-val .v{white-space:nowrap}
 .ent-partners .bar-label .cons-tag{margin-left:8px;vertical-align:1px}
+/* polish M2/L5 (20 November 2026): the value and the records link keep one width on every row, so the bars end at one
+   x and the figures line up; the chip, wrapped under a long name, starts at the name's edge */
+.ent-partners .bar-val{min-width:20ch}
+.ent-partners .bar-go{min-width:10.5em;text-align:right}
+.ent-partners .bar-label{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px}
+.ent-partners .bar-label .cons-tag{margin-left:0}
 /* ---- no text cut short (owner, 2 November 2026): a partner's name, a record's object and party wrap whole instead of
    ending in „…”; the names get a third of the row ---- */
 .ent-partners .bar-row{grid-template-columns:minmax(220px,34%) minmax(0,1fr) auto auto}
@@ -514,3 +526,7 @@
 .ehead-roles a[aria-current]::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--accent);transform-origin:0 0;pointer-events:none}
 /* UX audit M-18: the name in the sticky bar follows the scroll (SectionNav sets --name-in), no fade on a timer. */
 .subnav-in a.subnav-name{animation:none;opacity:var(--name-in,1)}
+/* polish L12: the line that says why a profile has no score */
+.ent-risk-why{margin:8px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink2);max-width:34ch}
+/* polish L14: the years card's title is a year and a sum: „mld. lei” keeps its lower case (the card's caps are for words) */
+.ent-years-tip.tipcard .tipcard-t{text-transform:none;letter-spacing:.02em}

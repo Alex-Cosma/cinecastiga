@@ -114,3 +114,6 @@
   .evidence-drawer .ev-table td:nth-child(4) .ev-seap,.evidence-drawer .ev-table td:nth-child(4) .ev-ted{display:flex;align-items:center;justify-content:flex-end;min-height:44px;margin-left:auto}
   .evidence-drawer .ev-table td:nth-child(4) .ev-state{margin:8px 0 0 auto}
 }
+
+/* Polish 20 Nov (H4): an explanation's trigger (Term) is underlined text, not one of the drawer's boxed buttons. */
+.evidence-drawer .term-trigger{border:0;border-radius:0;background:none}

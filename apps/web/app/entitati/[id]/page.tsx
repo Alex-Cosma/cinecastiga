@@ -1,4 +1,5 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
+import { titleName } from "@/lib/tidy-name";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cache } from "react";
@@ -114,7 +115,7 @@ export async function generateMetadata({
   if (!name || roles.length === 0) return {};
   const wanted: Role | null = parseRoleParam(sp["rol"]);
   const role = wanted && roles.includes(wanted) ? wanted : roles[0]!;
-  return { title: entityTitle(cleanName(name), role, countyKnown(flags.find((f) => f.county)?.county ?? profile?.county)) };
+  return { title: entityTitle(titleName(name), role, countyKnown(flags.find((f) => f.county)?.county ?? profile?.county)) };
 }
 
 /** The direct acquisitions' share of the money, one decimal under 10% ("0,4%"), whole above ("35%"). */
@@ -341,7 +342,7 @@ export default async function EntityPage({
             })}
           </div>}
           </div>
-          <h1 className="page-title">{cleanName(row.name)}</h1>
+          <h1 className="page-title">{titleName(row.name)}</h1>
           <div className="id-meta">
             {bothRoles && (profile?.isPublicCompany || profile?.isForeign) ? (
               <span>{[profile.isPublicCompany ? "companie publică" : null, profile.isForeign ? entityCountryLabel(true, profile.countryCode) : null].filter(Boolean).join(" · ")}</span>
@@ -368,6 +369,12 @@ export default async function EntityPage({
             ) : null}
             {txCounts.dateFrom && txCounts.dateTo ? (
               <span>înregistrări {txCounts.dateFrom.slice(0, 4) === txCounts.dateTo.slice(0, 4) ? txCounts.dateFrom.slice(0, 4) : `${txCounts.dateFrom.slice(0, 4)}–${txCounts.dateTo.slice(0, 4)}`}</span>
+            ) : null}
+            {/* The title is tidied for reading (owner, 21 November 2026, lib/tidy-name.ts); whoever checks sees the source's spelling. */}
+            {titleName(row.name) !== cleanName(row.name) ? (
+              <span className="ent-tip" data-only="complet">
+                numele în SICAP <Term tip title="Numele în SICAP" text={`${cleanName(row.name)}. Titlul îl scrie cu litere mici și diacritice; căutarea și exporturile folosesc numele din sursă.`} />
+              </span>
             ) : null}
             {registryNames.length > 0 ? (
               <span className="ent-tip" data-only="complet">
@@ -455,9 +462,13 @@ export default async function EntityPage({
                 label's own explanation (owner, 17 November 2026: less small print under the bar). */}
             <span className="ent-tip">{hasRiskScore && ledger.nCt > 0
               ? <Term tip hold="line" title={GLOSSARY["scor-risc"].title} text={`${GLOSSARY["scor-risc"].text}\n– Citește doar achizițiile directe: ${coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoarea înregistrată. Contractele prin proceduri nu intră în el.`}>{riskLabel(row.score)}</Term>
-              : <Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"}</Term>}
+              : <Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : row.nDas < RISK_MIN_DAS ? "fără scor" : "risc necalculat"}</Term>}
 </span>
           </p>
+          {/* Why there is no score, in one line, so the card does not read as empty (polish L12, 20 November 2026). */}
+          {!hasRiskScore && row.nDas < RISK_MIN_DAS && <p className="ent-risk-why">{row.nDas === 0
+            ? `Scorul citește doar achizițiile directe, iar ${role === "authority" ? "instituția" : "firma"} nu are niciuna.`
+            : `Scorul cere cel puțin ${RISK_MIN_DAS} achiziții directe; aici sunt ${formatInt(row.nDas)}.`}</p>}
           {/* Where the score comes from (owner, 6 November 2026): its criteria on the bar, each a link to its pattern's page. */}
           <ScoreSignals hasRiskScore={hasRiskScore} score={row.score} parts={row.scoreParts} points={points} signalTypes={signalTypes}
             signalCounts={signalCounts} noScoreReason={noScoreReason} signalsHref={entitySignalsUrl} />

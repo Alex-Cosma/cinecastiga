@@ -28,7 +28,7 @@ function SummaryFrame({ rows, more }: { rows: ReactNode; more?: ReactNode }) {
       {rows}
     </dl>
     <ul>
-      <li><Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link></li>
+      <li><Link href="/metodologie#acoperire">Surse, acoperire și{"\u00a0"}actualizare{"\u00a0"}→</Link></li>
       {more}
     </ul>
   </div>;
@@ -50,7 +50,7 @@ export async function CoverageSummary() {
         : "inventarul nu a fost încă recalculat"}</dd></div>
       {freshness?.riskAt && <div><dt>Semnale la</dt><dd>{coverageDate(freshness.riskAt)}</dd></div>}
     </>}
-    more={excluded && Number(excluded)>0 ? <li><Link href="/metodologie/excluderi">{Number(excluded) === 1 ? "Un grup exclus" : `${n(excluded)} ${takesDe(Number(excluded)) ? "de " : ""}grupuri excluse`} temporar din totaluri →</Link></li> : null}
+    more={excluded && Number(excluded)>0 ? <li><Link href="/metodologie/excluderi">{Number(excluded) === 1 ? "Un grup exclus" : `${n(excluded)} ${takesDe(Number(excluded)) ? "de " : ""}grupuri excluse`} temporar din{"\u00a0"}totaluri{"\u00a0"}→</Link></li> : null}
   />;
 }
 
@@ -104,7 +104,7 @@ export default async function DataCoverage() {
     <details className="data-context">
       <summary>Verifică distribuția înregistrărilor pe ani</summary>
       <p>Număr de înregistrări sursă, înaintea excluderilor din totaluri. „—” înseamnă că nu avem înregistrări datate pentru acel an, nu că nu au existat achiziții.</p>
-      <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">An</th>{Object.values(LABELS).map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>
+      <div className="ask-tablewrap"><table className="rank coverage-years"><thead><tr><th scope="col">An</th>{Object.values(LABELS).map(label => <th key={label} scope="col" className="num">{label}</th>)}</tr></thead><tbody>
         {years.map(year => <tr key={year}><th scope="row">{year}</th>{(Object.keys(LABELS) as Dataset[]).map(src => <td key={src} className="num">{data.years.find(row => row.src === src && row.year === year)?.n ? n(data.years.find(row => row.src === src && row.year === year)!.n) : "—"}</td>)}</tr>)}
       </tbody></table></div>
     </details>

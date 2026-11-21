@@ -12,6 +12,7 @@ import { evidenceLinks } from "@/lib/ask/evidence";
 import { entityHref } from "@/lib/entity-href";
 import { FLAG_META, FLAG_ORDER, flagEntityRule, flagLabel } from "@/lib/flags";
 import { cleanName, countyLabel, formatCalendarDate, formatInt, formatRon } from "@/lib/format";
+import { shortName } from "@/lib/radiografie-fmt";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
@@ -240,13 +241,15 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
         <RovingGroup label="Grupurile adunate, față de plafon; săgețile trec de la unul la altul" className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
-            return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
-              <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
+            // The multiple sits over its bar, outside the bar's box: bars and the ceiling share one 120px scale (polish M1).
+            return <div key={g.id} className={g.counted ? "" : "out"} style={{ "--h": `${(g.ratio / max) * 100}%` } as CSSProperties}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
+              <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words}>
                 <span className={`sgc-tip tipcard${edge(i, top.length)}`} aria-hidden="true"><b className="tipcard-t">{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : <ScoreWords text=" · nu intră în scor" />}</span></span>
               </i></div>;
           })}</RovingGroup>
-        <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
-        {all.groups > top.length && <p className="sgc-cap">Cele mai mari {formatInt(top.length)} din {formatInt(all.groups)}.</p>}
+        <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{shortName(cleanName(g.partnerName))}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
+        {/* A phone draws the first four groups (case.css), so its caption counts four (polish H2). */}
+        {all.groups > Math.min(4, top.length) && <p className={`sgc-cap${all.groups > top.length ? "" : " sgc-narrow-only"}`}>Cele mai mari <span className="sgc-n-wide">{formatInt(top.length)}</span><span className="sgc-n-narrow">{formatInt(Math.min(4, top.length))}</span> din {formatInt(all.groups)}.</p>}
       </Side>
     </div>
     <CasesHead title={countWords(data.total, "grup", "grupuri")} total={data.total} shown={data.total} />

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { titleName } from "@/lib/tidy-name";
 import { cache, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
@@ -52,7 +53,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const data = selection ? await load(id, JSON.stringify(selection), pageOf(search.p)).catch(() => null) : null;
   if (!data) return { title: "Sursele Radiografiei" };
   const what = data.pattern ? PATTERN_LABEL[data.pattern.kind] ?? "Tipar de loturi" : `Achiziții adunate · ${cleanName(data.slice?.supplier.name)}`;
-  return { title: `${what} · ${cleanName(data.authority.name)}` };
+  return { title: `${what} · ${titleName(data.authority.name)}` };
 }
 
 /** To the leu, the exact amount on hover or tap (Decision A, owner, 20 November 2026). */

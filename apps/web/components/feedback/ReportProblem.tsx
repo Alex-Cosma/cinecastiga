@@ -84,13 +84,13 @@ export default function ReportProblem() {
       {sent ? <><p id={description} role="status">Mulțumim. Mesajul tău a ajuns la administratorii aplicației.</p><p>Fiind anonim, nu îți putem trimite un răspuns.</p><div className="feedback-form-actions"><button data-close type="button" className="feedback-primary" onClick={close}>Înapoi la explorare</button></div></> : <form noValidate onSubmit={event => void submit(event)} aria-busy={busy}>
         <p id={description}>Fără cont, nume sau e-mail. Mesajul este vizibil doar administratorilor aplicației.</p>
         <label>Despre ce este vorba?<select value={category} disabled={busy} onChange={event => setCategory(event.target.value as FeedbackCategory)}>{Object.entries(FEEDBACK_CATEGORIES).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label htmlFor={`${description}-message`}>Descrie problema</label><textarea id={`${description}-message`} required minLength={20} maxLength={3000} rows={5} value={message} disabled={busy} onChange={event => setMessage(event.target.value)} placeholder="Ce ai observat? Pentru date: instituția, contractul sau cifra." aria-describedby={invalid ? `${description}-hint ${description}-error` : `${description}-hint`} aria-invalid={invalid} />
+        <label htmlFor={`${description}-message`}>Descrie problema</label><textarea id={`${description}-message`} required minLength={20} maxLength={3000} rows={5} value={message} disabled={busy} onChange={event => setMessage(event.target.value)} placeholder="De exemplu: instituția, contractul sau cifra și ce nu se potrivește." aria-describedby={invalid ? `${description}-hint ${description}-error` : `${description}-hint`} aria-invalid={invalid} />
         <div className="feedback-field-note" id={`${description}-hint`}><span>Cel puțin 20 de caractere. Nu include date personale în mesaj.</span><span>{message.length.toLocaleString("ro-RO")} / 3.000</span></div>
         {sourcePath && <p className="feedback-source">Pagina atașată: <code>{sourcePath}</code></p>}
         {draftPath && <p className="feedback-source feedback-source-changed">Ai început mesajul pe <code>{draftPath}</code>; se atașează pagina de acum.</p>}
         <label className="feedback-trap" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} /></label>
         {error && <p className="feedback-error" id={`${description}-error`} role="alert">{error}</p>}
-        <div className="feedback-form-actions"><button type="button" disabled={busy} onClick={close}>Renunță</button><button type="submit" className="feedback-primary" disabled={busy}>{busy ? "Se trimite…" : "Trimite anonim"}</button></div>
+        <div className="feedback-form-actions"><button type="button" disabled={busy} onClick={close}>Renunță</button><button type="submit" className={`feedback-primary${message.trim().length < 20 ? " is-short" : ""}`} disabled={busy}>{busy ? "Se trimite…" : "Trimite anonim"}</button></div>
       </form>}
     </dialog>
   </>;

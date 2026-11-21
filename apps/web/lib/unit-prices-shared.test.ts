@@ -55,8 +55,8 @@ describe("unit prices: the strip and the words", () => {
 describe("the median beside a strip (UX audit Z6-40)", () => {
   it("is one number for a year, a range said as such across years", async () => {
     const { medianWords, priceYearLabel, priceYearWithLeads } = await import("./unit-prices-shared");
-    expect(medianWords(2.97, 2.97, "lei/kg", 2019)).toEqual({ label: "mediana 2019", value: "2,97 lei/kg" });
-    expect(medianWords(2.97, 6.55, "lei/kg", null)).toEqual({ label: "mediana, de la an la an", value: "2,97–6,55 lei/kg" });
+    expect(medianWords(2.97, 2.97, "lei/kg", 2019)).toEqual({ label: "mediana 2019", value: "2,97\u00a0lei/kg" });
+    expect(medianWords(2.97, 6.55, "lei/kg", null)).toEqual({ label: "mediana, de la an la an", value: "2,97–6,55\u00a0lei/kg" });
     expect(medianWords(3, 3, "lei/kg", null).label).toBe("mediana");
     expect(priceYearLabel(2025, 0)).toBe("2025 · prea puține date");
     expect(priceYearLabel(2019, 217)).toBe("2019");

@@ -101,7 +101,9 @@ export function ListBody({ column, facet, value, onChange, stale }: Props<"optio
           return (
             <label key={o.value} className={o.n === 0 && !on ? "off" : undefined}>
               <input type="checkbox" checked={on} disabled={o.n === 0 && !on} onChange={() => toggle(o.value)} />
-              <span className="tf-name">{o.label}</span>
+              {/* a list of choices in sentence case, „Fără semnal” like „Imediat sub plafon” (polish L10, 20 November 2026);
+                  names (pick columns) stay as written */}
+              <span className="tf-name">{column.kind === "options" && o.label ? o.label[0]!.toLocaleUpperCase("ro-RO") + o.label.slice(1) : o.label}</span>
               {column.counts !== false && o.n !== null && <span className="n">{formatInt(o.n)}</span>}
             </label>
           );

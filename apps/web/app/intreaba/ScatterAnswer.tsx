@@ -16,7 +16,7 @@ import { flagEntityRule, flagLabel } from "../../lib/flags";
 import { G } from "../../components/ghost/Ghost";
 import { useChartMotion } from "./answer/chart-motion";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
-import { cleanName, formatInt, formatRon } from "../../lib/format";
+import { cleanName, formatInt, formatRon, formatRonColumn } from "../../lib/format";
 import EntityName from "../../components/EntityName";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import AnswerStrip, { StripRow } from "./answer/AnswerStrip";
@@ -639,7 +639,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <figcaption className={`sc-legend${legacy ? "" : " qb-tipwrap"}`}>
         {/* Who is left of the axis is in the (i) after the ramp (owner, 17 November 2026: less small print). */}
         {field ? <span><span className="sc-ramp" aria-hidden="true">{field.steps.map((_, i) => <i key={i} className={`s${i}`} />)}</span>
-          {firm ? "firme" : "instituții"} pe pătrățel: {stepWords(field.steps).join(" · ")}
+          {/* The last two steps stay on one line: „15+” never alone (polish 20 Nov, L1). */}
+          {firm ? "firme" : "instituții"} pe pătrățel: {stepWords(field.steps).join(" · ").replace(/ · ([^·]*)$/, "\u00a0·\u00a0$1")}
           {field.below > 0 && <>{" "}<InfoMark title="La stânga axei" text={`${countWords(field.below, firm ? "firmă" : "instituție", firm ? "firme" : "instituții")}, sub ${"bands" in data.cloud ? axisWords(10 ** data.cloud.bands.minLog) : ""} lei.`} /></>}</span>
           : <span><i className="sc-key" aria-hidden="true" /> grupul</span>}
         {flag && <span><i className="sc-key is-flag" aria-hidden="true" /> cu „{lower(flag)}”</span>}
@@ -719,7 +720,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
                 {"cri" in row && own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
               </span>}
             </span>
-            <span className="sc-val qb-num">{formatRon(row.value)}</span>
+            <span className="sc-val qb-num">{formatRonColumn(row.value)}</span>
             <RowRisk row={row} levels={levels} parts={own} />
             <button type="button" className="qb-rec sc-rec"
               onClick={() => records({ entityIds: [row.entityId], ...(live ? { flag: live } : {}) }, `${row.name} · ${live ? lower(live) : "înregistrările profilului"}`)}>

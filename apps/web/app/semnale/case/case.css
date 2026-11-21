@@ -103,17 +103,18 @@
 .sgc-tip.l{left:0;transform:none}.sgc-tip.r{left:auto;right:0;transform:none}
 .bar:hover>.sgc-tip,.bar:focus>.sgc-tip,.sgc-groups i:hover>.sgc-tip,.sgc-groups i:focus>.sgc-tip{display:block}
 .sgc-groups{gap:14px}
-.sgc-groups>div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
-.sgc-groups>div i{width:100%;background:var(--risk);border-radius:3px 3px 0 0}
+.sgc-groups>div{position:relative;flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0}
+.sgc-groups>div i{width:100%;height:var(--h);background:var(--risk);border-radius:3px 3px 0 0}
 .sgc-groups>div.out i{background:repeating-linear-gradient(135deg,var(--line2) 0 4px,var(--sunk) 4px 8px)}
-.sgc-groups>div em{font:600 12.5px/1 var(--mono);font-style:normal;color:var(--ink);margin-bottom:4px}
+.sgc-groups>div em{position:absolute;left:0;right:0;bottom:calc(var(--h) + 4px);text-align:center;white-space:nowrap;font:600 12.5px/1 var(--mono);font-style:normal;color:var(--ink)}
 .sgc-ceil{position:absolute;left:0;right:0;border-top:1.5px dashed var(--risk);z-index:1;pointer-events:none}
 .sgc-ceil em{position:absolute;right:0;bottom:2px;font-style:normal;font-size:12px;font-weight:600;color:var(--risk);background:var(--surface);padding-left:6px}
 .sgc-groups .sgc-ceil em{right:auto;left:0;padding:0 6px 0 0}
 .sgc-glab{display:flex;gap:14px;margin-top:6px;font-size:12px;color:var(--muted)}
 .sgc-glab span{flex:1;min-width:0;text-align:center;line-height:1.3}
 .sgc-glab small{display:block;font-size:12px;color:var(--muted)}
-.sgc-glab a{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}.sgc-glab a:hover{color:var(--accent);text-decoration-color:currentColor}
+.sgc-cap .sgc-n-narrow,.sgc-cap.sgc-narrow-only{display:none}
+.sgc-glab a{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:break-word;hyphens:auto;color:var(--ink2);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}.sgc-glab a:hover{color:var(--accent);text-decoration-color:currentColor}
 .sgc-dots{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 0;max-width:320px}
 .sgc-dots i,.sgc-dots .dot{width:15px;height:15px;border-radius:50%;background:var(--risk)}
 .sgc-dots .dot{position:relative;display:block}
@@ -150,7 +151,7 @@
 .sgc-case.out .sgc-mini .t i{background:var(--line2)}
 .sgc-mini .t b{position:absolute;top:-5px;bottom:-5px;border-left:1.5px solid var(--ink)}
 .sgc-body{padding:0 14px 14px}
-.sgc-body>.sgc-cap{margin:0 0 6px}
+.sgc-body>.sgc-cap{margin:10px 0 6px}
 .sgc-recs{list-style:none;margin:0;padding:0}
 .sgc-rec{display:grid;grid-template-columns:118px 96px minmax(0,1fr) 150px 64px;gap:14px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
 .sgc-code{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
@@ -291,7 +292,6 @@ a.dot{cursor:pointer}
   .sgc-table tr.hit{background:var(--accent-soft)}.sgc-table tr.hit td{background:none}
   .sgc-pager{justify-content:space-between}
   .sgc-guide{grid-template-columns:1fr;gap:12px}
-  .sgc-groups>div:nth-child(n+6),.sgc-glab span:nth-child(n+5){display:none}
   .sgc-case>summary .sgc-sumw{grid-column:1;grid-row:3;text-align:left}
   .sgc-noscore{text-align:left}
 }
@@ -316,7 +316,7 @@ a.dot{cursor:pointer}
 @media (max-width:760px){
   .sgc-score>.sgc-tabs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;margin-top:10px}
   .sgc-tabs>li{min-width:0}
-  .sgc-tabs .sgc-tab{height:100%;padding:7px 10px;gap:7px;font-size:13px;line-height:1.3}
+  .sgc-tabs .sgc-tab{height:100%;padding:7px 10px;gap:7px;font-size:13px;line-height:1.3;text-wrap:balance}
   .sgc-tabs .sgc-tab small{display:none}
   .sgc-tabs>.sgc-more{grid-column:1/-1}
   .sgc-tabs .sgc-morebtn:not(.cur) small{display:none}
@@ -366,3 +366,9 @@ a.dot{cursor:pointer}
 .sgc-tab{position:relative;isolation:isolate}
 .sgc-tab[aria-current="page"]{background:none;border-color:transparent}
 .sgc-tab[aria-current="page"]::before{content:"";position:absolute;inset:-1px;z-index:-1;border-radius:8px;background:var(--accent);transform-origin:0 0;pointer-events:none}
+/* Polish H2/L4 (20 November 2026): below 1000px the summed groups' chart draws its four largest, so each name has room
+   for two lines; the caption under it counts the same four (CasePage.tsx, .sgc-n-narrow). */
+@media (max-width:1000px){
+  .sgc-groups>div:nth-child(n+6),.sgc-glab>span:nth-child(n+5){display:none}
+  .sgc-cap .sgc-n-wide{display:none}.sgc-cap .sgc-n-narrow{display:inline}.sgc-cap.sgc-narrow-only{display:block}
+}

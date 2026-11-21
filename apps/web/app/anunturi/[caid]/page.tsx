@@ -15,7 +15,6 @@ import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import Lei from "@/components/Lei";
-import InfoMark from "@/components/InfoMark";
 import { GLOSSARY } from "@/lib/glossary";
 import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
 import { readFilters } from "@/lib/table-filters/codec";
@@ -106,15 +105,21 @@ export default async function NoticePage({ params, searchParams }: {
       <RecordHead
         title={headline}
         heading={<RecordTitle>{headline}</RecordTitle>}
-        parties={n.authority ? <><EntityName id={n.authority.entityId} role="authority">{cleanName(n.authority.name)}</EntityName>{countyLabel(n.authority.county) && <span className="record-quiet"> · {countyLabel(n.authority.county)}</span>} {none ? " a publicat anunțul" : <> a atribuit {n.nLots === 1 ? "o înregistrare" : countWords(n.nLots, "înregistrare", "înregistrări")}</>}</> : null}
+        parties={n.authority ? <><EntityName id={n.authority.entityId} role="authority">{cleanName(n.authority.name)}</EntityName>{countyLabel(n.authority.county) && <span className="record-quiet"> ({countyLabel(n.authority.county)})</span>} {none ? " a publicat anunțul" : <> a atribuit {n.nLots === 1 ? "o înregistrare" : countWords(n.nLots, "înregistrare", "înregistrări")}</>}</> : null}
         value={{
           // No contract found is said in words, in body type, not as a figure (Z7-10, Z7-21).
           amount: e.total != null ? lei(e.total) : <span className="record-amount-words is-quiet">{none ? "Niciun contract găsit" : "Nicio valoare identificată"}</span>,
           // "nu e plată" once on the page, beside the figure (Z7-08, Z7-09).
           // The ceilings' sum is in the label's "?", which already says they are separate (owner, 17 November 2026).
-          label: <>Contracte și comenzi identificate{e.total != null && <> <span className="record-not-paid">· nu e plată</span></>} {e.frameworks != null
-            ? <Term tip title={GLOSSARY["comenzi-identificate"].title} text={`${GLOSSARY["comenzi-identificate"].text} Plafoane de acord-cadru publicate: ${leiRounded(e.frameworks)}.`} />
-            : <Term tip id="comenzi-identificate" />}</>,
+          // The "?" stays on the line of the words before it (polish H2, 20 November 2026: it fell alone onto a line).
+          label: (() => {
+            const why = e.frameworks != null
+              ? <Term tip title={GLOSSARY["comenzi-identificate"].title} text={`${GLOSSARY["comenzi-identificate"].text} Plafoane de acord-cadru publicate: ${leiRounded(e.frameworks)}.`} />
+              : <Term tip id="comenzi-identificate" />;
+            return e.total != null
+              ? <>Contracte și comenzi identificate <span className="record-not-paid is-line">nu e plată {why}</span></>
+              : <>Contracte și comenzi <span className="record-nowrap">identificate {why}</span></>;
+          })(),
         }}
         meta={[
           <span className="record-kind" key="k">Anunț de atribuire</span>,
@@ -137,7 +142,7 @@ export default async function NoticePage({ params, searchParams }: {
       <RecordSection id="atribuire" title="Atribuirea" only="complet">
         <Facts facts={[
           awarded && { label: <Term hold="line" tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: <>{lei(awarded)}{gapNote && <small>{gapNote}</small>}</>, wide: !!gapNote },
-          offers && { label: <>Oferte <InfoMark title="Oferte" text={Number(e.lowestOffer) === Number(e.highestOffer) ? "Cea mai mică = cea mai mare." : "De la cea mai mică la cea mai mare."} /></>, value: offers },
+          offers && { label: <Term hold="line" tip title="Oferte" text={Number(e.lowestOffer) === Number(e.highestOffer) ? "Cea mai mică = cea mai mare." : "De la cea mai mică la cea mai mare."}>Oferte</Term>, value: offers },
           procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure },
           (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: n.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
           // Only a notice with several records has a "first" one (Z7-29).

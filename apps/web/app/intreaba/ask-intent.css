@@ -26,14 +26,15 @@
 .ia-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .ia-group { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .ia-group h3 { margin: 0 0 8px; font: 700 13px/1.4 var(--body); letter-spacing: .02em; color: var(--accent-ink, var(--accent)); text-transform: uppercase; }
-.ia-group-note { margin: -4px 0 8px !important; color: var(--muted); font-size: 12px !important; }
+.ia-group-note { margin: 6px 12px 0 !important; padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px !important; }
 .ia-example {
   display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px;
   min-height: 44px; padding: 10px 12px; margin: 0; border: 0; border-top: 1px solid var(--line);
   background: transparent; color: var(--ink); text-align: left; font: 400 15px/1.45 var(--body); cursor: pointer;
 }
 .ia-group .ia-example:first-of-type { border-top: 0; }
-.ia-example > span { min-width: 0; overflow-wrap: anywhere; }
+.ia-example > span { min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+.ia-example-cue { color: var(--muted); font-size: 13px; font-style: italic; white-space: nowrap; }
 .ia-example-go { flex: none; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; color: var(--accent); }
 .ia-example-go .d-icon { width: 14px; height: 14px; }
 .ia-example:hover .ia-example-go { border-color: var(--accent); }

@@ -23,5 +23,6 @@
   .excl-institutions li { grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; }
   .excl-name { grid-column: 1 / -1; }
   .excl-meta { grid-column: 1; }
-  .excl-open { grid-column: 2; grid-row: 2; min-height: 44px; }
+  /* On the count line it pairs with, by its baseline (polish, 20 November 2026). */
+  .excl-open { grid-column: 2; grid-row: 2; min-height: 44px; align-self: baseline; }
 }

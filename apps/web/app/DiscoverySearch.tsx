@@ -12,19 +12,23 @@ import DiscoveryIcon from "./DiscoveryIcon";
 import { namesQuery } from "@/lib/names-query";
 import { TOUR_QUERY_EVENT, TOUR_QUERY_KEY } from "@/lib/tour";
 import { askHref } from "@/lib/discovery-links";
-import { AUTHORITY_CLOUD_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC } from "@/lib/ask/site-links";
+import { AUTHORITY_CLOUD_SPEC, CONTRACT_WINNERS_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC, ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
 import type { Suggestion } from "@/lib/search-suggestions";
 import { isDrawn, stepShown } from "./discovery-keys";
 
 /*
- * The search dialog opened empty (UX audit Z1-17, 16 November 2026): words to try, three of the home page's starting
+ * The search dialog opened empty (UX audit Z1-17, 16 November 2026): words to try, the home page's starting
  * questions (as suggestion rows, reached with the arrows too) and the keys, in the same frame as the suggestions.
  * `complet`: the two scatter answers exist only in Complet (lib/view-mode.ts; owner, 18 November 2026); the arrows walk
  * the rows that are drawn (discovery-keys.ts).
  */
-const TRY = ["iluminat", "Cluj", "STRABAG", "asfaltare în Iași"];
+// One casing, as the home page's chips (polish 20 Nov, L10); the search ignores case.
+const TRY = ["Iluminat", "Cluj", "Strabag", "Asfaltare în Iași"];
 const STARTERS: (Suggestion & { complet?: boolean })[] = [
   { id: "start:hospitals", label: "Ce cumpără spitalele?", detail: "în Întreabă", href: askHref(HOSPITALS_BREAKDOWN_SPEC), icon: "question" },
+  // Esențial had one starting question under a plural heading (polish 20 Nov, M4): the home page's „who wins” and roads.
+  { id: "start:winners", label: "Cine câștigă contractele?", detail: "în Întreabă", href: askHref(CONTRACT_WINNERS_SPEC), icon: "question" },
+  { id: "start:roads", label: "Cine repară drumurile?", detail: "în Întreabă", href: askHref(ROADS_RANKING_SPEC), icon: "question" },
   { id: "start:outliers", label: "Cine iese din tipar?", detail: "Instituțiile după risc · un semnal e o pistă, nu o dovadă", href: askHref(AUTHORITY_CLOUD_SPEC), icon: "question", complet: true },
   { id: "start:dependence", label: "Ce firme depind de un singur client?", detail: "în Întreabă", href: askHref(FIRM_DEPENDENCE_CLOUD_SPEC), icon: "question", complet: true },
 ];
@@ -56,7 +60,7 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
  * the results page, which shows the same interpretation on top (owner
  * decision 2). The GET form keeps working if every suggestion source fails.
  */
-export default function DiscoverySearch({ hero = false, modal = false, onNavigate, onClose }: { hero?: boolean; modal?: boolean; onNavigate?: () => void; onClose?: () => void }) {
+export default function DiscoverySearch({ hero = false, modal = false, shown = true, onNavigate, onClose }: { hero?: boolean; modal?: boolean; /** The dialog around a modal search is open. */ shown?: boolean; onNavigate?: () => void; onClose?: () => void }) {
   const router = useRouter(), id = useId(), box = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState<Partial<Record<SourceName, Source<unknown>>>>({});
@@ -96,7 +100,8 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
   // Opened empty, the dialog's starting questions are the rows the arrows go through.
   const starting = modal && term.length < 2;
   const options = useMemo(() => starting ? STARTERS : flattenSuggestions(groups), [groups, starting]);
-  const expanded = (term.length >= 2 || starting) && (modal || open);
+  // A closed dialog's list is not expanded (polish, 20 November 2026: the hidden field said aria-expanded="true").
+  const expanded = (term.length >= 2 || starting) && (modal ? shown : open);
 
   useEffect(() => {
     const q = term;

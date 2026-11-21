@@ -85,7 +85,7 @@ export function riskNoScoreReason(p: { nDas: number; scoreNote: string | null; s
   if (p.scoreNote === "private_buyer") return "Cumpărător privat: plafoanele nu i se aplică, deci tiparele de mai jos nu fac un scor.";
   if (p.scoreNote === "inhouse") return null;
   if (p.nDas < RISK_MIN_DAS) return `Sub ${RISK_MIN_DAS} achiziții directe: semnalele se văd, dar nu fac un scor.`;
-  return "Tiparele găsite aduc sub 10 puncte: fără semnal în scor.";
+  return "Tiparele găsite aduc sub 10 puncte, prea puțin pentru un scor.";
 }
 
 /**

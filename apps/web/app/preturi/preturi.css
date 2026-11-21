@@ -24,7 +24,8 @@
 .pr-field select:focus-visible, .pr-pick-box input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pr-pick { position: relative; }
 .pr-pick-box { position: relative; }
-.pr-pick-box input { width: 280px; padding-right: 38px; }
+/* As wide as its list (320 px), so the list opens flush with the field (polish, 20 November 2026). */
+.pr-pick-box input { width: 320px; padding-right: 38px; }
 .pr-pick-box input::placeholder { color: var(--muted); }
 .pr-clear { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink2); cursor: pointer; }
 .pr-clear svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
@@ -69,14 +70,19 @@
 .pr-sum:hover { --pr-bg: var(--sunk); background: var(--sunk); }
 .pr-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
 .pr-row[open] > .pr-sum { --pr-bg: var(--accent-soft); background: var(--accent-soft); }
-.pr-label { min-width: 0; padding-left: 10px; }
-.pr-label b { display: block; font: 700 20px/1.15 var(--display); letter-spacing: -.015em; color: var(--ink); }
+/* The names start on the column header's and the filters' line; the row's tint reaches 10 px past them (polish,
+   20 November 2026). */
+.pr-sum { margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+.pr-label { min-width: 0; }
+.pr-label b { display: block; font: 700 20px/1.15 var(--display); letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
+/* The median's range and unit stay on one line (polish, 20 November 2026). */
+.pr-label .pr-nowrap { white-space: nowrap; }
 .pr-pack { display: block; font-size: 13px; color: var(--ink2); margin-top: 2px; }
 .pr-label small { display: block; margin-top: 3px; font: 500 12px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* On a tinted row the small text takes the stronger ink: --muted is at the AA limit on paper and under it on a tint. */
 .pr-sum:hover .pr-label small, .pr-row[open] .pr-label small { color: var(--ink2); }
 .pr-strip { position: relative; display: block; height: 48px; }
-.pr-count { padding-right: 10px; text-align: right; }
+.pr-count { text-align: right; }
 .pr-count b { display: block; font: 700 22px/1 var(--display); color: var(--risk); font-variant-numeric: tabular-nums; }
 .pr-count small { font-size: 12px; color: var(--ink2); }
 /* The column's header says what the number counts (owner, 11 November 2026); on phones, where the header is hidden, the number keeps its word. */
@@ -109,7 +115,7 @@
 .pr-tag-end { transform: translateX(-100%); margin-left: 8px; }
 
 /* ── a strip opened: its leads ─────────────────────────────────────────── */
-.pr-open { padding: 6px 10px 18px; }
+.pr-open { padding: 6px 0 18px; }
 .pr-open-head { margin: 10px 0 2px; font-size: 12px; color: var(--ink2); }
 .pr-leads { list-style: none; margin: 0; padding: 0; }
 .pr-lead { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) 64px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 76px; gap: 14px; align-items: center; }
@@ -219,6 +225,8 @@
 .pr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pr-table > thead th { padding: 8px 10px; border-bottom: 1px solid var(--line2); font-size: 12px; font-weight: 600; color: var(--muted); text-align: left; white-space: nowrap; vertical-align: bottom; }
 .pr-table > thead th.pr-num { text-align: right; }
+/* Every header in the body face: the figures' mono stays in the cells (polish, 20 November 2026). */
+.pr-table > thead th.pr-num, .pr-table > thead th.c-year { font-family: var(--body); font-size: 12px; }
 .pr-table .th-sort { color: var(--ink2); text-decoration: none; padding: 4px 2px; border-radius: 6px; }
 .pr-table .th-sort:hover { color: var(--accent-ink); }
 .pr-table .th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -318,15 +326,17 @@
   .pr-median-word { display: inline; }
   .pr-sum { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label count" "strip strip" "lead lead"; gap: 6px 12px; padding: 12px 0 8px; }
   .pr-strip-lead { grid-area: lead; display: flex; align-items: baseline; min-width: 0; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--risk); white-space: nowrap; }
+  .pr-strip-lead { padding: 0; }
   .pr-strip-lead .pr-tag-name { max-width: none; }
-  .pr-label { grid-area: label; padding-left: 6px; }
-  .pr-count { grid-area: count; align-self: start; padding-right: 6px; max-width: 132px; }
+  .pr-sum { margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
+  .pr-label { grid-area: label; }
+  .pr-count { grid-area: count; align-self: start; max-width: 132px; }
   .pr-strip { grid-area: strip; height: 32px; }
   .pr-strip .pr-tag { display: none; }
   .pr-strip .pr-band { top: 8px; }
   .pr-strip .pr-dot { top: 9px; }
   .pr-strip .pr-dot-named { top: 8px; }
-  .pr-open { padding: 4px 6px 16px; }
+  .pr-open { padding: 4px 0 16px; }
   .pr-big .pr-marks { height: 150px; }
   .pr-hero-line { font-size: 20px; }
   .pr-lines thead { display: none; }

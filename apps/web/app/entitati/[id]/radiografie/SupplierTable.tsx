@@ -221,7 +221,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
                     <i className="cm-tw" style={{ flexGrow: r.here }} /><i className="cm-tw" style={{ flexGrow: r.daHere }} />
                   </span>
                 </td>
-                <td className="c-recs"><span className="v">{formatInt(r.n + r.nDa)}</span><span className="sub">{recordWords(r)}</span></td>
+                <td className="c-recs"><span className="v">{formatInt(r.n + r.nDa)}</span><span className="sub">{recordWords(r).split(" · ").map((part, i) => <span key={i}>{i ? " · " : ""}<span className="rv-nw">{part}</span></span>)}</span></td>
               </tr>;
             })}
           </tbody>}

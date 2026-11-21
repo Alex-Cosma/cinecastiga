@@ -1,4 +1,5 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
+import { titleName } from "@/lib/tidy-name";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -17,7 +18,7 @@ const loadProfile = cache(getEntityProfile);
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const entity = /^[1-9]\d{0,15}$/.test(id) ? await loadProfile(id).catch(() => null) : null;
-  return { title: entity?.name ? `Comparații · ${cleanName(entity.name)}` : "Comparații" };
+  return { title: entity?.name ? `Comparații · ${titleName(entity.name)}` : "Comparații" };
 }
 
 export default async function PeersPage({ params, searchParams }: {
@@ -37,5 +38,5 @@ export default async function PeersPage({ params, searchParams }: {
   // A town hall's place on the map (UX audit Z4-26, Z4-39): the comparison links to it, even when the group cannot load.
   const place = role === "authority" ? townHallPlace(profile.name, profile.county) : null;
   // Complet's (owner, 18 November 2026): opened from a link in Esențial it shows whole, under one line that says so.
-  return <CompletOnly><PeersExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role} bothRoles={profile.roles.length > 1} initial={initial} place={place} /></CompletOnly>;
+  return <CompletOnly><PeersExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} titleName={titleName(profile.name)} county={profile.county} role={role} bothRoles={profile.roles.length > 1} initial={initial} place={place} /></CompletOnly>;
 }

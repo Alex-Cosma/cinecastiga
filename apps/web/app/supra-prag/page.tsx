@@ -11,7 +11,7 @@ import { PendingRegion, RegionLink } from "@/components/ghost/client";
 import { ghostHold } from "@/lib/ghost-hold";
 import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
 import { getCoverage } from "@/lib/coverage";
-import { formatInt, cleanName } from "@/lib/format";
+import { formatInt, cleanName, countyLabel } from "@/lib/format";
 import Term from "@/components/Term";
 import { countWords } from "@/lib/ask/answer-text";
 import { GLOSSARY } from "@/lib/glossary";
@@ -73,7 +73,10 @@ function amountCell(a: TedAward) {
   const label = TED_AMOUNT_LABEL[kind] ?? TED_AMOUNT_LABEL.legacy_unknown;
   const main = tedAmountHeadline(a);
   return <>
-    <div className="tp-amount">{main}</div>
+    {/* „2 oferte · fără total” is words, not a sum: reading size, and its two halves never break inside (polish M8) */}
+    <div className={/fără total$/.test(main) ? "tp-amount tp-amount-words" : "tp-amount"}>{/fără total$/.test(main)
+      ? main.split(" · ").map((part, i) => <Fragment key={i}>{i ? " · " : ""}<span className="tp-nowrap">{part}</span></Fragment>)
+      : main}</div>
     {kind !== USUAL_AMOUNT && <div className="county tp-amount-kind">{label}</div>}
     {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
   </>;
@@ -248,7 +251,7 @@ export default async function SupraPragPage({
                 <td>
                   <EntityName id={a.buyerEntityId} role="authority">{cleanName(a.buyerName)}</EntityName>
                   <div className="arrow-to tp-winners">→ {winnerCell(a)}</div>
-                  {a.buyerCounty ? <div className="county">{a.buyerCounty}</div> : null}
+                  {a.buyerCounty ? <div className="county">{countyLabel(a.buyerCounty)}</div> : null}
                   {tedCountryNeedsReview(a.isForeign, a.winnerCountries) ? <div className="county">{TED_COUNTRY_REVIEW_LABEL}</div> : null}
                 </td>
                 <td className="county" data-label="Obiect">

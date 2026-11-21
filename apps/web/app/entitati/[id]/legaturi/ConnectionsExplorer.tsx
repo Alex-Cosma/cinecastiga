@@ -20,7 +20,7 @@ import Popover from "@/app/intreaba/builder/pickers/Popover";
 import "@/app/intreaba/builder/filters-kit.css";
 import { countWords } from "@/lib/ask/answer-text";
 import { glossaryEntry } from "@/lib/glossary";
-import { cleanName, countyLabel } from "@/lib/format";
+import { cleanName, countyLabel, formatRon } from "@/lib/format";
 import { sumDecimalStrings } from "@/lib/ask/evidence";
 import Lei from "@/components/Lei";
 import { leiRounded } from "@/lib/lei";
@@ -41,7 +41,7 @@ type Sources = { selection: ConnectionEvidenceSelection; title: string };
 const number = (value: number) => value.toLocaleString("ro-RO");
 const name = (entity: ConnectionEntity) => cleanName(entity.name);
 const records = (item: ConnectionPartner) => item.daRows + item.contractRows;
-const recordLabel = (n: number) => countWords(n, "înregistrare", "înregistrări");
+const recordLabel = (n: number) => countWords(n, "înregistrare", "înregistrări").replace(/ /g, "\u00a0"); // the count never parts from its noun
 const sourceLabel = (n: number) => n === 1 ? "Vezi sursa" : `Vezi cele ${countWords(n, "sursă", "surse")}`;
 const date = (value: string | null) => value ? value.slice(0, 10).split("-").reverse().join(".") : "dată necunoscută";
 const year = (value: string | null) => value ? value.slice(0, 4) : null;
@@ -49,16 +49,11 @@ const profileUrl = (entity: Pick<ConnectionEntity, "id" | "role">) => `/entitati
 const DATASETS: { value: Dataset; label: string }[] = [{ value: "all", label: "Toate" }, { value: "da", label: "Directe" }, { value: "contracts", label: "Proceduri" }];
 const FIRST_YEAR = 2018;
 
-/** A value for the drawing's labels: „2,94 mld.”, „883 mil.”, „45,3 mii”; the exact sums stay in the dock and sources. */
-function short(value: number): string {
-  const fmt = (n: number, d: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: d, maximumFractionDigits: d });
-  const scaled = (n: number) => fmt(n, n >= 100 ? 0 : n >= 10 ? 1 : 2);
-  if (value >= 1e9) return `${scaled(value / 1e9)} mld.`;
-  if (value >= 1e6) return `${scaled(value / 1e6)} mil.`;
-  if (value >= 1e3) return `${scaled(value / 1e3)} mii`;
-  return fmt(value, 0);
-}
-const pct = (share: number) => share >= 0.001 ? `${(share * 100).toLocaleString("ro-RO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "sub 0,1%";
+/** A value for the drawing's labels, written as on the entity page („2,3 mld. lei”, „182,2 mil. lei”; polish L6); the
+ *  exact sums stay in the dock and sources. */
+const short = (value: number): string => formatRon(value);
+/** A share with one decimal, a whole one without its „,0” („100%”, not „100,0%”: polish L6). */
+const pct = (share: number) => share >= 0.001 ? `${(share * 100).toLocaleString("ro-RO", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%` : "sub 0,1%";
 const amount = (item: { totalExact: string }) => Number(item.totalExact);
 
 function pair(a: ConnectionEntity, b: ConnectionEntity): ConnectionEvidencePair {
@@ -715,8 +710,12 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
   const legendRows = !onePartner && page === 1 && !rootSearch && v.base && v.top && v.base.items.length > 0 ? Math.min(4, v.base.items.length) : 0;
   const secondHead = vp ? (isAuthority ? `Cui mai vinde ${name(vp.partner.entity)}` : `Cine mai vinde la ${name(vp.partner.entity)}`) : "";
   // What each list's percentages are a share of (UX audit Z5-40): the two lists' totals differ.
-  const rootShareWords = `% din ce a ${isAuthority ? "cumpărat" : "vândut"} ${currentName}`;
-  const secondShareWords = vp ? `% din ce a ${isAuthority ? "vândut" : "cumpărat"} ${name(vp.partner.entity)}` : "";
+  // Polish M4 (20 November 2026): the count names what it counts, and the "%" is said in words.
+  const rootShareWords = `procentul: partea din ce a ${isAuthority ? "cumpărat" : "vândut"} ${currentName}`;
+  const secondShareWords = vp ? `procentul: partea din ce a ${isAuthority ? "vândut" : "cumpărat"} ${name(vp.partner.entity)}` : "";
+  const partnersWords = (n: number, suppliers: boolean, found: boolean) => suppliers
+    ? `${countWords(n, "furnizor", "furnizori")}${found ? (n === 1 ? " găsit" : " găsiți") : ""}`
+    : `${countWords(n, "instituție", "instituții")}${found ? (n === 1 ? " găsită" : " găsite") : ""}`;
   // A selection without any record (UX audit Z5-38): one sentence and one way out, instead of four messages and a search.
   const empty = !!v.top && v.top.items.length === 0;
   const emptyWords = `${scope.dataset === "da" ? "Nicio achiziție directă" : scope.dataset === "contracts" ? "Niciun contract prin proceduri" : "Nicio înregistrare"}${scope.yearFrom || scope.yearTo ? " în această perioadă" : ""}.`;
@@ -808,7 +807,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
       </div>}
       {!empty && <div id="cx-lists" className={`cx-lists show-${vp ? (onePartner ? "second" : phoneList) : "root"}${onePartner && vp ? " one" : ""}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
         {!(onePartner && vp) && <section className="cx-list root" aria-labelledby="cx-list-1">
-          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span title={rootShareWords}>{v.base ? <>{`${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · ${rootShareWords}`}{legendRows > 0 && <span className="cx-from5"> · de la al 5-lea</span>}</> : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span title={rootShareWords}>{v.base ? <>{`${partnersWords(v.base.pagination.totalPartners, isAuthority, !!rootSearch)} · ${rootShareWords}`}{legendRows > 0 && <span className="cx-from5"> · de la al 5-lea</span>}</> : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={rootList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută un furnizor" : "Caută o instituție"} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           <div aria-busy={listPending} className={rootStale ? "g-stale" : undefined} inert={rootStale || undefined}>
             {!v.base ? <ListGhost />
@@ -818,8 +817,9 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
           {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} head="cx-list-1" />}
         </section>}
         {vp ? <section className="cx-list second" aria-labelledby="cx-list-2">
-          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · ${secondShareWords}` : <Ghost as="span" name="cx-count-2" wait="client" className={second.error ? "g-still" : undefined}><G.Line w="9em" /></Ghost>}</span></div>
-          <input ref={secondList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"} value={peerSearch} onChange={(e) => { setPeerSearch(e.target.value); setPeerPage(1); }} />
+          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? (v.second.pagination.totalPartners === 0 && !peerSearch ? (isAuthority ? "nicio altă instituție" : "niciun alt furnizor") : `${partnersWords(v.second.pagination.totalPartners, !isAuthority, !!peerSearch)} · ${secondShareWords}`) : <Ghost as="span" name="cx-count-2" wait="client" className={second.error ? "g-still" : undefined}><G.Line w="9em" /></Ghost>}</span></div>
+          {/* no partners and no search: no search box over an empty list (polish M4) */}
+          {(v.second?.pagination.totalPartners !== 0 || peerSearch) && <input ref={secondList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"} value={peerSearch} onChange={(e) => { setPeerSearch(e.target.value); setPeerPage(1); }} />}
           {second.error && !held ? <div className="cx-error" role="alert"><p>{second.error}</p><button type="button" onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div aria-busy={secondPending} className={secondStale ? "g-stale" : undefined} inert={secondStale || undefined}>
             {!v.second ? <ListGhost />
               : v.second.items.length ? <ListRows data={v.second} total={secondTotal} largest={v.secondTop?.items[0] ? amount(v.secondTop.items[0]) : 0} pickedId={v.peer?.entity.id} onPick={choosePeer} label="Ceilalți parteneri" />

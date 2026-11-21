@@ -189,3 +189,5 @@ span.pxs-src{display:inline-flex;align-items:center}
 @media (max-width:640px){
   .pxs-seg button,.pxs-src{min-height:44px}
 }
+/* polish M7: a hyphenated name („Cluj-Napoca”) stays whole in the title */
+.pxs-nobreak{white-space:nowrap}

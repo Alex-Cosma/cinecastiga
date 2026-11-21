@@ -28,6 +28,14 @@ export function formatRon(v: number | string | null | undefined): string {
   return `${int.format(n)} lei`;
 }
 
+const dec1 = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+/** formatRon for a column of figures: mil./mld. always with one decimal („2,0 mil. lei” under „4,1 mil. lei”). */
+export function formatRonColumn(v: number | string | null | undefined): string {
+  const n = typeof v === "string" ? Number(v) : v;
+  if (n == null || !Number.isFinite(n) || n < 1e6) return formatRon(v);
+  return n >= 1e9 ? `${dec1.format(n / 1e9)} mld. lei` : `${dec1.format(n / 1e6)} mil. lei`;
+}
+
 /** Full RON amount with thousands separators (no compaction). */
 export function formatRonFull(v: number | string | null | undefined): string {
   if (v == null) return "—";

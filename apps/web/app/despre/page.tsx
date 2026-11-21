@@ -30,7 +30,7 @@ export default function DesprePage() {
           <section>
             <h2>De unde vin datele</h2>
             <p>Din surse oficiale și publice: SEAP / SICAP (e-licitatie.ro), jurnalul european TED, bilanțurile depuse la Ministerul Finanțelor și Registrul Comerțului.</p>
-            <p><Link href="/metodologie#acoperire">Surse, acoperire și actualizare</Link></p>
+            <p><Link href="/metodologie#acoperire">Surse, acoperire și actualizare <span aria-hidden="true">→</span></Link></p>
           </section>
           <section>
             <h2>Cum se citesc cifrele</h2>
@@ -39,7 +39,7 @@ export default function DesprePage() {
               <li>Un semnal e o pistă de verificat. Nu e o dovadă și nu e o acuzație.</li>
               <li>Scorul descrie achizițiile unei instituții sau ale unei firme, după reguli publice.</li>
             </ul>
-            <p><Link href="/metodologie">Ghidul, cu toate regulile</Link></p>
+            <p><Link href="/metodologie">Ghidul, cu toate regulile <span aria-hidden="true">→</span></Link></p>
           </section>
           <section id="corectura">
             <h2>Ai găsit o greșeală?</h2>

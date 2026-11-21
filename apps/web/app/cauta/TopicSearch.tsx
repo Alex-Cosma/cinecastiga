@@ -1,4 +1,5 @@
 'use client';
+import DiscoverNav from "@/components/discover/DiscoverNav";
 import {Fragment,useEffect,useId,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {useRouter,useSearchParams} from 'next/navigation';
@@ -19,7 +20,7 @@ import {FloatStatus} from '@/components/ghost/client';
 import WorkLine from '../../components/motion/WorkLine';
 import {DoneCheck,useFlag} from '../../components/motion/Done';
 import {silentChoice} from '@/lib/topic-search/places';
-import {roCount} from '@/lib/ro-count';
+import {roCount,takesDe} from '@/lib/ro-count';
 import {countyName} from '@/lib/counties';
 import {completUnless,filterSet,setFromAddress} from './esential';
 
@@ -314,7 +315,7 @@ export default function TopicSearch(){
   </section>}
   {isShown('documents')&&!emptyRow('documents')&&<section className="topic-panel" data-only={completUnless(scope.tab==='documents')} aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'',<Term tip title="Documente pregătite" text="Căutăm în textul extras din documente; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
   {docsLoading?<DocumentsGhost rows={scope.tab==='documents'?Math.max(1,Math.min(PAGE_SIZE,(count('documents')??PAGE_SIZE)-(scope.page-1)*PAGE_SIZE)):2}/>
-  :<>{docsResult&&docsResult.coverage.known>0&&<div className="topic-coverage"><progress value={docsResult.coverage.ready} max={Math.max(1,docsResult.coverage.known)} aria-label="Acoperirea documentelor pregătite"/><span><strong>{formatInt(docsResult.coverage.ready)} din {formatInt(docsResult.coverage.known)}</strong> fișiere <InfoMark title="Acoperirea documentelor" text={`${formatInt(docsResult.coverage.ready)} din ${formatInt(docsResult.coverage.known)} fișiere cunoscute au text pregătit · ${countWords(docsResult.coverage.pages,'pagină căutabilă','pagini căutabile')}. Nu sunt toate documentele din SEAP.`}/></span></div>}
+  :<>{docsResult&&docsResult.coverage.known>0&&<div className="topic-coverage">{/* Under 1% the bar is empty and reads as a load that never ends: the words alone say it (polish 20 Nov, L7). */}{docsResult.coverage.ready/Math.max(1,docsResult.coverage.known)>=0.01&&<progress value={docsResult.coverage.ready} max={Math.max(1,docsResult.coverage.known)} aria-label="Acoperirea documentelor pregătite"/>}<span><strong>{formatInt(docsResult.coverage.ready)} din {formatInt(docsResult.coverage.known)}</strong> {takesDe(docsResult.coverage.known)?'de ':''}fișiere <InfoMark title="Acoperirea documentelor" text={`${formatInt(docsResult.coverage.ready)} din ${roCount(docsResult.coverage.known,'un fișier','fișiere')} cunoscute au text pregătit · ${countWords(docsResult.coverage.pages,'pagină căutabilă','pagini căutabile')}. Nu sunt toate documentele din SEAP.`}/></span></div>}
   {!docsResult&&<div className="topic-coverage"><span>Acoperirea documentelor nu este disponibilă acum.</span></div>}
   {docsFailure||!docsResult?<div className="topic-error" role="alert"><p>{docsFailure||'Căutarea în documente nu s-a încheiat.'}</p><button type="button" className="topic-control" onClick={retryDocs}>Reîncearcă documentele</button></div>
   :<>{docsResult.documents.hits.map(d=><article className="topic-record topic-document" key={d.id}><div className="topic-record-main"><div className="topic-record-meta"><DiscoveryIcon name="bookOpen"/><span>{textSource(d.filename,d.method)} · pagina {d.page}</span><span>{d.noticeNo}</span></div><h3><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">{d.filename}</a></h3><p className="topic-help">{d.noticeTitle}</p><blockquote><Highlight text={d.text} query={effective.q}/></blockquote></div><div className="topic-record-side"><small>Pagini găsite{d.pages.length>1?` · ${formatInt(d.pages.length)}`:''}</small><DocumentPages d={d} href={documentHref}/><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">Citește și păstrează pasajul <DiscoveryIcon name="arrow"/></a><a href={`/api/documents/${d.id}/file?kind=pdf#page=${d.page}`} target="_blank" rel="noopener noreferrer">PDF la pagina {d.page}</a></div></article>)}{!docsResult.documents.total&&<p className="topic-empty">{docsResult.coverage.ready?'Nimic în documentele pregătite.':'Niciun document pregătit în selecție încă.'} Asta nu înseamnă că lipsește din originale.</p>}
@@ -331,7 +332,7 @@ export default function TopicSearch(){
   </div></div>;
  };
  return <div className="topic-page">
- <nav className="topic-breadcrumb" aria-label="Perspective de explorare">{/* The row is the same in Esențial: without its crumbs the way into Întreabă stood alone above the title (18 November 2026). */}<Link href="/">Descoperă</Link><span aria-hidden="true">/</span><span>Caută</span><Link href={scope.q?`/intreaba?q=${encodeURIComponent(scope.q)}`:"/intreaba"}>Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></nav>
+ <div className="topic-breadcrumb">{/* The row is the same in Esențial: without its crumbs the way into Întreabă stood alone above the title (18 November 2026). The „Descoperă” pages' own row since 21 November 2026 (owner). */}<DiscoverNav current="cauta"/><Link href={scope.q?`/intreaba?q=${encodeURIComponent(scope.q)}`:"/intreaba"}>Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></div>
  {/* After a search, phones show the words as the title so the answer fits in the first screen. */}
  <header className={`topic-intro${scope.q&&!parsed.error?' has-query':''}`}><h1><span className="topic-h1-default">Caută un fir de urmărit.</span>{scope.q&&!parsed.error&&<span className="topic-h1-query">„{scope.q}”</span>}</h1></header>
  <div className={`topic-filter-surface${scope.q&&!parsed.error?' has-query':''}`}><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button>{/* the work sign under the search at work (M-15) */}<WorkLine busy={pending} failed={Boolean(error)}/></form>

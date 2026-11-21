@@ -57,7 +57,7 @@ function Strip({ s, i, county, order, quiet = false }: { s: PriceStrip; i: numbe
         <b>{s.name}</b>
         {s.packLabel && <span className="pr-pack">{s.packLabel}</span>}
         {/* The median's name is the list head's; on a phone, without the head, the row says it (owner, 17 November 2026). */}
-        <small><span className="pr-median-word">{m.label}: </span>{m.value}</small><small className="pr-label-n">{buyersWord(s.buyers)}</small>
+        <small><span className="pr-median-word">{m.label}: </span><span className="pr-nowrap">{m.value}</span></small><small className="pr-label-n">{buyersWord(s.buyers)}</small>
       </span>
       <span className="pr-strip"><StripChart band={{ r10: s.r10, r25: s.r25, r75: s.r75, r90: s.r90 }} median={s.year ? s.medianLo : null} per={s.per}
         dots={s.dots} index={i} hrefBase={productHref(s.family, s.pack, s.year)}

@@ -1,4 +1,5 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
+import { titleName } from "@/lib/tidy-name";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import InfoMark from "@/components/InfoMark";
@@ -20,7 +21,7 @@ const loadProfile = cache(getEntityProfile);
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const { id } = await params;
     const entity = /^\d{1,16}$/.test(id) ? await loadProfile(id).catch(() => null) : null;
-    return { title: entity?.name ? `Radiografie · ${cleanName(entity.name)}` : "Radiografie" };
+    return { title: entity?.name ? `Radiografie · ${titleName(entity.name)}` : "Radiografie" };
 }
 export default async function RadiografiePage({ params, searchParams }: {
     params: Promise<{
@@ -38,7 +39,7 @@ export default async function RadiografiePage({ params, searchParams }: {
     const p = data.profile;
     const bothRoles = (entity?.roles.length ?? 0) > 1;
     return <div className="radiografie-view"><EntityCrumb id={p.id} name={p.name} role="authority" bothRoles={bothRoles} current="Radiografie" />
- <header className="rv-header"><div><h1>Radiografie</h1><p className="rv-authority"><EntityName id={p.id} role="authority">{p.name}</EntityName></p></div></header>
+ <header className="rv-header"><div><h1>Radiografie</h1><p className="rv-authority"><EntityName id={p.id} role="authority">{titleName(p.name)}</EntityName></p></div></header>
  {/* The profile's words, and what this page counts (UX audit Z5-18, 16 November 2026): the contracts' value without the
      direct acquisitions, never called the profile's total; one year once. */}
  <div className="rv-context"><span><strong>{formatRon(p.totalContracts)}</strong> valoarea contractelor (fără directe)</span><span><strong>{formatInt(p.nContracts)}</strong> contracte distincte</span><span><strong>{formatInt(p.nDas)}</strong> achiziții directe</span>{p.firstYear && <span><strong>{p.lastYear && p.lastYear !== p.firstYear ? `${p.firstYear}–${p.lastYear}` : p.firstYear}</strong></span>}</div>

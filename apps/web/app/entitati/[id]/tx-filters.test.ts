@@ -16,7 +16,7 @@ describe("the records table's words", () => {
     expect(statusLine(4536, {})).toBe("4.536 de înregistrări");
     expect(statusLine(14, { tip: { kind: "options", values: ["directe"] } })).toBe("14 achiziții directe");
     expect(statusLine(0, { tip: { kind: "options", values: ["contracte"] } })).toBe("0 contracte");
-    expect(recordsWord(1, { tip: { kind: "options", values: ["excluse"] } })).toBe("o achiziție directă exclusă din total");
+    expect(recordsWord(1, { tip: { kind: "options", values: ["excluse"] } })).toBe("1 achiziție directă exclusă din total");
     expect(recordsWord(3, { tip: { kind: "options", values: ["directe", "contracte"] } })).toBe("3 înregistrări");
   });
 

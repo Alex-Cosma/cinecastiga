@@ -8,6 +8,8 @@ export interface AskExample {
   text: string;
   /** Put this in the box and let the person finish it, instead of asking. */
   fill?: string;
+  /** A quiet word after the text saying what is left to write (a `fill` example; polish 20 Nov, L4). */
+  cue?: string;
 }
 
 export interface AskExampleGroup {
@@ -43,7 +45,7 @@ export const ASK_EXAMPLE_GROUPS: AskExampleGroup[] = [
     examples: [
       { text: "Ce cumpără Spitalul Județean de Urgență Buzău?" },
       { text: "De la cine cumpără primăria Buzău?" },
-      { text: "Cu ce instituții lucrează firma …", fill: "Cu ce instituții lucrează firma " },
+      { text: "Cu ce instituții lucrează firma …", fill: "Cu ce instituții lucrează firma ", cue: "scrii tu numele" },
     ],
   },
   {

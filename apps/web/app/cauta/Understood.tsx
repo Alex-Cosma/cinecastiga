@@ -72,7 +72,7 @@ function SubjectWord({text,scope,effective,subject,others,total}:{text:string;sc
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[keys,JSON.stringify(total)]);
  const sum=parts.reduce((n,x)=>n+(stats[x.code]?.value??0),0);
- const figure=(key:string)=>{const v=stats[key];return v===undefined?(total?<span className="topic-domain-fig topic-count-wait" aria-hidden="true">…</span>:null):v?<span className="topic-domain-fig"><b>{v.count?formatRon(v.value):'nimic'}</b>{v.count>0&&<small>{formatInt(v.count)} {v.count===1?'înregistrare':'înregistrări'}</small>}</span>:null;};
+ const figure=(key:string)=>{const v=stats[key];return v===undefined?(total?<span className="topic-domain-fig topic-count-wait" aria-hidden="true">…</span>:null):v?<span className="topic-domain-fig"><b>{v.count?formatRon(v.value):'nimic'}</b>{v.count>0&&<small>{countWords(v.count,'înregistrare','înregistrări')}</small>}</span>:null;};
  const bar=(key:string)=>{const v=stats[key];return v&&sum>0?<span className="topic-domain-bar" aria-hidden="true"><i style={{width:`${Math.max(1,Math.round(v.value/sum*100))}%`}}/></span>:null;};
  const here={place:effective.place,from:effective.from,to:effective.to};
  const close=()=>{if(box.current){box.current.open=false;box.current.querySelector('summary')?.focus();}};
@@ -83,7 +83,7 @@ function SubjectWord({text,scope,effective,subject,others,total}:{text:string;sc
   <summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> (ce numărăm la acest subiect)</span></summary>
   <div className="topic-part-menu topic-domain-menu">
    <div className="topic-domain-head">
-    <div>{n>0?<p className="topic-domain-title">La „{label}” numărăm {n===1?'un domeniu CPV':`${countWords(n,'domeniu','domenii')} CPV`}</p>:subject.cpvName?<p className="topic-domain-title">Domeniul CPV: {subject.cpvName}</p>:<p className="topic-domain-title">„{capital(label)}”</p>}
+    <div>{n>0?<p className="topic-domain-title">La „{label}” numărăm {n===1?'un domeniu\u00a0CPV':`${countWords(n,'domeniu','domenii')}\u00a0CPV`}</p>:subject.cpvName?<p className="topic-domain-title">Domeniul CPV: {subject.cpvName}</p>:<p className="topic-domain-title">„{capital(label)}”</p>}
      {n>0&&<p className="topic-domain-note">După încadrarea oficială a achiziției, nu după titlu.{choose&&' Alege unul ca să vezi doar acel domeniu.'}</p>}</div>
     <button type="button" className="topic-domain-close" onClick={close} aria-label="Închide"><DiscoveryIcon name="close"/></button>
    </div>
@@ -94,9 +94,9 @@ function SubjectWord({text,scope,effective,subject,others,total}:{text:string;sc
      :<div key={x.code} className={`topic-domain is-plain${choose?'':' is-only'}`}>{inner}</div>;})}
    {(['narrower','near'] as const).map(kind=>{const list=related.filter(r=>r.kind===kind);return list.length?<div className="topic-domain-more" key={kind}>
     <p>{kind==='narrower'?'Mai îngust, în același domeniu':'Subiecte apropiate'}</p>
-    <div>{list.map(r=><Link prefetch={false} key={r.term} href={searchHref(withoutDomain(scope),{q:r.label,...here})}>{r.label} ›</Link>)}</div></div>:null;})}
+    <div>{list.map(r=><Link prefetch={false} key={r.term} href={searchHref(withoutDomain(scope),{q:r.label,...here})}>{r.label}{"\u00a0→"}</Link>)}</div></div>:null;})}
    {others.length>0&&<div className="topic-domain-more"><p>Alt subiect citit în cuvinte</p>
-    <div>{others.map(o=><Link prefetch={false} key={o.label} href={searchHref(withoutDomain(scope),{q:o.label,...here})}>{capital(o.label)} ›</Link>)}</div></div>}
+    <div>{others.map(o=><Link prefetch={false} key={o.label} href={searchHref(withoutDomain(scope),{q:o.label,...here})}>{capital(o.label)}{"\u00a0→"}</Link>)}</div></div>}
   </div>
  </details>;
 }
@@ -124,7 +124,7 @@ function PlaceWord({text,title,choices,around,hrefFor,out}:{text:string;title:st
   return()=>{clearTimeout(timer);abort.abort();};},[word]);
  const close=()=>{if(box.current)box.current.open=false;setTerm('');setSearching(false);};
  const taken=new Set(choices.map(c=>c.id));
- const offer=(p:Place,shown:string)=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}>{shown} ›</Link>;
+ const offer=(p:Place,shown:string)=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}>{shown}{"\u00a0→"}</Link>;
  const wider=around?.wider&&!taken.has(around.wider.id)?around.wider:null,inside=(around?.inside??[]).filter(p=>!taken.has(p.id)),beside=(around?.neighbours??[]).filter(p=>!taken.has(p.id));
  const hits=found&&found.term===word?found:null;
  return <details ref={box} className="topic-part topic-part-place" onToggle={e=>{const el=e.currentTarget as HTMLDetailsElement;if(el.open)el.querySelector('.topic-domain-menu')?.scrollIntoView({block:'nearest',behavior:scrollMotion()});else{setTerm('');setSearching(false);}}}>
@@ -138,12 +138,12 @@ function PlaceWord({text,title,choices,around,hrefFor,out}:{text:string;title:st
    {word.length>=2?<div className="topic-place-hits" role="status" aria-busy={!hits}>{!hits?<p>Se caută…</p>:hits.places.length?hits.places.map(p=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}><span>{p.name}</span><small>{p.detail}</small></Link>)
      :<p>{hits.failed?'Căutarea de locuri nu a răspuns. Încearcă din nou.':`Niciun județ sau localitate numită „${word}”.`}</p>}</div>
    :<>
-    {choices.length>0&&<div className="topic-domain-more"><p>Același nume</p><div>{choices.map(c=><Link prefetch={false} key={c.id} href={c.href} onClick={close}>{c.text} ›</Link>)}</div></div>}
+    {choices.length>0&&<div className="topic-domain-more"><p>Același nume</p><div>{choices.map(c=><Link prefetch={false} key={c.id} href={c.href} onClick={close}>{c.text}{"\u00a0→"}</Link>)}</div></div>}
     {wider&&around&&<div className="topic-domain-more"><p>Mai larg</p><div>{offer(wider,wholeCounty(around.county))}</div></div>}
     {inside.length>0&&around&&<div className="topic-domain-more"><p>{around.wider?`Alte localități din ${inCounty(around.county)}`:`Mai îngust, în ${inCounty(around.county)}`}</p><div>{inside.map(p=>offer(p,p.name))}</div></div>}
     {beside.length>0&&<div className="topic-domain-more"><p>Județe vecine</p><div>{beside.map(p=>offer(p,p.name))}</div></div>}
    </>}
-   <div className="topic-domain-more topic-place-out"><div><Link prefetch={false} href={out.href} onClick={close}>{out.text} ›</Link></div></div>
+   <div className="topic-domain-more topic-place-out"><div><Link prefetch={false} href={out.href} onClick={close}>{out.text}{"\u00a0→"}</Link></div></div>
   </div>
  </details>;
 }
@@ -205,7 +205,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  const showLiteral=!t.question&&Boolean(fromWords.place||fromWords.period||t.subject||t.placeAlone);
  return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
   {sentence&&<div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence">{marked.segments.map((x,i)=>x.key?part(x.key,x.text):<Fragment key={i}>{x.text}</Fragment>)}{marked.missing.map(key=><Fragment key={key}> · {part(key,menus[key]!.label)}</Fragment>)}</span>
-   {showLiteral&&<Link prefetch={false} className="topic-understood-literal" data-only="complet" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
+   {showLiteral&&<Link prefetch={false} className="topic-understood-literal" data-only="complet" href={literal}>Caută exact ce ai scris{"\u00a0→"}</Link>}</div>}
   {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din {t.subject.parts.length} · <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link> <InfoMark title="Un domeniu" text={`„Pe scurt” numără doar domeniul ales, unul din cele ${t.subject.parts.length} numărate la „${t.subject.label}”. Listele de mai jos caută în continuare cuvântul, în toate domeniile.`}/></p>}
   {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
@@ -292,7 +292,7 @@ const yearRows=(answer:Answer)=>{const f=answer.top?.spec.filters;return Math.ma
 /** The years an archive always holds in part: the first (direct acquisitions from 2 April 2018) and the current one. */
 const partialLikely=(answer:Answer,i:number)=>{const year=(answer.top?.spec.filters.yearFrom??FIRST_YEAR)+i;return year===FIRST_YEAR||year===new Date().getFullYear();};
 const shareText=(n:number)=>n<0.005?'sub 1%':`${Math.round(n*100)}%`;
-const recordsWord=(n:number)=>`${formatInt(n)} ${n===1?'înregistrare':'înregistrări'}`;
+const recordsWord=(n:number)=>countWords(n,'înregistrare','înregistrări');
 /** „Iluminat exterior (31527200-8)”: the class, with its code kept on one line. */
 function CpvLine({label}:{label:string}){const m=/^(.*) \((\d{8}-\d)\)$/.exec(label);return m?<>{m[1]} <code>{m[2]}</code></>:<>{label}</>;}
 /** A „?” drawn inside a ghost: the same mark, nothing to focus. */
@@ -321,7 +321,7 @@ function AnswerHead({scope,filters,compare,townHall,institutions=false,ghost=fal
  */
 function AnswerFoot({answer,caveats,literalHref,full,ghost=false}:{answer:Answer;caveats:string[];literalHref?:string|undefined;full:boolean;ghost?:boolean}){
  const n=answer.cpv.length;
- const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu CPV':`${countWords(n,'domeniu','domenii')} CPV`}</small>}</span></>;
+ const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu\u00a0CPV':`${countWords(n,'domeniu','domenii')}\u00a0CPV`}</small>}</span></>;
  return <div className="topic-answer-foot" data-only="complet">
   {ghost?<div className="topic-answer-how"><p className="topic-answer-how-summary">{summary}</p></div>
   :<details className="topic-answer-how"><summary className="topic-answer-how-summary">{summary}</summary><div className="topic-answer-how-body">

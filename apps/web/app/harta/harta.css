@@ -341,9 +341,7 @@ span.mx-p-yr{cursor:default}
    the name, a link to the town hall, looks like one. */
 .mx-panel h2 a{text-decoration:underline;text-decoration-color:var(--accent-line);text-decoration-thickness:2px;text-underline-offset:6px}
 /* The arrow after the name (owner, 19 November 2026): the title reads as the link it is, to the town hall's profile. */
-.mx-p-go{display:inline-block;width:.6em;height:.6em;margin-left:.32em;vertical-align:.04em;color:var(--accent);transition:transform var(--fast) var(--ease)}
-.mx-panel h2 a:hover .mx-p-go{transform:translate(2px,-2px)}
-@media (prefers-reduced-motion:reduce){.mx-p-go{transition:none}}
+.mx-p-go{display:inline-block;width:.6em;height:.6em;margin-left:.32em;vertical-align:.04em;color:var(--accent)}
 .mx-p-acts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
 .mx-p-act{display:inline-flex;align-items:center;min-height:36px;padding:6px 13px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.3 var(--body);text-decoration:none}
 .mx-p-act:hover{border-color:var(--accent-line);background:var(--accent-soft)}
@@ -405,6 +403,10 @@ span.mx-p-yr{cursor:default}
    one down, with a small overshoot); the „i” is the site's InfoMark (guide.css), a little larger here. */
 .mx-attr{display:flex;max-width:none}
 .mx-about{display:flex;justify-content:flex-end;margin:6px 0 0}
+/* Polish 20 Nov (L11): the list's (i) sits on its heading's line, beside the unit, not alone under the list. */
+.mx-rank:has(>.mx-about){position:relative}
+.mx-rank:has(>.mx-about)>h2{padding-right:34px}
+.mx-rank>.mx-about{position:absolute;top:-5px;right:0;margin:0}
 .mx-attr>.term-tip>.term-trigger{display:inline-grid;place-items:center;min-height:0;color:var(--muted);text-decoration:none;transition:color var(--fast) var(--ease),background var(--fast) var(--ease)}
 :is(.mx-attr,.mx-about)>.term-tip>.term-trigger{width:28px;height:28px;border-radius:7px}
 .mx-attr>.term-tip>.term-trigger>.term-mark{display:none}

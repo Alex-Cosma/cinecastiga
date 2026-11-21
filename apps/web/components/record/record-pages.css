@@ -23,6 +23,10 @@
 .record-entry .record-amount .record-amount-words > .record-nowrap { white-space: nowrap; }
 /* Z7-09: „nu e plată” once, in the label of the head's figure. */
 .record-amount-label .record-not-paid { font-weight: 600; color: var(--ink2); white-space: nowrap; }
+/* The label's "?" keeps the word before it (polish H2, 20 November 2026). */
+.record-amount-label .record-nowrap { white-space: nowrap; }
+/* The notice's label is too long for one line in the box: „nu e plată” and its "?" take the second line whole. */
+.record-amount-label .record-not-paid.is-line { display: block; }
 
 @media (max-width: 760px) {
   /* Z7-01: on a phone the head tightens: the figure and its label are one row, without a card; the note under them. */
@@ -84,6 +88,12 @@
 .record-items-more:hover { border-color: var(--accent-line); }
 @media print { .record-items-wrap:not([data-all]) .record-item-later { display: table-row; } .record-items-more { display: none; } }
 .record-entry .record-items tfoot td { padding-top: 12px; border-bottom: 0; font-weight: 600; }
+/* The product takes the free width, so no empty band opens between Unitate and Total when Esențial hides the unit
+   price (polish, 20 November 2026); a unit keeps a few words on one line. */
+.record-entry .record-items th:first-child { width: 100%; }
+.record-entry .record-items td[data-label="Unitate:"] { min-width: 7em; }
+/* „Arată toate” keeps the gap the sections keep between them (polish, 20 November 2026). */
+.record-items-wrap .record-items-more { margin-bottom: 14px; }
 .record-items-note { margin-top: 6px; font-size: 13px; color: var(--ink2); }
 @media (max-width: 700px) {
   .record-entry .record-items tbody tr { padding: 8px 0; }
@@ -107,8 +117,9 @@
 .record-seap-details { margin-top: 12px; }
 .record-seap-details > summary { display: inline-flex; align-items: center; min-height: 36px; list-style: none; color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; }
 .record-seap-details > summary::-webkit-details-marker { display: none; }
-.record-seap-details > summary::before { content: "▸"; margin-right: 6px; font-size: 11px; }
-.record-seap-details[open] > summary::before { content: "▾"; }
+/* One disclosure marker on a record page, after the words, as „Tot titlul ▾” (polish, 20 November 2026). */
+.record-seap-details > summary::after { content: "▾"; margin-left: 6px; font-size: 14px; }
+.record-seap-details[open] > summary::after { content: "▴"; }
 .record-seap-details[open] > summary { margin-bottom: 2px; }
 .record-seap-details .record-facts dd { font-size: 15px; }
 @media (max-width: 700px) { .record-seap-details > summary { min-height: 44px; } }

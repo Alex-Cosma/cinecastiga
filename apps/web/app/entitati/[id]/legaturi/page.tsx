@@ -1,4 +1,5 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
+import { titleName } from "@/lib/tidy-name";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -16,7 +17,7 @@ const loadProfile = cache(getEntityProfile);
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const entity = /^[1-9]\d{0,15}$/.test(id) ? await loadProfile(id).catch(() => null) : null;
-  return { title: entity?.name ? `Legături · ${cleanName(entity.name)}` : "Legături" };
+  return { title: entity?.name ? `Legături · ${titleName(entity.name)}` : "Legături" };
 }
 
 export default async function ConnectionsPage({ params, searchParams }: {

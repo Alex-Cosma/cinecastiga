@@ -176,7 +176,8 @@ export default async function ContractPage({ params, searchParams }: { params: P
         name: <EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName>,
         place: countyLabel(w.county),
         lines: [
-          multiWinner && w.shareRonExact != null && <><Term hold="line" tip id="consortiu">Cotă estimată</Term>: <Lei value={w.shareRonExact} />{splitLabel ? ` (${splitLabel})` : ""}</>,
+          multiWinner && w.shareRonExact != null && // The amount first, so no colon follows the "?" (polish, 20 November 2026).
+            <><Lei value={w.shareRonExact} />{splitLabel ? ` (${splitLabel})` : ""} · <Term hold="line" tip id="consortiu">cotă estimată</Term></>,
           c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
             Încă {others === 1 ? "o înregistrare" : countWords(others, "înregistrare", "înregistrări")} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
           ...pairLines(pair),
@@ -262,6 +263,11 @@ export default async function ContractPage({ params, searchParams }: { params: P
           // The procedure and the single offer are said in Atribuirea, the lead in the signal (Z7-07): once each.
           // The internal number exists only in Complet (owner, 18 November 2026).
           c.contractNo && { only: "complet", node: <span key="n">nr. {c.contractNo}</span> },
+          // Esențial says the offers here instead of a section with one fact (polish M6, 20 November 2026); Complet
+          // keeps them in Atribuirea.
+          offersPublished && !calloffWarn && { only: "esential", node: tenders != null && (tenders !== 1 || singleBidSignal)
+            ? <span key="o">{countWords(tenders, "ofertă", "oferte")}</span>
+            : <span key="o"><Term tip hold="line" title="O singură ofertă" text={SINGLE_BIDDER_TIP}>o singură ofertă</Term></span> },
         ]}
         actions={<>
           {c.caNoticeId && <a className="record-seap" href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>}
@@ -274,13 +280,13 @@ export default async function ContractPage({ params, searchParams }: { params: P
       <SignalList flags={c.flags} authorityId={c.authority?.entityId ?? null} modeMarks
         fallbackEvidence={(f) => f.evidence?.["value"] != null ? <>{procedureLabel(String(f.evidence?.["procedure"] ?? c.procedureType ?? ""))} · {awardValueLabel(f.evidence)}: {formatRonFull(Number(f.evidence?.["value"]))}{noticeContractsNote(f.evidence!) ? ` · ${noticeContractsNote(f.evidence!).trim()}` : ""}</> : null} />
 
-      <RecordSection id="atribuire" title="Atribuirea" only={offersPublished || calloffWarn ? undefined : "complet"}>
+      <RecordSection id="atribuire" title="Atribuirea" only={calloffWarn ? undefined : "complet"}>
         {sums.length > 1 && <RecordSums title={sumsTitle} rows={sums} note={sumsNote} only="complet" />}
         <Facts facts={[
           // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
           { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? <> · <Term tip hold="line" title="O singură ofertă" text={SINGLE_BIDDER_TIP}>o singură ofertă</Term></> : ""}</>
             : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="O singură ofertă" text={SINGLE_BIDDER_TIP}>O singură ofertă</Term> : <span className="record-quiet">Număr nepublicat</span>,
-            only: offersPublished ? undefined : "complet" },
+            only: offersPublished && calloffWarn ? undefined : "complet" },
           x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED", only: "complet" },
           procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure, only: "complet" },
           (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span>, only: "complet" },

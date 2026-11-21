@@ -75,11 +75,13 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
     const els = ids.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
     if (!els.length) return;
     const onScroll = () => {
-      const y = window.scrollY + coveredTop() + 24;
+      // A section is reached once its top is under the bar (its heading in view); measured on the page, not on the
+      // offset parent, which was not the page for every section (polish L11, 20 November 2026).
+      const y = coveredTop() + 48;
       // The active tab is the lowest section already reached, whatever order the tabs are listed in.
       let cur = ids[0]!;
       let top = -Infinity;
-      for (const el of els) if (el.offsetTop <= y && el.offsetTop > top) { cur = el.id; top = el.offsetTop; }
+      for (const el of els) { const at = el.getBoundingClientRect().top; if (at <= y && at > top) { cur = el.id; top = at; } }
       setActive(cur);
     };
     onScroll();

@@ -4,7 +4,7 @@ html[data-mode="esential"] [data-only="complet"]:not([data-whole] *) { display: 
 html:not([data-mode="esential"]) [data-only="esential"],
 [data-whole] [data-only="esential"]:not(.mode-line) { display: none !important; }
 
-.mode-line { margin: 14px 0 4px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: 13px/1.5 var(--body); color: var(--ink2); }
+.mode-line { margin: 14px 0 14px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: 13px/1.5 var(--body); color: var(--ink2); }
 .mode-line b { font-weight: 650; }
 
 /* The header switch, beside the theme button. Both words are in the page; the mark on <html> shows one. */
@@ -18,6 +18,9 @@ html[data-mode="complet"] .mode-switch i::after { transform: translateX(14px); }
 html[data-mode="complet"] .mode-switch [data-word="esential"],
 html:not([data-mode="complet"]) .mode-switch [data-word="complet"] { display: none; }
 .mode-switch:hover i { border-color: var(--accent-line); }
+/* Polish 20 Nov (H3): in the dark theme the knob of Esențial (off) is light on the dark track, not dark on dark. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-mode="complet"]) .mode-switch i::after { background: var(--ink2); } }
+:root[data-theme="dark"]:not([data-mode="complet"]) .mode-switch i::after { background: var(--ink2); }
 @media (max-width: 700px) {
   .mode-switch { font-size: 12px; gap: 5px; letter-spacing: 0; }
   .mode-switch i { width: 30px; height: 18px; }

@@ -36,7 +36,8 @@ describe("home counts", () => {
     expect(page).toContain('<div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b>');
     expect(page).not.toContain("Înregistrări din");
     // The contract item keeps its deliberate label: a consortium is one row per winner.
-    expect(page).toContain(">înregistrări contract–furnizor</Term>");
+    // (A word joiner after the dash keeps „contract–furnizor” on one line on a phone: polish 20 Nov, M2.)
+    expect(page).toContain('>înregistrări contract–{"\\u2060"}furnizor</Term>');
   });
 });
 

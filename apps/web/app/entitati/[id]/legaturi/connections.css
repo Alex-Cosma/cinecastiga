@@ -53,6 +53,8 @@
 .cx-label.right{max-width:calc(19.4% - 12px)}
 .cx-label.right b{display:-webkit-box;white-space:normal;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+/* polish M5: the second stage's ribbon passes under the middle labels; each label keeps a paper ground over it */
+.cx-label:not(.right):not(.on){background:color-mix(in srgb,var(--surface) 88%,transparent)}
 .cx-label.on{background:var(--accent-soft)}.cx-label.on b{color:var(--accent)}
 .cx-label.rest b{font-weight:500;color:var(--ink2)}
 .cx-label.root b{color:var(--orange)}
