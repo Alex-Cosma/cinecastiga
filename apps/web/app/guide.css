@@ -123,13 +123,12 @@
 .d-map-current>span{white-space:nowrap}
 /* Home strip: „Ce includ cifrele” sits under the archive's years, the years on the line of the figures and the words on
    the line of their labels (owner, 20 November 2026: a row of its own floated apart from both). What they include floats
-   over the page (components/HowNote.tsx). From 900 px down the label is a row of its own over the figures. */
+   over the page (components/HowNote.tsx). From 900 px down the label is a row of its own over the figures.
+   The years have no icon and the figures' size, in four equal columns (owner, 21 November 2026; approved.css). */
 .d-national-label{align-items:flex-start}
-.d-national-label b{line-height:35px}
 .d-national-label .how-note{margin:4px 0 0;font-size:12px;line-height:1.45}
 @media(min-width:901px){.d-national-label .how-note>.term>.term-trigger{min-height:0;padding:0}}
-@media(max-width:1100px){.d-national-label b{line-height:32.5px}}
-@media(max-width:900px){.d-national-label{align-items:center}.d-national-label b{line-height:inherit}.d-national-label .how-note{margin:0}}
+@media(max-width:900px){.d-national-label{align-items:center}.d-national-label .how-note{margin:0}}
 .d-footer-motto{font-weight:600;color:var(--ink2);margin:0 0 8px}
 .d-footer-note,.coverage-summary{position:relative}
 /* A (?) on a word (the home number strip): the label keeps its dotted "?" word. */

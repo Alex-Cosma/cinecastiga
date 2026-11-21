@@ -114,7 +114,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </section>
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică" data-only="complet">
-      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b>
+      <div className="d-national-label"><div><strong>{coverage}</strong>
         {/* What the figures include floats over the page from quiet words under the archive's years, on the line of the figures' labels (owner, 20 November 2026: the
             fold that opened a wall of text in the home page became the site's floating card, „Fișă”). */}
         <HowNote title="Ce includ cifrele" className="d-national-how">
