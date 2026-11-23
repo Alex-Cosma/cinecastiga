@@ -3,7 +3,7 @@ import { titleName } from "../tidy-name";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
 import { questionTitle, type TitleLabels } from "../ask/filters/title";
-import { IMPLEMENTED_KEYS, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
+import { IMPLEMENTED_KEYS, LOCAL_ADMIN_KIND, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
@@ -11,7 +11,7 @@ import { choiceState } from "../ask/filters/pickers";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
-import { genitive, hasNamedScope } from "./rules";
+import { COUNTIES_SINGLE_OFFER_NOTE, genitive, hasNamedScope } from "./rules";
 import { fold } from "./text";
 import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PeriodMatch, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
@@ -271,6 +271,21 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
     case "total":
       raw.block = "stat";
       break;
+    // „care județ…”, „pe județe” (search probe, 23 November 2026): the map, every county with its value or its number
+    // of records. Per inhabitant the map compares only the town halls and county councils (MAP_RULES, map final §3.3).
+    case "counties": {
+      raw.block = "map";
+      localityToCounty(townHallOnly("harta pe județe"));
+      if (i.measure === "value_per_capita") {
+        if (!f.authorityKind && !f.county && !named) {
+          f.authorityKind = LOCAL_ADMIN_KIND;
+          raw.measure = "value_per_capita";
+          notes.push("Pe locuitor, harta compară primăriile și consiliile județene din fiecare județ, nu toate instituțiile.");
+        } else notes.push("Valoarea pe locuitor pe județe se calculează doar pentru primării și consilii județene, pe toată țara; harta arată valoarea totală.");
+      }
+      if (i.singleBidder) notes.push(COUNTIES_SINGLE_OFFER_NOTE);
+      break;
+    }
     case "breakdown":
       raw.block = "breakdown";
       raw.measure = "value";
@@ -508,6 +523,7 @@ const INTENT_LABEL: Record<IntentKind, string> = {
   signals: "Ce merită verificat",
   network: "Cu cine lucrează",
   flow: "Ce cumpără și de la cine",
+  counties: "Cum se împart pe județe",
 };
 
 const FOLLOW_UPS: Record<IntentKind, IntentKind[]> = {
@@ -520,6 +536,7 @@ const FOLLOW_UPS: Record<IntentKind, IntentKind[]> = {
   signals: ["ranking_suppliers"],
   network: ["flow", "breakdown"],
   flow: ["network", "breakdown"],
+  counties: ["total", "ranking_authorities"],
 };
 
 function specKey(spec: AskSpec): string {

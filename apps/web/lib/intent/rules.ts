@@ -118,6 +118,15 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
 
+/**
+ * The counties compared (search probe, 23 November 2026: „care județ” was looked up as a firm's name, „pe județe” gave
+ * the national total). „județul Cluj” is a place, never this: only the plural, or the singular after „care”, „fiecare”, „pe”;
+ * „firme din alte județe” is the firm's seat (lens-phrases.ts), „două județe” a number of them.
+ */
+const COUNTIES_CUE = /\b(?:(?:in|din|pe|la) )?(?:care|ce) judete?\b|\b(?:(?:pe|in|din|pentru|la|per) )?fiecare judet\b|\b(?:pe|dupa|per|intre) judet(?:e|ele)?\b|\bla nivel(?:ul)? (?:de judet|judetean)\b|(?<!\b(?:alt|alte|acelasi|aceleasi|unele|cateva|multe|doua|trei|patru) )\bjudete(?:le|lor)?\b|\b(?:by|per) county\b|\bcounties\b/;
+export const countiesNotCompared = (words: string) => `„${words}”: județele nu se pot compara încă la această întrebare.`;
+export const COUNTIES_SINGLE_OFFER_NOTE = "Județele nu se pot compara încă după ponderea licitațiilor cu un singur ofertant; harta arată toate contractele din proceduri.";
+
 /** Who a superlative ranks (rules.holders): institutions, by their noun or their kind's, or firms. */
 const HOLDER_BUYERS = "institutia|institutiile|institutii|autoritatea|autoritatile|autoritati|cumparatorul|cumparatorii|primari(?:i|ile) de (?:comuna|comune|oras|orase|municipiu|municipii)|primaria|primariile|primarii|spitalul|spitalele|spitale|scoala|scolile|scoli|liceul|liceele|licee|comuna|comunele|comune|orasul|orasele|orase|municipiul|municipiile|municipii|consiliul judetean|consiliile judetene|consilii judetene|consiliu judetean";
 const HOLDER_SUPPLIERS = "firma|firmele|firme|compania|companiile|companii|furnizorul|furnizorii|furnizori|societatea|societatile|societati|castigatorul|castigatorii";
@@ -453,6 +462,9 @@ export class RulesInterpreter implements QuestionInterpreter {
         return true;
       });
     }
+    // „județ”, „județul” without a county's name after it: a word understood, never a firm's or an institution's name
+    // (search probe, 23 November 2026: 1.234 names matched „judet”).
+    for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && /^(?:jud|judet|judetul|judetului|judete|judetele|judetelor)$/.test(c.f(k))) c.take(k, k + 1, "filler");
     await this.namedRuns(c, out);
     await this.subjects(c, out);
     this.excludedSubjects(c, out);
@@ -650,6 +662,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     // „cumpără direct”, „atribuit direct”, „direct, fără licitație”: the adverb is the stream, never a subject (the
     // catalogue has „dispozitive de direcție”); the verb before it stays for the cues.
     once(/(?<=\b(?:atribuit\w*|incredintat\w*|cumparat\w*|cumpara|cumparau|achizitionat\w*|achizitioneaza|dat|date|data|contractat\w*)\s)direct(?:a|e)?\b|\bdirect(?=\s+fara\s+(?:o\s+)?licitati)|\b(?:atribuir\w*|incredintar\w*)\s+direct(?:a|e)\b/, () => { if (out.dataset === null) out.dataset = "da"; });
+    // „numărul de achiziții directe”: the count, before the stream takes its words (search probe, 23 November 2026)
+    once(/\b(?:numarul(?:\s+de)?|cat de multe)(?=\s+achizitii(?:le)?\s+directe\b)/, () => { if (out.measure === null) out.measure = "count"; });
     once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b|\bfara\s+(?:o\s+)?licitati(?:e|i)\b/, () => { out.dataset = "da"; });
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream
     once(/\b(?:cele mai multe|cei mai multi|cel mai des)(?=\s+(?:contracte|contractele|achizitii|achizitiile|licitatii|licitatiile|cumparari))/, () => { if (out.measure === null) out.measure = "count"; });
@@ -700,6 +714,25 @@ export class RulesInterpreter implements QuestionInterpreter {
       c.take(h.i, h.j, "cue");
       found.push({ intent: "signals", at: h.i });
       if (!out.notes.includes(RETIRED_RAPID_NOTE)) out.notes.push(RETIRED_RAPID_NOTE);
+    }
+    for (const h of c.all(COUNTIES_CUE)) {
+      c.take(h.i, h.j, "cue");
+      found.push({ intent: "counties", at: h.i });
+      out.byCounty = out.byCounty ?? c.span(h.i, h.j);
+    }
+    if (out.byCounty) {
+      // „clasament județe după valoare / după numărul de achiziții”: the measure of the map
+      // (over the words the modifiers already read: „numărul de contracte”, „cea mai”)
+      const understood = (h: Hit) => { for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "cue"; };
+      for (const h of c.over(/\bdupa (valoare\w*|suma\w*|numar\w*)(?: de)?\b/, ["modifier"])) {
+        understood(h);
+        if (/^numar/.test(h.m[1]!) && out.measure === null) out.measure = "count";
+      }
+      // The map shows every county: the smallest are on it, not listed apart.
+      for (const h of c.over(/\b(?:cea mai mica|cele mai mici|cel mai mic|cel mai putin|cele mai putine)\b/, ["modifier"])) {
+        understood(h);
+        out.notes.push(`„${c.span(h.i, h.j).text}”: harta arată toate județele, nu doar pe cele cu valorile cele mai mici.`);
+      }
     }
     this.holders(c, out, found, townHalls);
     for (const [intent, re] of INTENT_CUES) {
@@ -1880,10 +1913,14 @@ export class RulesInterpreter implements QuestionInterpreter {
     else if (has("flow") && has("breakdown")) primary = "flow";
     else if (has("signals")) primary = "signals";
     else if (has("trend")) primary = "trend";
+    // The counties compared answer on the map, whatever else the words ask of them („cât”, „cele mai multe”).
+    else if (has("counties")) primary = "counties";
     // A lone "și de la cine" asks who sold, as "de la cine" does.
     else primary = ordered.find((k) => k !== "compare" && k !== "flow") ?? (has("flow") ? "ranking_suppliers" : null);
     if (has("compare") && !out.compareWith && !out.compareChoices?.length)
       out.notes.push("Pentru o comparație, numește două instituții sau două firme, de exemplu „compară Spitalul Județean de Urgență Buzău cu Spitalul Județean de Urgență Brăila”.");
+    // Signals, an evolution, a network: not by county yet, and said (never another question in silence).
+    if (out.byCounty && primary !== "counties") out.notes.push(countiesNotCompared(out.byCounty.text));
     if (primary) {
       out.intent = primary;
       out.intentSource = "cue";

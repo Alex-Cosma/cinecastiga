@@ -22,7 +22,9 @@ export type IntentKind =
   /** "Cu cine lucrează X?": the network of one institution or firm (S5, plan §2.7 „rețea”). */
   | "network"
   /** "Ce cumpără X și de la cine?": the flow of one institution or firm (S5). */
-  | "flow";
+  | "flow"
+  /** "Care județ…", "pe județe": the counties compared, on the map (search probe, 23 November 2026). */
+  | "counties";
 
 export interface Span {
   /** The words as the person typed them. */
@@ -139,6 +141,8 @@ export interface Interpretation {
   askedTownHalls: boolean;
   /** The noun before a superlative said who is ranked („primăria cu cele mai mari contracte”, rules.holders). */
   holder?: boolean;
+  /** The words that asked for the counties compared („care județ”, „pe județe”; rules.cues). */
+  byCounty?: Span;
   /** Second entity for "compară X cu Y". */
   compareWith: EntityMatch | null;
   person: PersonMatch | null;
