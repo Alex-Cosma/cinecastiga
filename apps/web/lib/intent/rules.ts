@@ -37,6 +37,8 @@ class Cursor {
   readonly s: string;
   readonly starts: number[] = [];
   readonly used: (Tag | null)[];
+  /** Blocked words a note already names as one phrase („cerere de oferte”): never listed again as words not understood. */
+  readonly said = new Set<number>();
   constructor(readonly tokens: Token[]) {
     let s = "";
     for (const t of tokens) {
@@ -771,6 +773,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       const named = NAMED_PROCEDURES.find(([re]) => re.test(h.m[0]))?.[1];
       c.take(h.i, h.i + 1, "modifier");
       c.take(h.i + 1, h.j, named ? "modifier" : "blocked");
+      // The note below names the whole phrase: „oferte” of „cerere de oferte” is not a word left over (owner, 23 November 2026).
+      if (!named) for (let k = h.i + 1; k < h.j; k++) c.said.add(k);
       if (out.dataset !== "da") out.dataset = "contracts";
       if (named) out.procedure = out.procedure ?? named;
       else out.notes.push(`Nu putem filtra încă după acest tip de procedură („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
@@ -2419,7 +2423,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   private leftover(c: Cursor, out: Interpretation) {
     const words: string[] = [];
     for (let k = 0; k < c.tokens.length; k++) {
-      if (c.used[k] && c.used[k] !== "blocked") continue;
+      if (c.used[k] && c.used[k] !== "blocked" || c.said.has(k)) continue;
       const f = c.f(k);
       if (STOPWORDS.has(f) || PREPOSITION.has(f) || AMOUNT_VERBS.has(f) || /^\d{1,2}$/.test(f)) continue;
       words.push(c.tokens[k]!.raw);

@@ -137,12 +137,13 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
       expect(i.leftover, q).toEqual([]);
       expect(i.notes.join(" "), q).not.toMatch(/Nu putem filtra/);
     }
-    // The others are all contracts, and say what is not filtered.
-    for (const [q, word] of [["licitatie restransa drumuri bacau", "restransa"], ["dialog competitiv drumuri bacau", "competitiv"]] as const) {
+    // The others are all contracts, and say what is not filtered: one note that names the phrase, and its words are not
+    // listed again as not understood (owner, 23 November 2026: „cerere de oferte” showed „Nu am înțeles „oferte”” too).
+    for (const q of ["licitatie restransa drumuri bacau", "dialog competitiv drumuri bacau", "cerere de oferte drumuri bacau"]) {
       const { i, r } = await ask(q);
       expect([i.dataset, r.spec?.filters.procedure], q).toEqual(["contracts", undefined]);
-      expect(i.leftover.join(" "), q).toContain(word);
-      expect(i.notes.join(" "), q).toMatch(/Nu putem filtra încă după acest tip de procedură/);
+      expect(i.leftover, q).toEqual([]);
+      expect(i.notes.filter((n) => /Nu putem filtra încă după acest tip de procedură/.test(n)), q).toHaveLength(1);
     }
   });
 
