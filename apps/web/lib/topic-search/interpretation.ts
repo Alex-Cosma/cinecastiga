@@ -204,7 +204,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // A subject read from English („road works” → „drumuri”, said in its note) is searched by its Romanian word too:
   // the titles are Romanian (search probe, 23 November 2026).
   const fromEnglish = Boolean(s0 && i.notes.includes(`Am citit „${s0.matched.text}” ca „${s0.label}”.`));
-  const subjectBase = subjectOk && s0!.source === 'synonym' && !s0!.label.includes(' ') && foldText(s0!.label) !== foldText(s0!.matched.text) ? { ...s0!.matched, text: s0!.label, whole: fromEnglish } : undefined;
+  const subjectBase = subjectOk && s0!.source === 'synonym' && (fromEnglish || !s0!.label.includes(' ')) && foldText(s0!.label) !== foldText(s0!.matched.text) ? { ...s0!.matched, text: s0!.label, whole: fromEnglish } : undefined;
 
   const interpretedPlace = i.place && !i.placeAmbiguous && i.place.matched ? i.place : null;
   const interpretedChip = interpretedPlace ? chip(interpretedPlace) : null;

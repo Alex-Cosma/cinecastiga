@@ -142,6 +142,9 @@ describe('interpretation → /cauta selection', () => {
       const { scope, result } = await read(q);
       expect([q, applyInterpretation(scope, result).applied.q]).toEqual([q, 'drumuri']);
     }
+    // a Romanian term of several words stands for the English phrase as well
+    const several = await read('top buyers of medical equipment 2025');
+    expect(applyInterpretation(several.scope, several.result).applied.q).toBe('echipamente medicale');
   });
 
   it('answers the counties compared with the map\'s own spec: its total and its first three (owner, 23 November 2026)', async () => {

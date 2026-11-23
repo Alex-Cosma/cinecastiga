@@ -54,7 +54,7 @@ export function subjectWords(
   for (const s of remove) for (let k = s.from; k < s.to && k < tokens.length; k++) removed[k] = true;
   const covered = new Array<boolean>(tokens.length).fill(false);
   for (const s of keep) for (let k = s.from; k < s.to && k < tokens.length; k++) covered[k] = true;
-  if (base && (base.to - base.from === 1 || base.whole) && base.from < tokens.length && /^\p{L}+$/u.test(base.text)) {
+  if (base && (base.to - base.from === 1 || base.whole) && base.from < tokens.length && (base.whole ? /^[\p{L} ]+$/u : /^\p{L}+$/u).test(base.text)) {
     tokens[base.from] = { ...tokens[base.from]!, raw: base.text };
     // A subject read from English words („road works” → „drumuri”): the Romanian word stands for the whole phrase.
     for (let k = base.from + 1; k < base.to && k < tokens.length; k++) removed[k] = true;
