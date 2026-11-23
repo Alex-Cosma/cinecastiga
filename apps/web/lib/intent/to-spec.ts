@@ -14,7 +14,7 @@ import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
 import { genitive, hasNamedScope } from "./rules";
 import { fold } from "./text";
 import type { LensMatch } from "./lens-phrases";
-import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
+import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PeriodMatch, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
 /**
  * Interpretation → AskSpec (validated by the engine's own validateSpec) and
@@ -190,6 +190,10 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
   }
   if (i.period?.yearFrom !== undefined) f.yearFrom = i.period.yearFrom;
   if (i.period?.yearTo !== undefined) f.yearTo = i.period.yearTo;
+  // The months said with the years („în decembrie 2024”): the first month of yearFrom, the last of yearTo.
+  if (i.period?.monthFrom !== undefined && i.period.monthTo !== undefined && f.yearFrom !== undefined && f.yearTo !== undefined) {
+    f.monthFrom = i.period.monthFrom; f.monthTo = i.period.monthTo;
+  }
   if (i.employees?.min !== undefined) f.minEmployees = i.employees.min;
   if (i.employees?.max !== undefined) f.maxEmployees = i.employees.max;
   // F3: a procedure the engine names, on the contracts (a stream of direct acquisitions has none).
@@ -401,9 +405,35 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
     delete lf.yearFrom; delete lf.yearTo;
     notes.push("Am arătat toți anii, ca să se vadă schimbarea de la an la an.");
   }
+  // The months of the period where the question takes them (a change compares whole years; a profile has no period):
+  // elsewhere the whole years, said, never dropped silently (search probe, 23 November 2026).
+  if (lf.monthFrom !== undefined || lf.monthTo !== undefined) {
+    const whole = { ...lensed, filters: { ...lf } } as Record<string, unknown>;
+    delete (whole.filters as Record<string, unknown>).monthFrom; delete (whole.filters as Record<string, unknown>).monthTo;
+    if (lensed.block === "trend" || ("error" in validateSpec(lensed) && !("error" in validateSpec(whole)))) {
+      lensed = whole;
+      if (i.period) notes.push(wholeYearsNote(i.period));
+    }
+  }
   const valid = validateSpec(lensed);
   if ("error" in valid) return { spec: null, error: valid.error, notes };
   return { spec: valid, error: null, notes };
+}
+
+/** „decembrie 2024”: the months were said, the whole years are used. */
+export function wholeYearsNote(period: Pick<PeriodMatch, "yearFrom" | "yearTo" | "monthsSaid">): string {
+  const { yearFrom: from, yearTo: to } = period;
+  return `„${period.monthsSaid ?? "lunile"}”: am folosit ${from === to ? `tot anul ${from}` : `anii ${from}–${to} întregi`}.`;
+}
+
+/**
+ * The reading with whole years, for a search that has no months (/cauta: its titles and „Pe scurt” are by year):
+ * the months leave the period and the note says so.
+ */
+export function wholeYears(i: Interpretation): Interpretation {
+  if (!i.period || i.period.monthFrom === undefined) return i;
+  const { monthFrom: _from, monthTo: _to, monthsSaid: _said, ...period } = i.period;
+  return { ...i, period, notes: [...i.notes, wholeYearsNote(i.period)] };
 }
 
 /** A relation without its centre (S5): the words asked for one entity's partners or flow, none was named. */

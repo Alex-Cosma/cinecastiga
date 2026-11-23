@@ -455,6 +455,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     await this.namedRuns(c, out);
     await this.subjects(c, out);
+    this.excludedSubjects(c, out);
     // „fără București”, „în afara Bucureștiului”, „exceptând Clujul”: a place cannot be left out, so it is not applied
     // (owner probe, 10 November 2026: „medicamente fără București” applied București, the opposite of the question).
     const placesFound = [...coded, ...marked, ...unmarked].sort((a, b) => a.from - b.from);
@@ -524,7 +525,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   private periods(c: Cursor, out: Interpretation, year: number, monthNow: number) {
     // future years have no data and are not a question about the past
     const ok = (y: number) => y >= 2000 && y <= year;
-    const set = (h: Hit, from?: number, to?: number, versus?: { main: number; other: number }) => {
+    const set = (h: Hit, from?: number, to?: number, versus?: { main: number; other: number }, months?: [number, number]) => {
       if ((from !== undefined && !ok(from)) || (to !== undefined && !ok(to))) {
         c.take(h.i, h.j, "blocked");
         out.notes.push(`Perioada „${c.span(h.i, h.j).text}” nu are încă date (suntem în ${year}); nu am aplicat-o.`);
@@ -536,13 +537,45 @@ export class RulesInterpreter implements QuestionInterpreter {
         out.notes.push(`Am folosit prima perioadă din întrebare; „${c.span(h.i, h.j).text}” nu a fost aplicată.`);
         return;
       }
-      out.period = { ...(from !== undefined ? { yearFrom: from } : {}), ...(to !== undefined ? { yearTo: to } : {}), ...(versus ? { versus } : {}), matched: c.span(h.i, h.j) };
+      out.period = { ...(from !== undefined ? { yearFrom: from } : {}), ...(to !== undefined ? { yearTo: to } : {}), ...(versus ? { versus } : {}),
+        ...(months ? { monthFrom: months[0], monthTo: months[1], monthsSaid: c.span(h.i, h.j).text.replace(/^(?:in|pe|din)\s+/i, "") } : {}), matched: c.span(h.i, h.j) };
     };
     const n = (s: string | undefined) => (s === undefined ? NaN : /^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s] ?? NaN);
     // An approximate reading says what it used („iarna trecută”, „ultimul an”, „în martie 2025”: whole years).
     const whole = (said: string) => (from: number | undefined, to: number | undefined) =>
       `„${said}”: am folosit ${from === to ? `tot anul ${from}` : `anii ${from}–${to} întregi`}.`;
     const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
+    // Months with their year, and the months before today (search probe, 23 November 2026: „în decembrie 2024” read
+    // the whole year, „ultimele 3 luni” read nothing). The months are kept on the period: Întreabă applies them, /cauta
+    // searches whole years and says so (to-spec.ts). A month without a year stays unread (monthsAlone).
+    const monthNo = (name: string) => month.split("|").indexOf(name) + 1;
+    const back = (k: number): [number, number] => { const at = year * 12 + (monthNow - 1) - k; return [Math.floor(at / 12), (at % 12) + 1]; };
+    const join = "(?:si|pana in|pana la|pina in|pina la|la|spre)";
+    const monthRules: [RegExp, (m: RegExpExecArray) => { years: [number, number]; months: [number, number] } | null][] = [
+      // „din noiembrie 2024 până în februarie 2025”
+      [new RegExp(`\\b(?:(?:intre|din|de la|in perioada|in)\\s+)?(?:luna\\s+)?(${month})\\s+${YR}\\s+${join}\\s+(?:luna\\s+)?(${month})\\s+${YR}\\b`),
+        (m) => ({ years: [Number(m[2]), Number(m[4])], months: [monthNo(m[1]!), monthNo(m[3]!)] })],
+      // „ianuarie–martie 2024”, „între ianuarie și iunie 2025” („mai” opens a range only before its joining word)
+      [new RegExp(`\\b(?:(?:intre|din|de la|in perioada|in)\\s+)?(?:luna\\s+|lunile\\s+)?(${month.replace("|mai|", "|")}|mai(?=\\s+${join}\\s))\\s+(?:${join}\\s+)?(?:luna\\s+)?(${month})\\s+(?:anul\\s+|din\\s+)?${YR}\\b`),
+        (m) => ({ years: [Number(m[3]), Number(m[3])], months: [monthNo(m[1]!), monthNo(m[2]!)] })],
+      [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:luna\\s+)?(${month})\\s+(?:anul\\s+)?${YR}\\b`),
+        (m) => ({ years: [Number(m[2]), Number(m[2])], months: [monthNo(m[1]!), monthNo(m[1]!)] })],
+      [/\b(?:in\s+|pe\s+|din\s+)?luna\s+(?:aceasta|asta|curenta|in curs)\b/, () => ({ years: [year, year], months: [monthNow, monthNow] })],
+      [/\b(?:in\s+|pe\s+|din\s+)?luna\s+(?:trecuta|precedenta)\b/, () => { const [y, mo] = back(1); return { years: [y, y], months: [mo, mo] }; }],
+      // „ultimele 3 luni”: this month and the two before it („ultimele 12 luni” stays the last year, below)
+      [/\b(?:in\s+|pe\s+|din\s+)?ultimele\s+(\d{1,2}|doua|trei|patru|cinci|sase|sapte|opt|noua|zece|unsprezece)\s+luni\b/, (m) => {
+        const k = /^\d+$/.test(m[1]!) ? Number(m[1]) : ({ doua: 2, unsprezece: 11 } as Record<string, number>)[m[1]!] ?? NUMBER_WORDS[m[1]!] ?? NaN;
+        if (!(k >= 2 && k <= 11)) return null;
+        const [y, mo] = back(k - 1);
+        return { years: [y, year], months: [mo, monthNow] };
+      }],
+    ];
+    for (const [re, read] of monthRules)
+      for (const h of c.all(re)) {
+        const r = read(h.m);
+        if (!r || r.months[0] < 1 || r.months[1] < 1 || r.years[0] > r.years[1] || (r.years[0] === r.years[1] && r.months[0] > r.months[1])) continue;
+        set(h, r.years[0], r.years[1], undefined, r.months);
+      }
     const rules: [RegExp, (m: RegExpExecArray) => [number | undefined, number | undefined], (((m: RegExpExecArray) => { main: number; other: number }) | undefined)?, ((m: RegExpExecArray) => (from: number | undefined, to: number | undefined) => string)?][] = [
       [new RegExp(`\\b(?:(?:intre|din|de la|in perioada)\\s+)?(?:anii\\s+|anul\\s+)?${YR}\\s+(?:si|pana in|pana la|pina in|pina la|la|spre)\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anii\\s+)?${YR}\\s+${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
@@ -561,13 +594,17 @@ export class RulesInterpreter implements QuestionInterpreter {
       [/\bde\s+(\d{1,2}|doi|trei|patru|cinci|sase|sapte|opt|noua|zece)\s+ani\s+(?:incoace|incolo)\b/, (m) => { const k = Math.max(1, Math.min(20, n(m[1]))); return [year - k + 1, year]; }],
       [/\b(?:in\s+|pe\s+|din\s+)?(?:ultimul an|ultimele 12 luni|ultimele douasprezece luni)\b/, () => [year - 1, year], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
       [/\bde la inceputul anului\b/, () => [year, year]],
+      // „de la pandemie încoace” runs to today, „după pandemie” starts after it (search probe, 23 November 2026: both
+      // read 2020–2021); „în pandemie” stays the two years.
+      [/\b(?:(?:de la|din|de la inceputul)\s+(?:pandemiei|pandemia|pandemie|covid)(?:\s+de\s+covid)?(?:\s+19)?\s+(?:si\s+)?(?:incoace|pana azi|pana acum|pana in prezent|pana astazi)|de la\s+(?:pandemiei|pandemia|pandemie)|de cand\s+(?:a inceput|cu)\s+(?:pandemia|pandemie))\b/,
+        () => [2020, undefined], undefined, () => () => `„de la pandemie încoace”: am folosit anii 2020–${year}.`],
+      [/\b(?:(?:de\s+)?dupa|post)\s+(?:pandemiei|pandemia|pandemie|covid(?:\s+19)?)\b|\bpostpandemi\w*\b/,
+        () => [2022, undefined], undefined, () => () => `„după pandemie”: am folosit anii 2022–${year}.`],
       [/\b(?:in timpul|pe timpul|in perioada|in|pe|din)?\s*(?:pandemiei|pandemia|pandemie)(?:\s+de\s+covid(?:\s+19)?)?\b/, () => [2020, 2021], undefined, () => () => "„pandemia”: am folosit anii 2020–2021."],
       // the winter before today: December of one year and the start of the next, both years whole
       [/\b(?:in\s+|pe\s+)?iarna\s+trecuta\b/, () => (monthNow >= 3 ? [year - 1, year] : [year - 2, year - 1]), undefined, () => whole("iarna trecută")],
       // „iarna 2024”: the winter runs over two years; the year said, whole, and said so
       [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:iarna|vara|primavara|toamna)\\s+(?:lui\\s+|din\\s+|anului\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
-      // a month with its year is the whole year (months are not a filter of this search)
-      [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:luna\\s+)?(?:${month})\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
       [/\b(?:in\s+|pe\s+|din\s+)?ultimii\s+(\d{1,2}|doi|trei|patru|cinci|sase|sapte|opt|noua|zece)\s+ani\b/, (m) => { const k = Math.max(1, Math.min(20, n(m[1]))); return [year - k + 1, year]; }],
       [/\b(?:in\s+)?ultimii\s+ani\b/, () => [year - 2, year]],
       [/\b(?:in\s+|pe\s+|din\s+)?anul\s+(?:trecut|precedent)\b/, () => [year - 1, year - 1]],
@@ -608,6 +645,11 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (named) out.procedure = out.procedure ?? named;
       else out.notes.push(`Nu putem filtra încă după acest tip de procedură („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
     }
+    // „fără achiziții directe”: the contracts from procedures (search probe, 23 November 2026: it read only the direct ones)
+    once(/\b(?:(?:exclusiv\s+)?fara|nu\s+(?:prin|din|cu)|in\s+afara\s+de|exceptand|mai\s+putin)\s+(?:(?:achizitii(?:le)?|cumparari(?:le)?|cumparaturi(?:le)?)\s+direct(?:e|a)|achizitie\s+directa|achizitia\s+directa|directe)\b/, () => { out.dataset = "contracts"; });
+    // „cumpără direct”, „atribuit direct”, „direct, fără licitație”: the adverb is the stream, never a subject (the
+    // catalogue has „dispozitive de direcție”); the verb before it stays for the cues.
+    once(/(?<=\b(?:atribuit\w*|incredintat\w*|cumparat\w*|cumpara|cumparau|achizitionat\w*|achizitioneaza|dat|date|data|contractat\w*)\s)direct(?:a|e)?\b|\bdirect(?=\s+fara\s+(?:o\s+)?licitati)|\b(?:atribuir\w*|incredintar\w*)\s+direct(?:a|e)\b/, () => { if (out.dataset === null) out.dataset = "da"; });
     once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b|\bfara\s+(?:o\s+)?licitati(?:e|i)\b/, () => { out.dataset = "da"; });
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream
     once(/\b(?:cele mai multe|cei mai multi|cel mai des)(?=\s+(?:contracte|contractele|achizitii|achizitiile|licitatii|licitatiile|cumparari))/, () => { if (out.measure === null) out.measure = "count"; });
@@ -1810,6 +1852,21 @@ export class RulesInterpreter implements QuestionInterpreter {
     out.entityAlternatives = all.slice(0, 6).map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
     if (total > out.entityAlternatives.length) out.choicesPartial = { shown: out.entityAlternatives.length, total, search: span.text, hint: ENTITY_HINT };
     out.notes.push(total === 1 ? `O firmă sau instituție se potrivește cu „${span.text}”.` : `${countWords(total, "firmă sau instituție", "firme sau instituții")} se potrivesc cu „${span.text}”.`);
+  }
+
+  /**
+   * „achiziții IT fără licențe”: a subject cannot be left out, so it is not applied, and said (search probe, 23 November
+   * 2026: the subject left out became the subject of the answer). „fără licitație”, „fără concurență” are read before.
+   */
+  private excludedSubjects(c: Cursor, out: Interpretation) {
+    out.subjects = out.subjects.filter((s) => {
+      const from = s.matched.from, a = c.f(from - 1), b = c.f(from - 2);
+      const at = ["fara", "exceptand", "minus"].includes(a) ? from - 1 : a === "de" && b === "afara" ? (c.f(from - 3) === "in" ? from - 3 : from - 2) : null;
+      if (at === null || at < 0 || c.used[from - 1]) return true;
+      for (let k = at; k < from; k++) if (!c.used[k]) c.used[k] = "modifier";
+      out.notes.push(`„${c.span(at, s.matched.to).text}”: nu putem scoate un subiect din căutare; nu l-am aplicat.`);
+      return false;
+    });
   }
 
   private settleIntent(cues: { intent: IntentKind; at: number }[], out: Interpretation) {

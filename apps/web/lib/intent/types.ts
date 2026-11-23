@@ -80,6 +80,15 @@ export interface PeriodMatch {
   yearFrom?: number;
   yearTo?: number;
   /**
+   * The months said with the years („în decembrie 2024”, „ianuarie–martie 2024”, „ultimele 3 luni”): the first month
+   * of yearFrom and the last of yearTo. Întreabă applies them where the question takes months; /cauta searches whole
+   * years and says so (to-spec wholeYears).
+   */
+  monthFrom?: number;
+  monthTo?: number;
+  /** The words of the months, for the note of a reading that keeps whole years. */
+  monthsSaid?: string;
+  /**
    * "în 2025 față de 2024": the year asked about (main) and the one it is set
    * against (other). Both years stand only where each is its own figure (a
    * trend, an evolution); elsewhere the main year, with a note (to-spec).

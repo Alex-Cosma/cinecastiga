@@ -43,7 +43,7 @@ async function interpret(q:string,now:Date):Promise<IntentResult>{
  if(hit&&Date.now()-hit.at<CACHE_MS)return hit.body;
  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const body=await Promise.race([interpretQuestion(db(),q,{now,signal:controller.signal,periods}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('intent-timeout'));},TIME_BUDGET_MS);})]);
+  const body=await Promise.race([interpretQuestion(db(),q,{now,signal:controller.signal,periods,wholeYears:true}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('intent-timeout'));},TIME_BUDGET_MS);})]);
   if(cache.size>=CACHE_MAX)cache.delete(cache.keys().next().value!);
   cache.set(key,{at:Date.now(),body});
   return body;

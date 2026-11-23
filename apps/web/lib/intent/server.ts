@@ -2,7 +2,7 @@ import type { DbSql } from "@seap/db";
 import { coveragePeriods } from "../ask/compile";
 import type { CoveragePeriods } from "../ask/months-window";
 import { RulesInterpreter } from "./rules";
-import { resultFor } from "./to-spec";
+import { resultFor, wholeYears } from "./to-spec";
 import { loadSharedLists, sqlVocabulary } from "./vocabulary-sql";
 import type { IntentResult, QuestionInterpreter, Vocabulary } from "./types";
 import { peerDialog } from "../ask/peer-groups";
@@ -49,7 +49,9 @@ export function intentCacheKey(q: string, day: string, periods: CoveragePeriods 
 export async function interpretQuestion(
   sql: DbSql,
   text: string,
-  opts: { now?: Date; signal?: AbortSignal; interpreter?: (vocab: Vocabulary) => QuestionInterpreter; periods?: CoveragePeriods | null } = {},
+  opts: { now?: Date; signal?: AbortSignal; interpreter?: (vocab: Vocabulary) => QuestionInterpreter; periods?: CoveragePeriods | null;
+    /** A search by whole years (/cauta): the months said leave the period, with a note (to-spec wholeYears). */
+    wholeYears?: boolean } = {},
 ): Promise<IntentResult> {
   const now = opts.now ?? new Date();
   const make = opts.interpreter ?? ((vocab: Vocabulary) => new RulesInterpreter(vocab));
@@ -63,7 +65,7 @@ export async function interpretQuestion(
     // An aborted caller stops further lookups, so the transaction ends and frees its connection.
     return make(sqlVocabulary(tx as unknown as DbSql, shared, opts.signal ? { signal: opts.signal } : {})).interpret(text, { now });
   });
-  return withPeerGroup(sql, resultFor(interpretation, { periods, year: bucharestYear(now) }));
+  return withPeerGroup(sql, resultFor(opts.wholeYears ? wholeYears(interpretation) : interpretation, { periods, year: bucharestYear(now) }));
 }
 
 /** The whole country said in words: the group stays every profile (final distribution §4.2). */
