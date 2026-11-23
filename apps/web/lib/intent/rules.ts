@@ -466,7 +466,10 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (coded.length || marked.length || unmarked.length > 1) {
       const synonyms = await this.vocab.synonyms();
       unmarked = unmarked.filter((p) => {
-        const subject = p.to - p.from === 1 && !p.entries.some((e) => e.kind === "county") && synonyms.includes(c.f(p.from));
+        const lone = p.to - p.from === 1 && !p.entries.some((e) => e.kind === "county");
+        // „bradul de Crăciun din Craiova”, „brazi de Crăciun Craiova”: the head of „X de …” is a thing, not the town Brad
+        // or the commune Brazi, when the place is named elsewhere (search probe, 23 November 2026)
+        const subject = lone && (synonyms.includes(c.f(p.from)) || (c.f(p.to) === "de" && p.to + 1 < c.tokens.length && !c.used[p.to + 1]));
         const other = [...coded, ...marked, ...unmarked].some((q) => q !== p);
         if (subject && other) { c.used[p.from] = null; return false; }
         return true;
@@ -491,6 +494,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (a === "de" && ["afara", "fara"].includes(b)) return from - 2;
       // „medicamente mai puțin Bucureștiul”
       if (a === "putin" && b === "mai") return from - 2;
+      // „firme care nu sunt din București”, „dar nu din Cluj” (search probe, 23 November 2026)
+      if (a === "nu") return from - 1;
+      if (["sunt", "e", "este", "s"].includes(a) && b === "nu") return from - 2;
       return null;
     };
     const kept = placesFound.filter((p) => {
@@ -1105,7 +1111,9 @@ export class RulesInterpreter implements QuestionInterpreter {
         if (constraint !== "county" && constraint !== "any" && h.j < c.tokens.length && !STOPWORDS.has(c.f(h.j))) {
           const len = at ? at.j - h.j : 1;
           const joined = c.tokens.slice(h.j, h.j + len).map((t) => t.f).join(" ");
-          const key = placeKey(PLACE_ALIAS[joined] ?? joined);
+          // „primăria Clujului” is „primăria Cluj”: the town whose name starts with the county's (search probe, 23 November 2026)
+          const typedKey = placeKey(PLACE_ALIAS[joined] ?? joined);
+          const key = byKey.has(typedKey) ? typedKey : inflectedStem(typedKey, byKey) ?? typedKey;
           const exact = (at?.entries ?? []).filter((e) => fits(e, constraint));
           const longer = localities.filter((e) => e.key.startsWith(`${key} `) && fits(e, constraint) && !exact.includes(e));
           const largest = Math.max(0, ...longer.map((e) => e.population ?? 0));
@@ -1139,7 +1147,7 @@ export class RulesInterpreter implements QuestionInterpreter {
           continue;
         }
         c.take(h.i, at.j, "place");
-        found.push({ from: h.i, to: at.j, entries, constraint, span: c.span(h.i, at.j), ...(typed ? { typed } : {}) });
+        found.push({ from: h.i, to: at.j, entries, constraint, span: c.span(h.i, at.j), marked: true, ...(typed ? { typed } : {}) });
       }
     }
     // "primărie" with no name: understood as a word, not a purchase
@@ -1235,7 +1243,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     const explicitLocality = (f: PlaceFound) => ["locality", "municipiu", "oras", "comuna"].includes(f.constraint);
     const hasCounty = (f: PlaceFound) => f.entries.some((e) => e.kind === "county");
     const onlyLocality = (f: PlaceFound) => !hasCounty(f);
-    const pick = found.find(explicitLocality) ?? found.find(onlyLocality) ?? found[0]!;
+    // „bradul de Crăciun din Craiova” (search probe, 23 November 2026): the locality said after a place word, before one
+    // that is only a word of the question („bradul” is also the town Brad)
+    const pick = found.find(explicitLocality) ?? found.find((f) => onlyLocality(f) && f.marked) ?? found.find(onlyLocality) ?? found[0]!;
     // Another county in the question qualifies an ambiguous locality ("Sălcioara, Ialomița").
     const qualifierFound = found.find((f) => f !== pick && hasCounty(f) && f.constraint !== "locality");
     const qualifier = qualifierFound?.entries.find((e) => e.kind === "county")?.county ?? null;
@@ -1990,7 +2000,16 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (!place || place.kind !== "locality" || out.authority || out.supplier || out.dimHint === "supplier") return;
     const typed = significant(placeKey(place.name));
     const { hits } = await this.vocab.entities("authority", typed.join(" "));
-    const same = hits.filter((e) => sameName(typed, e.name) && (!e.county || fold(e.county).replace(/[^a-z]+/g, " ") === fold(place.county).replace(/[^a-z]+/g, " ")));
+    // „MUNICIPIUL ADJUD (CONSILIUL LOCAL AL MUNICIPIULUI ADJUD)”, „COMUNA X (PRIMARIA COMUNEI X)”: the town hall registered
+    // with its council or its own name again in brackets is that town hall (search probe, 23 November 2026: its signals
+    // were answered with the whole county's institutions).
+    const bare = (name: string) => {
+      const m = /^([^(]+)\(([^)]*)\)\s*$/.exec(name);
+      if (!m) return name;
+      const inside = significant(fold(m[2]!)), head = significant(fold(m[1]!));
+      return inside.every((w) => head.includes(w) || /^(?:primari\w*|consiliul|local|municipiului|orasului|comunei|uat|unitatea|administrativ|teritoriala)$/.test(w)) ? m[1]!.trim() : name;
+    };
+    const same = hits.filter((e) => sameName(typed, bare(e.name)) && (!e.county || fold(e.county).replace(/[^a-z]+/g, " ") === fold(place.county).replace(/[^a-z]+/g, " ")));
     if (!same.length) return;
     const matched = place.matched ?? { text: place.name, from: 0, to: 0 };
     // Several registry identities carry the town hall's name: the reader chooses (never a guess), as with a firm's name.
@@ -2237,6 +2256,8 @@ interface PlaceFound {
   typed?: string;
   /** "primăria Dolj": the county named as a town hall; its towns and the whole county are offered. */
   countyChoice?: string;
+  /** Said after a place word („din Craiova”, „orașul Brad”): it wins over a name that only looks like a place. */
+  marked?: true;
 }
 
 function fits(e: PlaceEntry, constraint: PlaceFound["constraint"]): boolean {
@@ -2259,12 +2280,16 @@ const PLACE_ENDINGS: [RegExp, string][] = [[/ului$/, ""], [/lui$/, ""], [/ul$/, 
  * stems of four letters or more: „Oltul” stays a word.
  */
 function inflectedPlace(key: string, byKey: Map<string, PlaceEntry[]>): PlaceEntry[] | null {
+  const stem = inflectedStem(key, byKey);
+  return stem === null ? null : byKey.get(stem)!.filter((e) => e.kind === "county" || e.tip === "municipiu");
+}
+/** The name an inflected form stands for („clujului” → „cluj”), by the same rule. */
+function inflectedStem(key: string, byKey: Map<string, PlaceEntry[]>): string | null {
   for (const [end, base] of PLACE_ENDINGS) {
     if (!end.test(key)) continue;
     const stem = key.replace(end, base);
     if (stem.length < 4) continue;
-    const entries = (byKey.get(stem) ?? []).filter((e) => e.kind === "county" || e.tip === "municipiu");
-    if (entries.length) return entries;
+    if ((byKey.get(stem) ?? []).some((e) => e.kind === "county" || e.tip === "municipiu")) return stem;
   }
   return null;
 }
