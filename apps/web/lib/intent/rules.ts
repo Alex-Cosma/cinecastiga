@@ -113,9 +113,9 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
   ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|an dupa an|(?:in|pe|pentru|din) fiecare an|de la un an la altul|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
-  ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor))\\b`)],
+  ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor)|clienti(?:i|lor)?)\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
-  ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
+  ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul|a|e)?|in total|sum(?:a|ei|ele)|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
 
 /**
@@ -136,7 +136,7 @@ const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator)/;
 const HOLDER_KIND = /^(?:primari\w* de \w+|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
 /** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
 const HOLDER_SINGULAR_KIND: Record<string, AuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu" };
-const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
+const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc|ia|iau|a luat|au luat|castiga|primeste|primesc|a primit|au primit) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
 const HOLDER_TOP_N = new RegExp(`\\b(?:top|primele|primii|primul) (?:\\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece) (?:de )?(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS})\\b`);
 /** „spitale care cumpără mănuși”: the institutions that buy, as „ce spitale cumpără” asks. */
 const HOLDER_WHO = new RegExp(`\\b(${HOLDER_BUYERS}) care (?:cumpara|achizitioneaza|au cumparat|a cumparat|au achizitionat|a achizitionat|cheltuie|cheltuiesc|au cheltuit|a cheltuit)\\b`);
@@ -278,7 +278,15 @@ export const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "
   "noua", "zece", "suta", "mie", "mii", "milion", "milioane", "miliard", "miliarde", "romania", "tara", "tarii", "intreaga", "intreg",
   // „presă” alone is the press or a press machine („Presă de bătut monede”); its phrases („abonamente presă”, „monitorizare
   // presă”) are curated (list 3 re-judging, 10 November 2026)
-  "presa", "presei"]);
+  "presa", "presei",
+  // „clienții firmei X” are its buyers, never „Servicii pentru clienţi”; „market size” is no marketing (search probe, 23 November 2026)
+  "client", "clientul", "clienti", "clientii", "clientilor", "clientului", "market", "size"]);
+/**
+ * Ordinary words that are never a firm's or an institution's name on their own (search probe, 23 November 2026: „minister”
+ * offered 161 names, „totala” two firms, „firma” fourteen). A name is still read where the person marks it: after „firma”,
+ * with its legal form (suppliersByMarker), or as a longer run that names one firm exactly (namedRuns).
+ */
+const NOT_A_NAME = /^(?:firm(?:a|e|ei|ele|elor)|societat\w*|compani\w*|furnizor\w*|institut(?:ie|ii|ia|iei|iile|iilor)|autoritat\w*|minister\w*|primari\w*|total\w*|sum(?:a|e|ei|ele)|valo(?:are|area|ri|rile|rii)|procent\w*|ponder\w*|numar\w*|medi(?:e|a|ei|i)|regiun\w*|nord|sud|est|vest|centru|piat(?:a|ei)|piete\w*|public\w*|stat|statul|statului|ban(?:i|ii|ilor)|contract\w*|achizit\w*|licitat\w*|cheltuiel\w*|efectiv|potential\w*|clien(?:t|ti|tii|tilor|tul|tului))$/;
 /** Words that only modify a cue ("cel mai mare", "cele mai multe"). */
 const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
@@ -467,8 +475,12 @@ export class RulesInterpreter implements QuestionInterpreter {
     // „județ”, „județul” without a county's name after it: a word understood, never a firm's or an institution's name
     // (search probe, 23 November 2026: 1.234 names matched „judet”).
     for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && /^(?:jud|judet|judetul|judetului|judete|judetele|judetelor)$/.test(c.f(k))) c.take(k, k + 1, "filler");
+    // „lucrarea mea de licență”, „teza de doctorat”: the person's paper, never software licences (search probe, 23 November 2026)
+    for (const h of c.all(/\b(?:lucrar(?:e|ea|ii)|tez(?:a|ei)|examen(?:ul|ului)?|proiect(?:ul|ului)?|diplom(?:a|ei))(?: (?:mea|meu|mele|noastra|nostru))? de (?:licenta|disertatie|doctorat|masterat|master)\b/)) c.take(h.i, h.j, "filler");
     await this.namedRuns(c, out);
     await this.subjects(c, out);
+    // „a organizat”, „au derulat”: the question's verb is a word understood, never a name to look up
+    for (let k = 1; k < c.tokens.length; k++) if (!c.used[k] && c.f(k).length >= 6 && isParticiple(c, k)) c.take(k, k + 1, "filler");
     this.excludedSubjects(c, out);
     // „fără București”, „în afara Bucureștiului”, „exceptând Clujul”: a place cannot be left out, so it is not applied
     // (owner probe, 10 November 2026: „medicamente fără București” applied București, the opposite of the question).
@@ -1205,8 +1217,14 @@ export class RulesInterpreter implements QuestionInterpreter {
   /** A historical region is no place we can apply: said, never silently dropped or read as a town („Moldova Nouă” stays). */
   private regions(c: Cursor, out: Interpretation) {
     // only said as a place („în Moldova”, „zona Banat”): „Enel Energie Muntenia” is a firm's name
-    for (const h of c.all(/\b(?:in|din|zona|regiunea)\s+(moldova|ardeal|ardealul|ardealului|transilvania|banat|banatul|banatului|dobrogea|oltenia|muntenia|crisana|bucovina)\b(?!\s+(?:noua|veche|sulita))/)) {
+    for (const h of c.all(/\b(?:in|din|zona|regiunea)\s+(moldova|moldovei|ardeal|ardealul|ardealului|transilvania|transilvaniei|banat|banatul|banatului|dobrogea|dobrogei|oltenia|olteniei|muntenia|munteniei|crisana|crisanei|bucovina|bucovinei)\b(?!\s+(?:noua|veche|sulita))/)) {
       if (!c.isFree(h.i, h.j)) continue;
+      c.take(h.i, h.j, "modifier");
+      out.notes.push(`„${c.span(h.i, h.j).text}”: o regiune nu se poate aplica; am căutat în toată țara. Alege un județ pentru a restrânge.`);
+    }
+    // „regiunea Nord-Est”, „regiunea de dezvoltare Vest”: a development region, said the same way (search probe, 23 November
+    // 2026: its words were looked up as an institution's name)
+    for (const h of c.all(/\b(?:(?:in|din) )?regiun(?:ea|ii|ile) (?:de dezvoltare )?(?:nord est|nord vest|sud est|sud vest(?: oltenia)?|sud(?: muntenia)?|vest|centru|bucuresti ilfov)\b/)) {
       c.take(h.i, h.j, "modifier");
       out.notes.push(`„${c.span(h.i, h.j).text}”: o regiune nu se poate aplica; am căutat în toată țara. Alege un județ pentru a restrânge.`);
     }
@@ -1534,7 +1552,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       const words: { k: number; hit: CpvHit | null }[] = await Promise.all(
         c.tokens.slice(i, j).map(async (t, idx) => ({
           k: i + idx,
-          hit: t.f.length >= 3 && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !ADJECTIVE.has(t.f) && !NEVER_SUBJECT.has(t.f) && !retiredTerm(t.f) ? await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms) : null,
+          // „IT”: two letters are a subject only as a curated term written exactly so
+          hit: (t.f.length >= 3 || (t.f.length === 2 && synonyms.includes(t.f))) && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !ADJECTIVE.has(t.f) && !NEVER_SUBJECT.has(t.f) && !retiredTerm(t.f)
+            ? notParticiple(c, i + idx, await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms)) : null,
         })),
       );
       // A phrase the vocabulary does not have is not split into catalogue words added together (owner probe,
@@ -1576,6 +1596,22 @@ export class RulesInterpreter implements QuestionInterpreter {
         matched: c.span(cand.i, cand.j),
       });
       if (out.subjects.length >= 3) break;
+    }
+    // „firme de construcții”, „contracte de reparații”: a generic word that is itself a curated term is the subject when
+    // no other one was read (search probe, 23 November 2026: „construcții” alone was left out, or looked up as a firm's
+    // name). Beside a real subject it stays a word understood („construcții de drumuri” is „drumuri”).
+    if (!out.subjects.length && !out.subjectChoices) {
+      for (let k = 0; k < c.tokens.length; k++) {
+        const word = c.f(k);
+        // („lucrări”, „servicii”, „produse” alone are the purchase kind, read next)
+        if (!c.isFree(k, k + 1) || !GENERIC_SUBJECT.has(word) || KIND_WORDS[word] || !synonyms.includes(word)) continue;
+        // „materiale de construcții”, „firma Construcții Feroviare”: part of a longer phrase the vocabulary does not have
+        const beside = (j: number) => j >= 0 && j < c.tokens.length && !c.used[j] && !STOPWORDS.has(c.f(j)) && !PREPOSITION.has(c.f(j)) && !GENERIC_SUBJECT.has(c.f(j)) && !NEVER_SUBJECT.has(c.f(j)) && !NOT_A_NAME.test(c.f(j));
+        if (beside(k - 1) || beside(k + 1) || (c.f(k - 1) === "de" && beside(k - 2))) continue;
+        c.take(k, k + 1, "subject");
+        out.subjects.push({ term: word, label: spell(word, spelling), cpvName: (await this.vocab.cpv(word)).find((x) => x.term === word)?.cpvName ?? null, source: "synonym", matched: c.span(k, k + 1) });
+        break;
+      }
     }
     // "lucrări", "servicii", "produse" beside no subject: the purchase kind (F3, plan §2.7 „tip”), never a guessed
     // domain; on a question that does not offer the kind, to-spec says so.
@@ -2017,7 +2053,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // words name exactly one firm (owner probe, 10 November 2026: the firm was dropped).
     if (out.authority && !out.supplier && !out.subjects.length && !out.person && !out.entityAlternatives.length && free.length && free.length <= 4) {
       const typed = significant(free.map((k) => c.f(k)).join(" "));
-      if (!typed.length || (typed.length === 1 && typed[0]!.length < 4)) return;
+      if (!typed.length || (typed.length === 1 && typed[0]!.length < 4) || typed.every((w) => NOT_A_NAME.test(w))) return;
       const span = c.span(free[0]!, free[free.length - 1]! + 1);
       const s = await this.resolve("supplier", typed);
       if (s.kind === "one" && s.hit.id !== out.authority.id) { for (const k of free) c.take(k, k + 1, "entity"); this.applyResolution(s, out, span, span.text); }
@@ -2042,8 +2078,16 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (!free.length || free.length > 6) return;
     const typed = significant(free.map((k) => c.f(k)).join(" "));
     if (!typed.length || (typed.length === 1 && typed[0]!.length < 5)) return;
+    // Ordinary words are not a name (search probe, 23 November 2026): they stay words the answer did not use.
+    if (typed.every((w) => NOT_A_NAME.test(w) || GENERIC_SUBJECT.has(w))) return;
     const span = c.span(free[0]!, free[free.length - 1]! + 1);
     let [s, a] = await Promise.all([this.resolve("supplier", typed), this.resolve("authority", typed)]);
+    // A word of the purchases' vocabulary (a domain's word, an adjective) names a firm only when a firm is called exactly
+    // that („Electrica”); otherwise the hundreds of names that merely contain it are not a choice to offer.
+    if (typed.length === 1 && (ADJECTIVE.has(typed[0]!) || (await this.vocab.cpv(typed[0]!)).length > 0)) {
+      const exact = (r: Resolution) => (r.kind === "one" ? sameName(typed, r.hit.name) : r.kind === "many" && r.hits.some((e) => sameName(typed, e.name)));
+      if (!exact(s) && !exact(a)) return;
+    }
     // Words that are only part of one long name („promovare turistică” in „Direcția … de Administrare Monumente și
     // Promovare Turistică a Județului Hunedoara”) are a choice, not that institution (owner probe, 10 November 2026).
     // A single distinctive word („Electrica”) still names its firm.
@@ -2239,10 +2283,26 @@ export function genitive(place: Pick<PlaceMatch, "name" | "tip">): string {
  * From 9 letters the first two are enough, so a slip in the third letter is read too ("dezapezire" → "deszapezire",
  * owner, 2 November 2026); an inflected typo is tried by its base forms ("dezapezirea").
  */
+/**
+ * „câte licitații a organizat ministerul”: a past participle after its auxiliary is the verb of the question, never a
+ * catalogue label that starts like it („Servicii de organizaţii asociative”; search probe, 23 November 2026). A curated
+ * term keeps its reading („cine a asfaltat”).
+ */
+function notParticiple(c: Cursor, k: number, hit: CpvHit | null): CpvHit | null {
+  return hit && /^\d/.test(hit.term) && isParticiple(c, k) ? null : hit;
+}
+const isParticiple = (c: Cursor, k: number) => /^(?:a|au|am|ati|fost)$/.test(c.f(k - 1)) && /(?:at|it|ut)$/.test(c.f(k));
+
 function typoSynonym(word: string, synonyms: string[]): CpvHit | null {
   if (word.length < 6 || INSTITUTION_WORD.test(word)) return null;
   const head = (w: string, s: string) => s.slice(0, 3) === w.slice(0, 3) || (Math.min(w.length, s.length) >= 9 && s.slice(0, 2) === w.slice(0, 2));
-  const near = (w: string, s: string) => head(w, s) && (lev(w, s, 1) <= 1 || (w.length > s.length && lev(w.slice(0, s.length), s, 1) <= 1 && w.length - s.length <= 3));
+  // two neighbouring letters typed in the other order („curatenei” → „curatenie”; search probe, 23 November 2026)
+  const swapped = (w: string, s: string) => {
+    if (w.length !== s.length) return false;
+    const k = [...w].findIndex((ch, at) => ch !== s[at]);
+    return k >= 0 && k + 1 < w.length && w[k] === s[k + 1] && w[k + 1] === s[k] && w.slice(k + 2) === s.slice(k + 2);
+  };
+  const near = (w: string, s: string) => head(w, s) && (lev(w, s, 1) <= 1 || swapped(w, s) || (w.length > s.length && lev(w.slice(0, s.length), s, 1) <= 1 && w.length - s.length <= 3));
   const hit = stems(word).filter((w) => w.length >= 6).map((w) => synonyms.find((s) => !s.includes(" ") && s.length >= 6 && near(w, s))).find(Boolean);
   return hit ? { term: hit, cpvName: null } : null;
 }
