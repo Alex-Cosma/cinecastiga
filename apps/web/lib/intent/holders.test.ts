@@ -76,3 +76,30 @@ describe("who a superlative ranks", () => {
     expect(i.measure).toBe("value_per_capita");
   });
 });
+
+describe("a place or a year between the noun and the superlative", () => {
+  it("still ranks the noun's holders, inside the place (owner, 23 November 2026: these read as the largest records)", async () => {
+    const communes = await read("comunele din judetul Buzau cu cele mai mari contracte de iluminat");
+    expect([communes.i.intent, communes.i.largest ?? null, communes.i.leftover]).toEqual(["ranking_authorities", null, []]);
+    expect(communes.spec).toMatchObject({ block: "table", dim: "authority", filters: { cpvTerm: "iluminat", county: "Buzău", authorityKind: "comuna" } });
+    const halls = await read("primariile din Buzau cu cele mai multe achizitii directe");
+    expect(halls.spec).toMatchObject({ block: "table", dim: "authority", filters: { county: "Buzău", authorityKind: "primarie" } });
+    const firms = await read("firmele din Cluj cu cele mai multe contracte in 2025");
+    expect(firms.spec).toMatchObject({ block: "table", dim: "supplier", filters: { county: "Cluj", yearFrom: 2025, yearTo: 2025 } });
+    const towns = await read("orasele din 2024 cu cele mai mari cheltuieli pe asfaltare");
+    expect(towns.spec).toMatchObject({ block: "table", dim: "authority", filters: { cpvTerm: "asfaltare", authorityKind: "oras_municipiu", yearFrom: 2024, yearTo: 2024 } });
+    const hospitals = await read("spitalele din Braila care au cele mai mari contracte");
+    expect(hospitals.spec).toMatchObject({ block: "table", dim: "authority", filters: { county: "Brăila", authorityKind: "spital" } });
+  });
+  it("ranks a singular said with a county, and leaves one with a locality to the institution it may name", async () => {
+    const county = await read("primaria din judetul Buzau cu cele mai mari contracte pe iluminat");
+    expect(county.spec).toMatchObject({ block: "table", dim: "authority", filters: { cpvTerm: "iluminat", county: "Buzău", authorityKind: "primarie" } });
+    const one = await read("primaria din Buzau cu cele mai mari contracte");
+    expect([one.i.intent, Boolean(one.i.largest), one.i.holder ?? false]).toEqual(["total", true, false]);
+    expect(one.spec.block).toBe("stat");
+  });
+  it("leaves the largest records of a kind as they were", async () => {
+    const { i, spec } = await read("cele mai mari contracte ale comunelor din judetul Buzau");
+    expect([i.intent, Boolean(i.largest), spec.block]).toEqual(["total", true, "stat"]);
+  });
+});

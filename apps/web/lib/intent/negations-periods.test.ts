@@ -86,9 +86,9 @@ describe("periods", () => {
     expect(change.r.spec?.filters.monthFrom).toBeUndefined();
     expect(change.r.interpretation.notes.join(" ")).toMatch(/„decembrie 2025”: am folosit/);
   });
-  it("leaves a month without a year unread, with its note", async () => {
+  it("reads a month without a year as the latest one that has begun (months-alone.test.ts)", async () => {
     const { i } = await read("iluminat in decembrie");
-    expect(i.period).toBeNull();
-    expect(i.notes.join(" ")).toContain("lunile și trimestrele nu sunt încă un filtru");
+    expect([i.period?.yearFrom, i.period?.monthFrom, i.period?.monthTo]).toEqual([2025, 12, 12]);
+    expect(i.notes).toContain("„decembrie”: am folosit decembrie 2025.");
   });
 });

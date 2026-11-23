@@ -35,11 +35,12 @@ describe("periods, regions and places people write (owner probe, 10 November 202
     // the month is read (23 November 2026), and /cauta searches inside it (owner, the same day)
     expect(march.period).toMatchObject({ yearFrom: 2025, yearTo: 2025, monthFrom: 3, monthTo: 3 });
     expect(applyInterpretation(parseTopicScope(new URLSearchParams("q=iluminat in martie 2025")), resultFor(march)).applied).toMatchObject({ q: "iluminat", from: "2025-03", to: "2025-03" });
-    // a month without a year is understood and said, never applied; „cel mai mare” is no May
+    // a month without a year is the latest one that has begun, and said (owner, 23 November 2026; it was understood
+    // and never applied); „cel mai mare” is no May
     const alone = await read("iluminat in martie");
-    expect(alone.period).toBeNull();
+    expect(alone.period).toMatchObject({ yearFrom: 2026, yearTo: 2026, monthFrom: 3, monthTo: 3 });
     expect(alone.leftover).toEqual([]);
-    expect(alone.notes.join(" ")).toMatch(/nu le-am aplicat/);
+    expect(alone.notes).toContain("„martie”: am folosit martie 2026.");
     expect((await read("cel mai mare contract de iluminat")).notes.join(" ")).not.toMatch(/lunile/);
   });
 

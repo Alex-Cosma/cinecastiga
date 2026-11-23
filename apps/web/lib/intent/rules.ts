@@ -103,6 +103,8 @@ class Cursor {
 // ------------------------------------------------------------------- cues
 
 const YR = "(20[0-3]\\d)";
+/** The months as the folded text has them (none carries a diacritic). */
+const MONTH_NAMES = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
 const KIND_NOUNS = "spitale|spitalele|scoli|scolile|licee|liceele|comune|comunele|orase|orasele|municipii|municipiile|primarii|primariile|consilii|consiliile|ministere|ministerele|universitati|universitatile";
 
 /** Ordered: the more specific phrase first, so it consumes the shared words. */
@@ -150,7 +152,17 @@ const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator|operator|
 const HOLDER_KIND = /^(?:primari\w* de \w+|ministere\w*|universitati\w*|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
 /** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
 const HOLDER_SINGULAR_KIND: Record<string, SaidAuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu", ministerul: "minister", universitatea: "universitate" };
-const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc|ia|iau|a luat|au luat|castiga|primeste|primesc|a primit|au primit) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
+const HOLDER_TAIL = "(?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc|ia|iau|a luat|au luat|castiga|primeste|primesc|a primit|au primit) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)";
+const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) ${HOLDER_TAIL}\\b`);
+/**
+ * „comunele din județul Cluj cu cele mai mari contracte”, „firmele din Iași care au cele mai multe contracte”: the words
+ * of a place or a year between the noun and the superlative (owner, 23 November 2026: these read as the largest
+ * records). A singular with a locality („primăria din Cluj cu cele mai mari contracte”) may name one institution, and
+ * stays as it was; a singular in a county, a region or the country ranks.
+ */
+const HOLDER_MOST_PLACED = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) ((?:din|de la|de pe|de prin|in) (?:\\w+ ){0,4}?\\w+) ${HOLDER_TAIL}\\b`);
+const HOLDER_ONE = /^(?:ministerul|universitatea|institutia|autoritatea|cumparatorul|primaria|spitalul|scoala|liceul|comuna|orasul|municipiul|consiliul? judetean|firma|compania|furnizorul|societatea|castigatorul)$/;
+const HOLDER_WIDE_PLACE = /^(?:din|in) (?:judetul|jud|regiunea|zona|tara|toata tara|romania|moldova|transilvania|ardeal|muntenia|oltenia|dobrogea|banat|bucovina|maramures|crisana)\b/;
 const SUPERLATIVE_KIND: Record<string, SaidAuthorityKind> = { oras: "oras_municipiu", municipiu: "oras_municipiu", comuna: "comuna", minister: "minister", universitate: "universitate" };
 const HOLDER_TOP_N = new RegExp(`\\b(?:top|primele|primii|primul) (?:\\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece) (?:de )?(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS})\\b`);
 /** „spitale care cumpără mănuși”: the institutions that buy, as „ce spitale cumpără” asks. */
@@ -530,7 +542,8 @@ export class RulesInterpreter implements QuestionInterpreter {
 
     // The size of a purchase before the periods and the fiscal codes: "peste 2000 de lei" is no year, "1000000 lei" no CUI.
     this.amounts(c, out);
-    this.periods(c, out, year, Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Bucharest", month: "numeric" }).format(context.now)));
+    const monthNow = Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Bucharest", month: "numeric" }).format(context.now));
+    this.periods(c, out, year, monthNow);
     // „jud. CJ”: a county by its plate code, before „CJ” is read as the county councils
     const coded = this.countyCodes(c, byKey);
     this.regions(c, out);
@@ -550,7 +563,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.compare(c, out, compareCue, byKey, localities);
     if (out.countyPair && compareCue !== null) cues.push({ intent: "counties", at: compareCue });
     await this.suppliersByMarker(c, out);
-    this.monthsAlone(c, out);
+    this.monthsAlone(c, out, year, monthNow);
     this.ownPlace(c, out);
     this.noDomain(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
@@ -684,14 +697,14 @@ export class RulesInterpreter implements QuestionInterpreter {
     // An approximate reading says what it used („iarna trecută”, „ultimul an”, „în martie 2025”: whole years).
     const whole = (said: string) => (from: number | undefined, to: number | undefined) =>
       `„${said}”: am folosit ${from === to ? `tot anul ${from}` : `anii ${from}–${to} întregi`}.`;
-    const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
+    const month = MONTH_NAMES.join("|");
     // Months with their year, and the months before today (search probe, 23 November 2026: „în decembrie 2024” read
     // the whole year, „ultimele 3 luni” read nothing). The months are kept on the period: Întreabă applies them, /cauta
-    // searches whole years and says so (to-spec.ts). A month without a year stays unread (monthsAlone).
+    // searches whole years and says so (to-spec.ts). A month without a year is read after the cues (monthsAlone).
     const monthNo = (name: string) => month.split("|").indexOf(name) + 1;
     const back = (k: number): [number, number] => { const at = year * 12 + (monthNow - 1) - k; return [Math.floor(at / 12), (at % 12) + 1]; };
     const join = "(?:si|pana in|pana la|pina in|pina la|la|spre)";
-    const monthRules: [RegExp, (m: RegExpExecArray) => { years: [number, number]; months: [number, number] } | null][] = [
+    const monthRules: [RegExp, (m: RegExpExecArray) => { years: [number, number]; months: [number, number]; note?: string } | null][] = [
       // „din noiembrie 2024 până în februarie 2025”
       [new RegExp(`\\b(?:(?:intre|din|de la|in perioada|in)\\s+)?(?:luna\\s+)?(${month})\\s+${YR}\\s+${join}\\s+(?:luna\\s+)?(${month})\\s+${YR}\\b`),
         (m) => ({ years: [Number(m[2]), Number(m[4])], months: [monthNo(m[1]!), monthNo(m[3]!)] })],
@@ -702,6 +715,10 @@ export class RulesInterpreter implements QuestionInterpreter {
         (m) => ({ years: [Number(m[2]), Number(m[2])], months: [monthNo(m[1]!), monthNo(m[1]!)] })],
       [/\b(?:in\s+|pe\s+|din\s+)?luna\s+(?:aceasta|asta|curenta|in curs)\b/, () => ({ years: [year, year], months: [monthNow, monthNow] })],
       [/\b(?:in\s+|pe\s+|din\s+)?luna\s+(?:trecuta|precedenta)\b/, () => { const [y, mo] = back(1); return { years: [y, y], months: [mo, mo] }; }],
+      // „ultima lună” is „ultimele N luni” with one month: the month in course (owner, 23 November 2026: the months
+      // before today keep the current one), and said
+      [/\b(?:in\s+|pe\s+|din\s+)?ultima\s+luna\b/, () => ({ years: [year, year], months: [monthNow, monthNow],
+        note: `„ultima lună”: am folosit luna în curs, ${MONTH_NAMES[monthNow - 1]} ${year}.` })],
       // „ultimele 3 luni”: this month and the two before it („ultimele 12 luni” stays the last year, below)
       [/\b(?:in\s+|pe\s+|din\s+)?ultimele\s+(\d{1,2}|doua|trei|patru|cinci|sase|sapte|opt|noua|zece|unsprezece)\s+luni\b/, (m) => {
         const k = /^\d+$/.test(m[1]!) ? Number(m[1]) : ({ doua: 2, unsprezece: 11 } as Record<string, number>)[m[1]!] ?? NUMBER_WORDS[m[1]!] ?? NaN;
@@ -715,6 +732,7 @@ export class RulesInterpreter implements QuestionInterpreter {
         const r = read(h.m);
         if (!r || r.months[0] < 1 || r.months[1] < 1 || r.years[0] > r.years[1] || (r.years[0] === r.years[1] && r.months[0] > r.months[1])) continue;
         set(h, r.years[0], r.years[1], undefined, r.months);
+        if (r.note && out.period?.matched.from === h.i) out.notes.push(r.note);
       }
     const rules: [RegExp, (m: RegExpExecArray) => [number | undefined, number | undefined], (((m: RegExpExecArray) => { main: number; other: number }) | undefined)?, ((m: RegExpExecArray) => (from: number | undefined, to: number | undefined) => string)?][] = [
       [new RegExp(`\\b(?:(?:intre|din|de la|in perioada)\\s+)?(?:anii\\s+|anul\\s+)?${YR}\\s+(?:si|pana in|pana la|pina in|pina la|la|spre)\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
@@ -1032,6 +1050,11 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const h of c.over(HOLDER_MOST, ["modifier"])) {
       const j = h.i + h.m[1]!.split(" ").length;
       if (c.isFree(h.i, j)) rank(h.i, j, h.m[1]!, j, h.j);
+    }
+    for (const h of c.over(HOLDER_MOST_PLACED, ["modifier", "period", "place"])) {
+      const j = h.i + h.m[1]!.split(" ").length, g = j + h.m[2]!.split(" ").length;
+      if (out.holder || !c.isFree(h.i, j) || (HOLDER_ONE.test(h.m[1]!) && !HOLDER_WIDE_PLACE.test(h.m[2]!))) continue;
+      rank(h.i, j, h.m[1]!, g, h.j);
     }
     for (const h of c.all(HOLDER_WHO)) {
       const j = h.i + h.m[1]!.split(" ").length;
@@ -1407,15 +1430,45 @@ export class RulesInterpreter implements QuestionInterpreter {
   }
 
   /** Choose the place; ambiguous names become alternatives, never a guess. */
-  /** A month without a year, a quarter: understood, not applied (after the cues: „vârf în decembrie” is a signal). */
-  private monthsAlone(c: Cursor, out: Interpretation) {
-    const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
+  /**
+   * A month without a year (after the cues: „vârf în decembrie” is a signal): the latest such month that has begun,
+   * and said („în martie” asked in November 2026 is March 2026, „în decembrie” December 2025). With one year said
+   * elsewhere in the question it is that year's month. Weeks and quarters are understood, not applied.
+   */
+  private monthsAlone(c: Cursor, out: Interpretation, year: number, monthNow: number) {
     // („mai” is the month only after „luna”: „cel mai mare” is no May)
-    const monthAlone = month.replace("|mai|", "|");
-    for (const h of c.all(new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:(?:luna\\s+)?(?:${monthAlone})|luna\\s+mai|luna\\s+(?:trecuta|aceasta|asta|curenta|viitoare)|(?:saptamana|saptamanile)\\s+(?:trecuta|aceasta|asta|trecute)|(?:primul|al doilea|al treilea|ultimul)\\s+trimestru|trimestrul\\s+(?:1|2|3|4|i|ii|iii|iv))\\b`))) {
+    const named = new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:(?:luna\\s+)?(${MONTH_NAMES.filter((m) => m !== "mai").join("|")})|luna\\s+(mai))\\b`);
+    for (const h of c.all(named)) {
+      if (!c.isFree(h.i, h.j)) continue;
+      // „1 Decembrie” is a commune, a university, a street: a month after a day's number is left to the names
+      if (h.i > 0 && /^\d{1,2}$/.test(c.f(h.i - 1)) && !/^(?:in|pe|din)\s/.test(h.m[0])) continue;
+      const name = (h.m[1] ?? h.m[2])!, month = MONTH_NAMES.indexOf(name) + 1;
+      const p = out.period;
+      const ofYear = p && p.yearFrom !== undefined && p.yearFrom === p.yearTo && p.monthFrom === undefined && !p.versus ? p.yearFrom : null;
+      if (p && ofYear === null) {
+        c.take(h.i, h.j, "period");
+        out.notes.push(`Am folosit prima perioadă din întrebare; „${c.span(h.i, h.j).text}” nu a fost aplicată.`);
+        continue;
+      }
+      const y = ofYear ?? (month <= monthNow ? year : year - 1);
+      if (y === year && month > monthNow) {
+        c.take(h.i, h.j, "blocked");
+        out.notes.push(`Perioada „${name} ${y}” nu are încă date; am folosit tot anul ${y}.`);
+        continue;
+      }
+      c.take(h.i, h.j, "period");
+      out.period = { ...(p ?? { matched: c.span(h.i, h.j) }), yearFrom: y, yearTo: y, monthFrom: month, monthTo: month, monthsSaid: `${name} ${y}` };
+      if (ofYear === null) out.notes.push(`„${name}”: am folosit ${name} ${y}.`);
+    }
+    for (const h of c.all(/\b(?:in\s+|pe\s+|din\s+)?luna\s+viitoare\b/)) {
+      if (!c.isFree(h.i, h.j)) continue;
+      c.take(h.i, h.j, "blocked");
+      out.notes.push(`Perioada „${c.span(h.i, h.j).text}” nu are încă date; nu am aplicat-o.`);
+    }
+    for (const h of c.all(/\b(?:in\s+|pe\s+|din\s+)?(?:(?:saptamana|saptamanile)\s+(?:trecuta|aceasta|asta|trecute)|(?:primul|al doilea|al treilea|ultimul)\s+trimestru|trimestrul\s+(?:1|2|3|4|i|ii|iii|iv))\b/)) {
       if (!c.isFree(h.i, h.j)) continue;
       c.take(h.i, h.j, "modifier");
-      out.notes.push(`„${c.span(h.i, h.j).text}”: lunile și trimestrele nu sunt încă un filtru al căutării; nu le-am aplicat.`);
+      out.notes.push(`„${c.span(h.i, h.j).text}”: săptămânile și trimestrele nu sunt încă un filtru al căutării; nu le-am aplicat.`);
     }
   }
 
