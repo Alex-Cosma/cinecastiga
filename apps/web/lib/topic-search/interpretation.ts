@@ -4,7 +4,7 @@ import type { RelatedSubject, SubjectPart } from './subject-parts';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
 import { joinCpvTerms } from '../ask/cpv-terms';
-import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
+import { LARGEST_IN_SOURCES, narrowedSelection, sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
 import type { AuthorityKind, TOWN_HALL_KIND } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import { periodPhrase } from '../ask/filters/words';
@@ -12,7 +12,7 @@ import { periodBounds, periodWindow } from './shared';
 import type { Place, TopicScope } from './shared';
 import type { PlaceAround } from './around';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
-import { STOPWORDS, tokenize } from '../intent/text';
+import { LARGEST_RECORDS, largestSentence, STOPWORDS, tokenize } from '../intent/text';
 import { NEVER_SUBJECT, NO_DOMAIN_SAID, TOWN_HALL_UNKNOWN } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
@@ -169,11 +169,13 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const subjectOk = Boolean(s0 && !weakSubject(s0) && !hasEntity && !i.leftover.length);
   // Întreabă with the words as typed: the link of every answer that is not a chosen selection.
   const typedHref = () => `/intreaba?q=${encodeURIComponent(scope.q)}`;
-  // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the largest records (owner probe, 10 November 2026)
-  const largest = !scope.order && /\b(?:cel|cea|cele|cei)\s+mai\s+(?:mare|mari|scump\w*|valoros\w*)\s+(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)\b/.test(foldText(i.text));
+  // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the largest records (owner probe, 10 November 2026),
+  // as the interpreter read them (Interpretation.largest; one detector, intent/text.ts LARGEST_RECORDS).
+  const largest = !scope.order && Boolean(i.largest);
   // „primăria cu cele mai mari contracte” ranks the town halls (owner, 23 November 2026): the short answer is the
-  // ranking, and the titles under it are still the largest first.
-  const then = thenFor(i, largest && !i.holder);
+  // ranking, and the titles under it are still the largest first. So are those of any question with these words.
+  const largestFirst = !scope.order && (largest || LARGEST_RECORDS.test(tokenize(i.text).map((t) => t.f).join(' ')));
+  const then = thenFor(i, largest);
   const out: TopicInterpretation = {
     ...base,
     subject: subjectOk ? { term: s0!.term, label: s0!.label, cpvName: s0!.cpvName, source: s0!.source, notes: [] } : null,
@@ -278,6 +280,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
     if (!out.answer && i.intent && ANSWERED.includes(i.intent))
       out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, typedHref, then);
+    // only the largest records answer their question: the whole country has none (shortAnswer), and its total is no answer
+    if (largest && out.answer && out.answer.top?.kind !== 'records') out.answer = null;
     if (!out.answer && i.intent === 'compare' && i.compareWith) out.answer = compareAnswer(i, {}, labels, typedHref);
     // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse");
     // several subjects are counted together ("parcuri + spatii verzi").
@@ -312,7 +316,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   }
   // „cât a câștigat Strabag în 2023”: several firms carry the name and one of them is exactly the name typed. „Pe scurt”
   // counts that one and says so; the others are listed with the names below (owner probe re-judging, 10 November 2026).
-  const exact = !out.question && !applies && plain && settled && i.intentSource === 'cue' && i.intent && ANSWERED.includes(i.intent) ? exactAlternative(i) : null;
+  // (not for the largest records: a common word that is also a firm's whole name, „construcții”, would answer for that firm)
+  const exact = !out.question && !applies && plain && settled && !largest && i.intentSource === 'cue' && i.intent && ANSWERED.includes(i.intent) ? exactAlternative(i) : null;
   if (exact) {
     const reading: Interpretation = { ...i, [exact.role]: exact, entityAlternatives: [], choicesPartial: null };
     out.answer = shortAnswer({ ...reading, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref, thenFor(reading, largest));
@@ -331,7 +336,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     // only the largest records answer this question (the whole country has none: see shortAnswer)
     if (out.answer?.top?.kind !== 'records') out.answer = null;
     // the question asked is the largest records, not the total („Care sunt cele mai mari achiziții directe…?”)
-    if (out.answer && !out.question) out.question = { sentence: out.answer.total.sentence.replace(/^Cât valorează (achizițiile|contractele)\b/, (_, w: string) => `Care sunt cele mai mari ${w === 'contractele' ? 'contracte' : 'achiziții'}`) };
+    if (out.answer && !out.question) out.question = { sentence: largestSentence(out.answer.total.sentence) };
   }
   // The lists search what the words name, never the sentence as title words (owner probe, 10 November 2026: 40–60% of
   // the questions not read cleanly ended on an empty page). A reading with words left over is still used, and the
@@ -389,7 +394,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies && !(loose?.kind === 'subjects' && !loose.narrowed.length)) { out.subject = null; out.otherSubjects = []; out.kind = null; }
   // the titles too are the largest first, said in a note (the shape was dropped and the first three firms answered instead)
-  if (largest) out.applied = { ...out.applied, order: 'value' };
+  if (largestFirst) out.applied = { ...out.applied, order: 'value' };
   // A subject's words are searched as a subject: no „closest names” for them in the names panel („MEV Software” for
   // „mentenanță software”). Words not understood beside a subject may be a firm's name („apa nova”): its closest names stay.
   // „aplicație mobilă” (no domain) neither: its words are no firm's name to guess („MOBILA S.A.”)
@@ -397,7 +402,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     out.applied = { ...out.applied, names: 'exact' };
   // What the reading dropped or narrowed is said wherever the reading is used.
   if (out.answer || applies || out.question || loose)
-    out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
+    // (Întreabă's pointer to the sources list under its total is not this page's: here the question line links there.)
+    out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && n !== LARGEST_IN_SOURCES && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
   out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
@@ -452,6 +458,9 @@ function thenFor(i: Interpretation, largest: boolean): Then {
 }
 type Then = 'ranking' | 'years' | 'records';
 
+/** A spec link of the largest records opens its sources list ordered by value (AskPanel reads `drill` and `ordine`). */
+const sourcesFirst = (href: string, records: boolean): string => (records && /[?&]spec=/.test(href) && !/[?&]drill=/.test(href) ? `${href}&drill=1&ordine=valoare` : href);
+
 /** Total and what follows it (AnswerTop) of one reading, as Ask specs. */
 function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | null }, labels: SentenceLabels, href: (top: AskSpec) => string, then: Then = 'ranking'): TopicInterpretation['answer'] {
   const total = specFor(reading, 'total', choice).spec;
@@ -474,9 +483,10 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
   // the largest records of a selection narrowed by a subject, a place, a buyer or a firm: the records of the whole
   // country (even its direct acquisitions alone) are an 8–15-second read, not a short answer
   const f = total.filters;
-  const narrowed = Boolean(f.cpvTerm || f.county || f.uatSiruta || f.authorityId || f.authorityName || f.supplierId || f.supplierName || f.authorityKind);
+  const narrowed = narrowedSelection(f);
   if (then === 'records' && narrowed) top = { spec: total, sentence: sentenceFor(total, labels), kind: 'records' };
-  if (!top) {
+  // the largest records asked are never answered by a ranking of firms (search probe, 23 November 2026)
+  if (!top && then !== 'records') {
     // „cine cumpără de la X”: the institutions; a ranking of firms beside one named firm is its buyers too (to-spec)
     const ranking = specFor(reading, reading.intent === 'ranking_authorities' ? 'ranking_authorities' : 'ranking_suppliers', choice).spec;
     if (ranking?.block === 'table') top = { spec: ranking, sentence: sentenceFor(ranking, labels), kind: ranking.dim === 'authority' ? 'authorities' : 'suppliers' };
@@ -485,9 +495,11 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
   return {
     total: { spec: total, sentence: totalSentence },
     top,
-    href: href(top?.kind === 'records' || !top ? total : top.spec),
+    // The largest records' answer opens on its sources list, the largest first (a spec link says so in its address; the
+    // words as typed are read so by Întreabă itself).
+    href: sourcesFirst(href(top?.kind === 'records' || !top ? total : top.spec), top?.kind === 'records'),
     // Ask runs the spec and opens the records behind the total.
-    evidenceHref: `${askHref(total)}&drill=1`,
+    evidenceHref: `${askHref(total)}&drill=1${top?.kind === 'records' ? '&ordine=valoare' : ''}`,
     empty: emptyAnswerText(totalSentence, labels.subject ?? null),
     domains: domainsOf(reading, choice, total, totalSentence),
     cpv: [],

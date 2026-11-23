@@ -6,7 +6,7 @@ import { countWords } from "../ask/answer-text";
 import { ABBREVIATIONS } from "../ask/entity-alias";
 import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
-import { AMOUNT_VERBS, NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
+import { AMOUNT_VERBS, LARGEST_RECORDS, NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import { spell } from "./spelling";
 import { KIND_WORDS as KIND_PLURALS } from "../ask/question-ui";
 import type {
@@ -739,6 +739,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       }
     }
     this.holders(c, out, found, townHalls);
+    this.largestRecords(c, out);
     for (const [intent, re] of INTENT_CUES) {
       for (const h of c.all(re)) {
         c.take(h.i, h.j, "cue");
@@ -809,6 +810,27 @@ export class RulesInterpreter implements QuestionInterpreter {
       // „top iluminat 2026”: the word asks a ranking the default reading already gives.
       else c.take(h.i, h.j, "cue");
     }
+  }
+
+  /**
+   * „cel mai mare contract de deszăpezire din 2024”, „cele mai mari 5 contracte semnate de CNAIR” (search probe, 23
+   * November 2026: these read as a ranking of firms, a breakdown or a total): the largest single records of the
+   * selection the other words name. The engine has no block of records: the reading is the selection's total, whose
+   * sources list holds them (to-spec resultFor says so; /cauta lists the first three). After the holders, whose
+   * „primăria cu cele mai mari contracte” ranks institutions; a stream word inside („achiziții directe”) stays read.
+   */
+  private largestRecords(c: Cursor, out: Interpretation) {
+    // „primăria cu cele mai mari contracte” already said who is ranked (holders), and so did „care primărie are cele mai
+    // mari contracte” (the superlative of an institution or a firm): their words are not this question. A noun the
+    // holders do not read („ministerele cu cele mai mari achiziții”) leaves the records, as /cauta always read it.
+    if (out.holder || out.superlative) return;
+    const h = c.over(LARGEST_RECORDS, ["modifier"])[0];
+    if (!h) return;
+    for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "cue";
+    const said = h.m[1];
+    const n = said === undefined ? undefined : /^\d+$/.test(said) ? Number(said) : NUMBER_WORDS[said];
+    // The reading itself is settled with the other cues (settleIntent): the total, unless the words ask another shape.
+    out.largest = { ...(n ? { n } : {}), matched: c.span(h.i, h.j) };
   }
 
   /** Every town hall asked („primăriile”, „care primărie”) and no other kind read: the communes' and the towns' together. */
@@ -2079,6 +2101,14 @@ export class RulesInterpreter implements QuestionInterpreter {
     else if (has("counties")) primary = "counties";
     // A lone "și de la cine" asks who sold, as "de la cine" does.
     else primary = ordered.find((k) => k !== "compare" && k !== "flow") ?? (has("flow") ? "ranking_suppliers" : null);
+    // The largest records are the selection's own („cine a câștigat cel mai mare contract de iluminat”): its total, never a
+    // ranking or a breakdown beside it. Another question's shape (an evolution, signals, a comparison, the map) keeps its own.
+    if (out.largest) {
+      if (primary === null || primary === "total" || primary === "breakdown" || primary.startsWith("ranking")) {
+        if (primary && primary !== "total") out.largest.instead = primary;
+        primary = "total";
+      } else delete out.largest;
+    }
     // Two counties compared: the map shows every county, the two said; the county councils alone can still be compared.
     if (out.countyPair && primary === "counties")
       out.notes.push(`${countyName(out.countyPair.a)} și ${countyName(out.countyPair.b)}: harta arată toate județele; cele două se citesc pe ea. Două instituții se compară direct, de exemplu „compară Consiliul Județean ${out.countyPair.a} cu Consiliul Județean ${out.countyPair.b}”.`);

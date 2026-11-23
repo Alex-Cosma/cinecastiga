@@ -73,6 +73,18 @@ export const NUMBER_WORDS: Record<string, number> = {
 };
 
 /**
+ * „cel mai mare contract”, „cele mai mari 5 achiziții”, „cel mai scump contract atribuit…” (search probe, 23 November
+ * 2026): the largest single records of a selection, on folded words joined by one space. One detector for the rules
+ * interpreter and /cauta. The number said (group 1) is how many were asked; the participle after the noun („semnat”,
+ * „atribuit”, „dat vreodată”) belongs to the phrase. Not „cele mai multe contracte” (a count) and not „cel mai mare
+ * spital” (an institution).
+ */
+export const LARGEST_RECORDS = new RegExp(String.raw`\b(?:cel|cea|cele|cei) mai (?:mare|mari|scump\w*|valoros\w*|costisitor\w*) (?:(\d{1,3}|${Object.keys(NUMBER_WORDS).join("|")}) (?:de )?)?(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)(?: (?:semnat\w*|incheiat\w*|atribuit\w*|acordat\w*|castigat\w*|date?|facut\w*))?(?: vreodata)?\b`);
+/** The largest records' question from the selection's total: „Cât valorează achizițiile…” → „Care sunt cele mai mari achiziții…”. */
+export const largestSentence = (total: string): string =>
+  total.replace(/^Cât valorează (achizițiile|contractele)\b/, (_, w: string) => `Care sunt cele mai mari ${w === "contractele" ? "contracte" : "achiziții"}`);
+
+/**
  * Inflected Romanian noun → base forms worth trying against a vocabulary
  * ("iluminatul" → "iluminat", "medicamentele" → "medicamente",
  * "deszăpezirea" → "deszapezire"). Bounded, never shorter than 4 letters.

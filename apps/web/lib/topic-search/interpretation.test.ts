@@ -79,6 +79,31 @@ describe('interpretation → /cauta selection', () => {
     expect(c.answer?.total.spec.filters).toMatchObject({ yearFrom: 2023, yearTo: 2023 });
   });
 
+  it('answers the largest records with a number inside, of a town hall and with a participle (search probe, 23 November 2026)', async () => {
+    const five = await read('cele mai mari 5 contracte pe iluminat in 2024');
+    const t = applyInterpretation(five.scope, five.result);
+    expect(t.question?.sentence).toBe('Care sunt cele mai mari achiziții pentru „iluminat” făcute de instituțiile publice din toată țara, în 2024?');
+    expect(t.answer?.top).toMatchObject({ kind: 'records', spec: { block: 'stat', filters: { cpvTerm: 'iluminat', yearFrom: 2024, yearTo: 2024 } } });
+    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2024', to: '2024', order: 'value', names: 'exact' });
+    // Întreabă opens the sources list of this selection, the largest first
+    expect(t.answer?.evidenceHref).toMatch(/&drill=1&ordine=valoare$/);
+    expect(five.result.sources).toBe('largest');
+    for (const q of ['cel mai mare contract semnat de primaria din Ramnicu Sarat', 'care e cel mai mare contract dat vreodata de primaria din Ramnicu Sarat', 'top 10 cele mai mari contracte ale primariei Ramnicu Sarat']) {
+      const hall = await read(q);
+      const h = applyInterpretation(hall.scope, hall.result);
+      expect([q, h.question?.sentence, h.answer?.top?.kind, h.notes]).toEqual([q, 'Care sunt cele mai mari achiziții făcute de primăria Râmnicu Sărat (Buzău), în toți anii?', 'records', []]);
+    }
+  });
+
+  it('gives the largest records of the whole country the question line alone, never a ranking of firms or a total', async () => {
+    const { scope, result } = await read('cel mai scump contract atribuit direct anul trecut');
+    const t = applyInterpretation(scope, result);
+    expect(t.question?.sentence).toBe('Care sunt cele mai mari achiziții directe făcute de instituțiile publice din toată țara, în 2025?');
+    expect(t.answer).toBeNull();
+    expect(t.notes).toEqual([]);
+    expect(t.applied.order).toBe('value');
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

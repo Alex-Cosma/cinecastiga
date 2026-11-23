@@ -384,6 +384,8 @@ export default function AskPanel({
         history?: "push" | "replace";
         /** The link's own `spec` parameter, the key its answer was kept under (answer-memory.ts). */
         memo?: string;
+        /** The sources list a drill opens starts ordered by value: the largest records were asked (IntentResult.sources). */
+        sort?: "value";
       } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
@@ -474,6 +476,7 @@ export default function AskPanel({
           else url.searchParams.delete("fir");
         }
         url.searchParams.delete("drill");
+        url.searchParams.delete("ordine");
         url.searchParams.delete("evidence");
         url.searchParams.delete("sourceFilters");
         // A new question is a new step, so «Înapoi» brings the answer before it (owner, 1 November 2026). A link opened or
@@ -494,6 +497,7 @@ export default function AskPanel({
             ...(opts.drillLabel ? { scopeLabel: typeof opts.drillLabel === "function" ? opts.drillLabel(answer) : opts.drillLabel } : {}),
             // A trend's sources list the months this answer counted (plan §2.8).
             ...(answer.executed ? { months: answer.executed.months } : {}),
+            ...(opts.sort ? { sort: opts.sort } : {}),
           });
         // "Înapoi" from a page a row of the risk cloud's list opened (answer/list-return.ts): the list puts itself back,
         // with the focus on that row, so the answer is not brought under the header.
@@ -547,7 +551,7 @@ export default function AskPanel({
    * (owner, 1 November 2026): the builder folded under "Schimbă întrebarea",
    * the interpretation one line under the answer's title, one scroll.
    */
-  const adopt = useCallback((choice: IntentChoice, scroll = true) => {
+  const adopt = useCallback((choice: IntentChoice, scroll = true, largest = false) => {
     setChosen(choice);
     setBuilderInit(choice.spec);
     setLinkRuns(true);
@@ -559,7 +563,8 @@ export default function AskPanel({
     // The folded builder is not mounted: an earlier draft's "modificat" does not stay on this answer.
     setDirty(false);
     setMode("build");
-    void execute({ spec: choice.spec }, false, undefined, undefined, scroll).then((ran) => {
+    // „cel mai mare contract de…”: the answer is the selection's total, opened on its sources list, the largest first.
+    void execute({ spec: choice.spec }, largest, undefined, undefined, scroll, largest ? { sort: "value" } : {}).then((ran) => {
       const link = ran ? new URLSearchParams(window.location.search).get("spec") : null;
       if (link) setUnderstood((readings) => ({ ...readings, [link]: choice }));
     });
@@ -589,7 +594,7 @@ export default function AskPanel({
       setEvidence(null);
       // A firm or institution picked from the box's suggestions is the person's pick among its namesakes (Z2-08).
       const pinned = shouldAutoRun(body) ? null : pinnedChoice(body, pin, text);
-      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll);
+      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll, body.sources === "largest");
       else if (pinned) adopt(pinned, scroll);
       else {
         setChosen(null);
@@ -600,7 +605,7 @@ export default function AskPanel({
       if (!fromHistory) {
         const url = new URL(window.location.href);
         url.searchParams.set("q", text);
-        for (const key of ["spec", "drill", "evidence", "sourceFilters"]) url.searchParams.delete(key);
+        for (const key of ["spec", "drill", "ordine", "evidence", "sourceFilters"]) url.searchParams.delete(key);
         window.history.pushState(null, "", url);
       }
     } catch {
@@ -713,7 +718,9 @@ export default function AskPanel({
           },
           run: () => { setResp(null); setAppliedSpec(null); setLinkRuns(false); setBuilderCollapsed(false); },
         } : null;
-        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, !opened, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}), history: "replace", memo: encoded });
+        // `&drill=1&ordine=valoare`: the sources list opens the largest first (/cauta's „cele mai mari achiziții”).
+        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, !opened, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}), history: "replace", memo: encoded,
+          ...(params.get("ordine") === "valoare" ? { sort: "value" as const } : {}) });
       }
     };
     restore(true);

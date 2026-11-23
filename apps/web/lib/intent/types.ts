@@ -141,6 +141,8 @@ export interface Interpretation {
   askedTownHalls: boolean;
   /** The noun before a superlative said who is ranked („primăria cu cele mai mari contracte”, rules.holders). */
   holder?: boolean;
+  /** The largest single records of the selection are asked („cel mai mare contract de…”, rules.largestRecords); `n`: how many were said. */
+  largest?: { n?: number; matched: Span; /** The reading the other words had („ce firme…”), kept when the total cannot carry a condition (to-spec resultFor). */ instead?: IntentKind };
   /** The words that asked for the counties compared („care județ”, „pe județe”; rules.cues). */
   byCounty?: Span;
   /** Several institutions carry one side's name: the pairs are the choice (rules.compare). */
@@ -267,4 +269,6 @@ export interface IntentResult {
   alternatives: IntentAlternative[];
   /** Why no spec could be built, in plain words. */
   problem: string | null;
+  /** The answer opens on its sources list, the largest first: the largest records were asked (Interpretation.largest). */
+  sources?: "largest";
 }

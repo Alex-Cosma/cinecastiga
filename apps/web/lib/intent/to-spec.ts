@@ -12,7 +12,7 @@ import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
 import { COUNTIES_SINGLE_OFFER_NOTE, genitive, hasNamedScope } from "./rules";
-import { fold } from "./text";
+import { fold, largestSentence } from "./text";
 import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PeriodMatch, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
@@ -46,6 +46,7 @@ export interface SpecContext { periods?: CoveragePeriods | null; year?: number }
 
 /** "„nu mai apar” nu se aplică la această întrebare; am păstrat restul." (plan §2.7: never silently). */
 export const lensNotApplied = (words: string) => `„${words}” nu se aplică la această întrebare; am păstrat restul.`;
+const LENS_UNUSED = /nu se aplică la această întrebare/;
 
 /** The option a lens writes, and the one it needs first: the order in percent ranks growths, the first-time ones are new. */
 const LENS_NEEDS: Partial<Record<SpecPath, { path: SpecPath; value: unknown; note: string }>> = {
@@ -545,6 +546,13 @@ export function unchosen(i: Interpretation): boolean {
 }
 
 export function resultFor(i: Interpretation, context: SpecContext = {}): IntentResult {
+  // „cele mai mari contracte câștigate de firme străine”: a condition the total cannot carry (the firm's seat) would be
+  // dropped from the largest records; the reading the words had without the superlative keeps it, so that one answers.
+  if (i.largest?.instead && i.intent === "total" && specFor(i, "total", {}, context).notes.some((n) => LENS_UNUSED.test(n))) {
+    const { largest, ...rest } = i;
+    const other: Interpretation = { ...rest, intent: largest.instead! };
+    if (!specFor(other, largest.instead!, {}, context).notes.some((n) => LENS_UNUSED.test(n))) return resultFor(other, context);
+  }
   const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}),
     ...(context.periods !== undefined ? { periods: context.periods } : {}),
     ...(i.lenses.some((l) => l.block === "trend" && l.path === "trend.months") ? { sameMonthsSaid: true } : {}) };
@@ -634,12 +642,24 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
       if (alternatives.length > before) n++;
     }
   }
+  // The largest records asked (rules.largestRecords): the question says so, and the answer opens on its sources list,
+  // the largest first. The whole country's records are a long read (as on /cauta): there the total answers, with a note.
+  const largest = Boolean(i.largest && spec?.block === "stat");
+  const listed = largest && narrowedSelection(spec!.filters);
+  if (largest && !listed) notes.push(LARGEST_IN_SOURCES);
   return {
     q: i.text,
     interpretation: { ...i, notes: [...new Set(notes)] },
     spec,
-    sentence: spec ? sentenceFor(spec, labels) : null,
+    sentence: spec ? (largest ? largestSentence(sentenceFor(spec, labels)) : sentenceFor(spec, labels)) : null,
     alternatives,
     problem,
+    ...(listed ? { sources: "largest" as const } : {}),
   };
 }
+
+/** A selection a subject, a place, a kind of buyer, an institution or a firm narrows: its largest records are a short read. */
+export function narrowedSelection(f: AskSpec["filters"]): boolean {
+  return Boolean(f.cpvTerm || f.county || f.uatSiruta || f.authorityId || f.authorityName || f.supplierId || f.supplierName || f.authorityKind);
+}
+export const LARGEST_IN_SOURCES = "Cele mai mari sunt în lista surselor, ordonată după valoare.";
