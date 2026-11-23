@@ -109,7 +109,7 @@ export function AskExamples({ onPick }: { onPick: (example: AskExample) => void 
  */
 export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick: (example: AskExample) => void }) {
   const words = result.interpretation.leftover;
-  const phrase = (words.length ? words.join(" ") : result.interpretation.text).trim();
+  const phrase = (words.length ? words.join(" ") : result.interpretation.typed ?? result.interpretation.text).trim();
   return (
     <section className="ia-panel ia-unknown" aria-labelledby="ia-result-title">
       <h2 id="ia-result-title" tabIndex={-1}>Nu am înțeles întrebarea</h2>

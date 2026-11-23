@@ -157,7 +157,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
   if (!result || !scope.q) return base;
   let i = result.interpretation;
-  if (foldText(i.text).trim() !== foldText(scope.q).trim()) return base;
+  // (an English question is read through its rewriting: the words typed are `typed`)
+  if (foldText(i.typed ?? i.text).trim() !== foldText(scope.q).trim()) return base;
   // A place chosen on the page says which of the same-named localities the words mean: „Florești” with Florești (Cluj)
   // chosen is that Florești, not a question to ask again (the place's menu links so; owner, 17 November 2026).
   if (i.placeAmbiguous && scope.place) {

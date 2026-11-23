@@ -100,8 +100,10 @@ export interface PeriodMatch {
 }
 
 export interface Interpretation {
-  /** The question as received (trimmed, bounded). */
+  /** The question as received (trimmed, bounded); an English question with its question words in Romanian (english.ts). */
   text: string;
+  /** The words as typed, when `text` is their rewriting from English: what the person's box and the address hold. */
+  typed?: string;
   /** Which interpreter produced it ("rules-v1"; later e.g. "llm-…"). */
   interpreter: string;
   intent: IntentKind | null;

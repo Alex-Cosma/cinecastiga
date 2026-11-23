@@ -8,6 +8,7 @@ import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { AMOUNT_VERBS, LARGEST_RECORDS, NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import { spell } from "./spelling";
+import { ENGLISH_NOTE, fromEnglish } from "./english";
 import { KIND_WORDS as KIND_PLURALS } from "../ask/question-ui";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
@@ -282,6 +283,21 @@ const ENGLISH_SUBJECTS: [RegExp, string][] = [
   [/\b(?:cctv|surveillance\s+cameras?|video\s+cameras?)\b/, "camere video"],
 ];
 /**
+ * More of them, read only in a question written in English (english.ts; search probe, 23 November 2026): „cleaning”,
+ * „consulting”, „food” are also words of Romanian firms' names („Pro Cleaning”), which a Romanian search keeps as names.
+ */
+const ENGLISH_QUESTION_SUBJECTS: [RegExp, string][] = [
+  [/\bmedical\s+supplies\b/, "materiale sanitare"],
+  [/\bchristmas\s+lights?\b/, "iluminat festiv"],
+  [/\bcleaning(?:\s+servic\w+)?\b/, "curatenie"],
+  [/\bschool\s+furniture\b/, "mobilier scolar"],
+  [/\bfurniture\b/, "mobilier"],
+  [/\b(?:construction\s+works?|construction|building\s+works?)\b/, "constructii"],
+  [/\b(?:security\s+servic\w+|guarding)\b/, "paza"],
+  [/\bfood\b/, "alimente"],
+  [/\b(?:consulting|consultancy)\b/, "consultanta"],
+];
+/**
  * „la noi”, „comuna mea”, „orașul nostru”: a place the words do not name. Understood, never a guess: the page asks which
  * (owner probe, 10 November 2026).
  */
@@ -488,8 +504,13 @@ export class RulesInterpreter implements QuestionInterpreter {
   constructor(private readonly vocab: Vocabulary) {}
 
   async interpret(input: string, context: InterpretContext): Promise<Interpretation> {
-    const text = input.normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_LENGTH);
+    const typed = input.normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_LENGTH);
+    // An English question (search probe, 23 November 2026): its question words are read as the Romanian cues; the
+    // spans below are those of the rewritten text.
+    const english = fromEnglish(typed);
+    const text = (english ?? typed).slice(0, MAX_QUESTION_LENGTH);
     const out = emptyInterpretation(text, this.id);
+    if (english) { out.typed = typed; out.notes.push(ENGLISH_NOTE); }
     const tokens = tokenize(text);
     if (!tokens.length) return out;
     const c = new Cursor(tokens);
@@ -1705,7 +1726,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     // English names of frequent subjects ("street lighting cluj" → „iluminat public”)
     const synonymsList = await this.vocab.synonyms();
-    for (const [re, term] of ENGLISH_SUBJECTS) {
+    for (const [re, term] of out.typed === undefined ? ENGLISH_SUBJECTS : [...ENGLISH_QUESTION_SUBJECTS, ...ENGLISH_SUBJECTS]) {
       if (!synonymsList.includes(term)) continue;
       for (const h of c.all(re)) {
         if (out.subjects.some((s) => s.term === term)) { c.take(h.i, h.j, "subject"); continue; }

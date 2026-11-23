@@ -118,6 +118,25 @@ describe('interpretation → /cauta selection', () => {
     expect(applyInterpretation(single.scope, single.result).notes.join(' ')).toContain('Numărul de oferte îl știm doar');
   });
 
+  it('reads an English question through its rewriting, for the words typed (search probe, 23 November 2026)', async () => {
+    const { scope, result } = await read('top buyers of medicines 2025');
+    expect(result.interpretation.typed).toBe('top buyers of medicines 2025');
+    const t = applyInterpretation(scope, result);
+    expect(t.question?.sentence).toBe('Ce instituții publice din toată țara cumpără cel mai mult pentru „medicamente”, prin toate achizițiile, în 2025?');
+    expect(t.applied).toMatchObject({ q: 'medicamente', from: '2025', to: '2025' });
+    expect(t.notes).toContain('Am citit întrebarea din engleză; răspunsul e în română.');
+    expect(t.answer?.top).toMatchObject({ kind: 'authorities' });
+  });
+  it('reads a question longer than the title search takes, and answers it (search probe, 23 November 2026)', async () => {
+    const long = 'as vrea sa aflu, pentru o lucrare la facultate, care sunt firmele care castiga cele mai multe contracte de iluminat de la institutiile publice din judetul Buzau in anul 2024, va rog frumos sa imi aratati daca se poate, multumesc anticipat';
+    expect(long.length).toBeGreaterThan(150);
+    const { scope, result } = await read(long);
+    const t = applyInterpretation(scope, result);
+    expect(t.applied).toMatchObject({ place: 'county:buzau', from: '2024', to: '2024' });
+    expect(t.answer).not.toBeNull();
+    expect(result.interpretation.leftover).toEqual(['facultate']);
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

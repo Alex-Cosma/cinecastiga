@@ -37,9 +37,18 @@ export function periodText(from:string,to:string):string{
  const w=periodWindow(from,to);
  return w?periodPhrase(w).value:from===to?from:`${from}–${to}`;
 }
+/** The longest question read (the interpreter's own bound, lib/intent/rules.ts MAX_QUESTION_LENGTH). */
+export const QUERY_MAX=300;
+/**
+ * The longest text searched as words in titles, names and documents: the bound every search had (search probe, 23
+ * November 2026: a question of 213 characters was refused before it was read). A longer question is read and answered;
+ * its words are not searched, and a text that is no question keeps the old message.
+ */
+export const LITERAL_QUERY_MAX=150;
+export const LITERAL_TOO_LONG='Căutarea poate avea cel mult 150 de caractere.';
 export function parseTopicScope(p:URLSearchParams):TopicScope {
  const q=(p.get('q')??'').trim().replace(/\s+/g,' ');
- if(q.length>150)throw Error('Căutarea poate avea cel mult 150 de caractere.');
+ if(q.length>QUERY_MAX)throw Error(`Căutarea poate avea cel mult ${QUERY_MAX} de caractere.`);
  if(q&&q.length<2)throw Error('Scrie cel puțin două caractere.');
  const from=p.get('from')??'',to=p.get('to')??'';
  const year=(v:string)=>PERIOD_BOUND.test(v)&&Number(v.slice(0,4))>=1900&&Number(v.slice(0,4))<=new Date().getFullYear()+1;

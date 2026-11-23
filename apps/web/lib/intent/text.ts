@@ -55,6 +55,9 @@ export const STOPWORDS = new Set([
   // „autorități contractante”, „instituții cumpărătoare”, „pt” left /cauta searching the literal words)
   "atribuit", "atribuite", "atribuita", "atribuiti", "atribuire", "atribuirea", "atribuirii", "atribuiri", "semnat", "semnate", "semnata",
   "incheiat", "incheiate", "incheiata", "contractanta", "contractante", "cumparatoare", "pt", "ptr",
+  // the politeness of a long question („vă rog frumos să îmi arătați…, mulțumesc anticipat”: „frumos sa” was searched as a
+  // firm's name; search probe, 23 November 2026)
+  "frumos", "multumesc", "multumim", "mersi", "anticipat", "aratati", "poate",
   // verbs that only restate the question once its cue is understood
   "cumpara", "cumpar", "cumparam", "cheltuie", "cheltuiesc", "cheltuieste", "castiga", "castigat", "castigate", "primeste", "primesc",
   "primit", "livreaza", "vinde", "vand", "face", "fac", "ia", "iau", "lucreaza", "lucreza", "achizitioneaza", "plateste", "platit",

@@ -1,10 +1,18 @@
 import {describe,it,expect} from 'vitest';
-import {parseTopicScope,topicParams,documentScope,answerShape,cleanTopicParams,periodBounds,periodText,periodWindow} from './shared';
+import {parseTopicScope,topicParams,documentScope,answerShape,cleanTopicParams,periodBounds,periodText,periodWindow,LITERAL_QUERY_MAX,QUERY_MAX} from './shared';
+import {MAX_QUESTION_LENGTH} from '../intent/rules';
 describe('subject search URLs',()=>{
  it('defaults to all years and all sources',()=>{expect(parseTopicScope(new URLSearchParams('q=iluminat'))).toMatchObject({from:'',to:'',type:'all',place:'',page:1});});
  it('round-trips a shared selection, including a county with accents folded',()=>{const s=parseTopicScope(new URLSearchParams('q=locuri+de+joacă&place=county:buzau&from=2022&to=2024&type=contracts&match=phrase&tab=documents&page=2'));expect(parseTopicScope(topicParams(s))).toEqual(s);});
  it('rejects partial, inverted, and injected years',()=>{for(const p of ['from=2024','from=2024&to=2022','from=2020%27&to=2024','from=0&to=2024'])expect(()=>parseTopicScope(new URLSearchParams(p))).toThrow();});
  it('validates selectors and pagination instead of silently widening selection',()=>{for(const p of ['place=unknown','type=secret','match=ai','tab=private','page=-1','page=1.3','page=1001'])expect(()=>parseTopicScope(new URLSearchParams(p))).toThrow();});
+ it('reads a question as long as the interpreter does; the words searched as they are stay at 150 characters (search probe, 23 November 2026)',()=>{
+  expect([QUERY_MAX,LITERAL_QUERY_MAX]).toEqual([MAX_QUESTION_LENGTH,150]);
+  const long='as vrea sa aflu pentru lucrarea mea de licenta care au fost primariile de oras din regiunea moldovei cu cele mai mari achizitii directe de lucrari de reabilitare termica in perioada 2019 pana in 2024 pe locuitor';
+  expect(long.length).toBeGreaterThan(LITERAL_QUERY_MAX);
+  expect(parseTopicScope(new URLSearchParams({q:long})).q).toBe(long);
+  expect(()=>parseTopicScope(new URLSearchParams({q:'x'.repeat(QUERY_MAX+1)}))).toThrow('cel mult 300 de caractere');
+ });
  it('keeps historical entity role URLs meaningful',()=>{expect(parseTopicScope(new URLSearchParams('q=buzau&rol=autoritate'))).toMatchObject({tab:'entities',role:'authority'});});
  it('requests documents once per selection, paging them only in the Documents tab',()=>{
   const key=(p:string)=>topicParams(documentScope(parseTopicScope(new URLSearchParams(p)))).toString();
