@@ -115,7 +115,7 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor)|clienti(?:i|lor)?)\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
-  ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul|a|e)?|in total|sum(?:a|ei|ele)|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
+  ["total", /\b(?:market size|(?:marimea|dimensiunea|valoarea) pietei|cat de mare (?:e|este) piata|cat inseamna|cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul|a|e)?|in total|sum(?:a|ei|ele)|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
 
 /**
@@ -137,10 +137,30 @@ const HOLDER_KIND = /^(?:primari\w* de \w+|spital\w*|scol\w*|scoala|lice\w*|comu
 /** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
 const HOLDER_SINGULAR_KIND: Record<string, AuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu" };
 const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc|ia|iau|a luat|au luat|castiga|primeste|primesc|a primit|au primit) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
+const SUPERLATIVE_KIND: Record<string, AuthorityKind> = { oras: "oras_municipiu", municipiu: "oras_municipiu", comuna: "comuna" };
 const HOLDER_TOP_N = new RegExp(`\\b(?:top|primele|primii|primul) (?:\\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece) (?:de )?(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS})\\b`);
 /** „spitale care cumpără mănuși”: the institutions that buy, as „ce spitale cumpără” asks. */
 const HOLDER_WHO = new RegExp(`\\b(${HOLDER_BUYERS}) care (?:cumpara|achizitioneaza|au cumparat|a cumparat|au achizitionat|a achizitionat|cheltuie|cheltuiesc|au cheltuit|a cheltuit)\\b`);
 const HOLDER_TOP = new RegExp(`\\b(top|topul|clasament|clasamentul)(?: (?:de|cu|al|pe))?(?: (${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}|primariilor|spitalelor|scolilor|institutiilor|firmelor|comunelor|oraselor))?(?! \\d)\\b`);
+
+// The measure asked (search probe, 23 November 2026: a count, a share, a price per unit were answered with the default).
+/** „câte contracte”, „numărul de achiziții”, „de câte ori”: the number of records of the selection (the modifiers read the words). */
+const COUNT_ASKED = /\b(?:cate|numarul(?: de)?|cat de multe) (?:achizitii|contracte|cumparari|licitatii)\b|\bde cate ori\b/;
+/** „câte firme lucrează cu…”, „câți clienți are…”: how many they are is the total line of their ranking. */
+const COUNT_ENTITIES = /\b(?:cate|cati|numarul de|numarul) (firme|furnizori|companii|societati|castigatori|institutii|autoritati|cumparatori|clienti)\b/;
+export const COUNT_FIRMS_NOTE = "Câte firme sunt: numărul lor e pe linia „Total” a clasamentului din Întreabă.";
+export const COUNT_BUYERS_NOTE = "Câte instituții sunt: numărul lor e pe linia „Total” a clasamentului din Întreabă.";
+const SHARE_ASKED = /\b(?:ce procent|procentul|procentajul|ce pondere|ponderea|cat la suta|ce parte|ce proportie|proportia)(?: din(?:tre)?)?\b/;
+/** „prețul unui laptop”, „cât costă o…”, „pe litru”, „preț unitar”: a price per unit, which the answers never are. */
+const UNIT_PRICE = /\b(?:pret(?:ul|uri|urile|ului|urilor)?(?: (?:unitar\w*|medi[ui]|pe unitate))?|cat costa (?:o|un)|pe (?:o |un )?(?:litru|kilogram|kg|bucata|buc|pereche|portie|metru|mp|unitate|tona)(?: de)?)\b/;
+/** A cue that answers only when the words give no other (settleIntent takes the first by position). */
+const WEAK_CUE = 1e6;
+export const unitPriceNote = (product: string | null) => product
+  ? `Prețurile pe unitate pentru „${product}”, comparate între instituții, sunt în pagina Prețuri; aici e valoarea achizițiilor, nu prețul.`
+  : "Prețuri pe unitate avem doar pentru produsele din pagina Prețuri; aici e valoarea achizițiilor, nu prețul.";
+
+/** The unit prices' note, either form (unitPriceNote): /cauta puts the link to /preturi beside it. */
+export const UNIT_PRICE_NOTE = /pagina Prețuri/;
 
 /** The retired signal's words (rules.cues): a signals question without a signal, and its note. */
 const RETIRED_RAPID = /\b(?:finalizar\w* rapid\w*|finalizat\w* rapid)\b/;
@@ -482,6 +502,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const h of c.all(/\b(?:lucrar(?:e|ea|ii)|tez(?:a|ei)|examen(?:ul|ului)?|proiect(?:ul|ului)?|diplom(?:a|ei))(?: (?:mea|meu|mele|noastra|nostru))? de (?:licenta|disertatie|doctorat|masterat|master)\b/)) c.take(h.i, h.j, "filler");
     await this.namedRuns(c, out);
     await this.subjects(c, out);
+    await this.unitPriceProduct(c, out);
     // „a organizat”, „au derulat”: the question's verb is a word understood, never a name to look up
     for (let k = 1; k < c.tokens.length; k++) if (!c.used[k] && c.f(k).length >= 6 && isParticiple(c, k)) c.take(k, k + 1, "filler");
     this.excludedSubjects(c, out);
@@ -720,10 +741,16 @@ export class RulesInterpreter implements QuestionInterpreter {
         // Every town hall: the kind is set once the other kinds are read (townHallKind).
         if (noun === "primarie") { out.askedTownHalls = true; c.take(from, h.j, "kind"); }
       }
+      // „care oraș cheltuie cel mai mult pe locuitor”: a singular the kinds do not read is every town's or commune's town hall.
+      else if (SUPERLATIVE_KIND[noun]) {
+        out.dimHint = "authority";
+        c.take(from, h.j - 1, "cue"); c.take(h.j - 1, h.j, "kind");
+        out.authorityKind = out.authorityKind ?? { kind: SUPERLATIVE_KIND[noun]!, matched: c.span(h.j - 1, h.j) };
+      }
       // The noun of a kind (a hospital, a school) stays free: it is the kind, which the rules read next.
       else { out.dimHint = "authority"; if (!adjective) c.take(from, from + 1, "cue"); }
     };
-    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|consiliu(?= judetean))\b/)) superlative(h, false);
+    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|consiliu(?= judetean)|oras|municipiu|comuna)\b/)) superlative(h, false);
     for (const h of c.all(/\b(?:cel|cea)\s+mai\s+(?:riscant\w*|mare|bogat\w*|important\w*)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|client|clientul)\b/)) superlative(h, true);
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
   }
@@ -756,6 +783,7 @@ export class RulesInterpreter implements QuestionInterpreter {
         out.notes.push(`„${c.span(h.i, h.j).text}”: harta arată toate județele, nu doar pe cele cu valorile cele mai mici.`);
       }
     }
+    this.measureAsked(c, out, found);
     this.holders(c, out, found, townHalls);
     this.largestRecords(c, out);
     for (const [intent, re] of INTENT_CUES) {
@@ -788,6 +816,48 @@ export class RulesInterpreter implements QuestionInterpreter {
       townHalls.said = true;
     }
     return found;
+  }
+
+  /**
+   * The measure asked (search probe, 23 November 2026). A count of records is the selection's total („câte contracte a
+   * dat primăria Brașov în 2025” read as what it buys); how many firms or institutions is their ranking, whose total
+   * line counts them; a share and a price per unit answer only when no other question is asked, and say what the
+   * answer holds (to-spec; unitPriceProduct).
+   */
+  private measureAsked(c: Cursor, out: Interpretation, found: { intent: IntentKind; at: number }[]) {
+    // A question asked in other words keeps its own shape, by count („de câte ori au câștigat firmele…” ranks the firms).
+    for (const _ of c.over(COUNT_ASKED, ["modifier"])) found.push({ intent: "total", at: WEAK_CUE });
+    for (const h of c.all(COUNT_ENTITIES)) {
+      const supplier = /^(?:firme|furnizori|companii|societati|castigatori)$/.test(h.m[1]!);
+      c.take(h.i, h.j, "cue");
+      found.push({ intent: supplier ? "ranking_suppliers" : "ranking_authorities", at: h.i });
+      out.dimHint = out.dimHint ?? (supplier ? "supplier" : "authority");
+      out.notes.push(supplier ? COUNT_FIRMS_NOTE : COUNT_BUYERS_NOTE);
+    }
+    for (const h of c.all(SHARE_ASKED)) {
+      c.take(h.i, h.j, "cue");
+      out.share = out.share ?? c.span(h.i, h.j);
+      found.push({ intent: "total", at: WEAK_CUE });
+    }
+    for (const h of c.all(UNIT_PRICE)) {
+      c.take(h.i, h.j, "cue");
+      out.unitPrice = out.unitPrice ?? { matched: c.span(h.i, h.j) };
+      found.push({ intent: "total", at: WEAK_CUE });
+    }
+  }
+
+  /** The product of /preturi the words name („motorină”, „mănuși de nitril”), by the family's own patterns, and the note. */
+  private async unitPriceProduct(c: Cursor, out: Interpretation) {
+    if (!out.unitPrice) return;
+    const products = await this.vocab.priceProducts?.() ?? [];
+    const words = c.tokens.map((t) => t.f);
+    for (let k = 0; k < words.length && !out.unitPrice.product; k++) {
+      if (c.used[k] === "cue" || STOPWORDS.has(words[k]!)) continue;
+      const rest = words.slice(k).join(" ");
+      const hit = products.find((p) => p.include.test(rest) && !p.exclude?.test(rest));
+      if (hit) out.unitPrice.product = { slug: hit.slug, label: hit.label };
+    }
+    out.notes.push(unitPriceNote(out.unitPrice.product?.label ?? null));
   }
 
   /**

@@ -38,7 +38,8 @@ describe("ordinary words are not names", () => {
     }
     // the word the answer did not use is said, not dropped
     expect((await read("ce minister a dat cele mai multe contracte fara licitatie")).i.leftover).toEqual(["minister"]);
-    expect((await read("ce procent din achizitiile primariilor sunt achizitii directe")).i.leftover).toEqual(["procent"]);
+    // „ce procent” is now read as the share asked (measures.test.ts)
+    expect((await read("ce procent din achizitiile primariilor sunt achizitii directe")).i.leftover).toEqual([]);
   });
   it("reads «valoarea totală», «suma totală» as the total", async () => {
     const yearly = await read("valoarea totala a achizitiilor publice din romania pe fiecare an");
@@ -100,9 +101,9 @@ describe("a common word is not a domain it does not mean", () => {
     const firm = await read("cine sunt clientii firmei elbi energy projects");
     expect([firm.i.supplier?.id, firm.i.subjects, firm.r.spec?.dim]).toEqual([9000003, [], "authority"]);
   });
-  it("leaves «market size» unread, and keeps «marketing»", async () => {
+  it("never reads «market size» as marketing (it asks the total, measures.test.ts), and keeps «marketing»", async () => {
     const { i } = await read("market size mobilier 2024");
-    expect([i.subjects.map((s) => s.term), i.leftover]).toEqual([["mobilier"], ["market", "size"]]);
+    expect([i.subjects.map((s) => s.term), i.leftover, i.intent]).toEqual([["mobilier"], [], "total"]);
     expect((await read("marketing cluj")).i.subjects.map((s) => s.term)).toEqual(["marketing"]);
   });
   it("takes a participle after its auxiliary as the question's verb, not a domain or a name", async () => {

@@ -145,6 +145,12 @@ export interface Interpretation {
   largest?: { n?: number; matched: Span; /** The reading the other words had („ce firme…”), kept when the total cannot carry a condition (to-spec resultFor). */ instead?: IntentKind };
   /** The words that asked for the counties compared („care județ”, „pe județe”; rules.cues). */
   byCounty?: Span;
+  /** A share was asked („ce procent”, „ponderea”; search probe, 23 November 2026): to-spec reads it into the answer that
+   * shows it, or says it cannot be computed. */
+  share?: Span;
+  /** A price per unit was asked („cât costă un…”, „preț unitar”, „pe litru”): the answers are contracted values, never a
+   * price; the product of /preturi the words name, when they name one. */
+  unitPrice?: { matched: Span; product?: { slug: string; label: string } };
   /** Several institutions carry one side's name: the pairs are the choice (rules.compare). */
   compareAmbiguous?: boolean;
   /** „Cluj vs Timiș”: two counties compared are read on the counties' map, both named in a note (rules.compare). */
@@ -243,10 +249,14 @@ export interface Vocabulary {
   entities(role: "authority" | "supplier", foldedPhrase: string): Promise<EntityLookup>;
   /** ONRC identities whose name is exactly one of `foldedNames` (word orders); `total` counts them all. */
   personsNamed(foldedNames: string[]): Promise<PersonLookup>;
+  /** The products /preturi compares per unit (packages/db unit-prices.ts PRICE_FAMILIES), for „prețul unui…”. */
+  priceProducts?(): Promise<readonly PriceProduct[]>;
   /** Firms and institutions registered with this fiscal code (digits only, no "RO"), largest first. */
   entitiesByCui?(cui: string): Promise<{ role: "authority" | "supplier"; hit: EntityHit }[]>;
 }
 
+/** A product of /preturi: its family's own patterns, tested on the folded words (as on an item's name). */
+export interface PriceProduct { slug: string; label: string; include: RegExp; exclude?: RegExp }
 export interface EntityLookup { hits: EntityHit[]; total: number }
 /** `exhaustive` is false when diacritic variants of the name could not be searched. */
 export interface PersonLookup { hits: PersonHit[]; total: number; exhaustive?: boolean; timedOut?: boolean }

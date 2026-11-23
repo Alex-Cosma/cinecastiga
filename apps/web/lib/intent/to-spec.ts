@@ -3,7 +3,7 @@ import { titleName } from "../tidy-name";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
 import { questionTitle, type TitleLabels } from "../ask/filters/title";
-import { IMPLEMENTED_KEYS, LOCAL_ADMIN_KIND, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
+import { IMPLEMENTED_KEYS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
@@ -21,6 +21,13 @@ import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpre
  * → a plain Romanian sentence. The spec is what the builder edits and what
  * /api/ask runs; nothing here touches the database.
  */
+
+export const PER_CAPITA_UNUSED_NOTE = "Valoarea pe locuitor se calculează doar în clasamentul primăriilor și al consiliilor județene și pe harta pe județe; aici e valoarea totală.";
+export const COUNT_UNUSED_NOTE = "Numărul de înregistrări nu se arată la această întrebare; am folosit valoarea.";
+export const shareOfStreamNote = (stream: Dataset) =>
+  `Ponderea ${stream === "da" ? "achizițiilor directe" : "contractelor din proceduri"}: în răspunsul din Întreabă, sub total, „Din care” arată achizițiile directe și contractele din proceduri, fiecare cu valoarea ei.`;
+export const SHARE_IN_RANKING_NOTE = "Ponderea fiecărui rând e în coloana „% din total” a clasamentului din Întreabă.";
+export const SHARE_UNKNOWN_NOTE = "Ponderea nu se poate calcula încă la această întrebare.";
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
 const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean"] satisfies AuthorityKind[];
@@ -259,10 +266,15 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
       raw.dim = dim;
       if (dim === "authority" && !(f.supplierName || f.supplierId) && !(f.authorityName || f.authorityId)) localityToCounty(townHallOnly("„ce instituții”"));
       if (i.measure === "value_per_capita") {
-        if (dim === "authority") raw.measure = "value_per_capita";
-        else notes.push("Valoarea pe locuitor se calculează doar pentru primării; clasamentul firmelor folosește valoarea totală.");
+        if (dim === "authority") {
+          raw.measure = "value_per_capita";
+          // „primăriile cu cele mai mari cheltuieli pe locuitor”: the town halls alone, without the county councils of
+          // the same list (search probe, 23 November 2026).
+          if (i.askedTownHalls && !f.authorityKind) f.authorityKind = TOWN_HALL_KIND;
+        } else notes.push("Valoarea pe locuitor se calculează doar pentru primării; clasamentul firmelor folosește valoarea totală.");
       }
-      if (i.superlative && !i.topN) {
+      // „care oraș cheltuie cel mai mult pe locuitor”: the card ranks by value or risk, so the ranking answers.
+      if (i.superlative && !i.topN && raw.measure !== "value_per_capita") {
         raw.block = "entity_card";
         raw.rankBy = "value";
         raw.measure = "value";
@@ -431,6 +443,20 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
       lensed = whole;
       if (i.period) notes.push(wholeYearsNote(i.period));
     }
+  }
+  // The measure asked and not computed is said, never replaced in silence (search probe, 23 November 2026).
+  if (i.measure === "value_per_capita" && lensed.measure !== "value_per_capita" && ![...i.notes, ...notes].some((n) => /pe locuitor/i.test(n)))
+    notes.push(PER_CAPITA_UNUSED_NOTE);
+  if (i.measure === "count" && lensed.block === "breakdown") notes.push(COUNT_UNUSED_NOTE);
+  // A share (search probe, 23 November 2026). Of a stream: the total of both streams, whose „Din care” rows are the
+  // direct purchases and the contracts from procedures. Of a row in a ranking: its „% din total” column. Elsewhere: said.
+  if (i.share) {
+    if (lensed.block === "stat" && lensed.dataset && lensed.dataset !== "all" && !i.singleBidder) {
+      notes.push(shareOfStreamNote(lensed.dataset as Dataset));
+      lensed = { ...lensed };
+      delete lensed.dataset;
+    } else if (lensed.block === "table" && lensed.measure !== "value_per_capita") notes.push(SHARE_IN_RANKING_NOTE);
+    else notes.push(SHARE_UNKNOWN_NOTE);
   }
   const valid = validateSpec(lensed);
   if ("error" in valid) return { spec: null, error: valid.error, notes };

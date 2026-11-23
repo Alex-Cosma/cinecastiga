@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { PRICE_FAMILIES, type DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "../format";
 import { sealPersonKey } from "../person-token";
 import { buildPlaces, type UatSource } from "./places";
@@ -115,6 +115,7 @@ export function sqlVocabulary(sql: DbSql, shared: SharedLists, opts: { signal?: 
   return {
     places: async () => shared.places,
     synonyms: async () => shared.synonyms,
+    priceProducts: async () => PRICE_FAMILIES.map((f) => ({ slug: f.slug, label: f.label, include: f.include, ...(f.exclude ? { exclude: f.exclude } : {}) })),
     spelling: async () => shared.spelling ?? new Map<string, string>(),
     cpv: (q) => live(async () => (await suggestCpv(sql, q)).map((r) => ({ term: r.term, cpvName: r.cpv_name }))),
     entities: (role, q) => live(async () => {

@@ -2,7 +2,7 @@ import { aliasQueries, queryTokens } from "../ask/entity-alias";
 import { buildPlaces, catalogUatSource, type UatSource } from "./places";
 import { buildSpelling } from "./spelling";
 import { fold, personPatterns } from "./text";
-import type { CpvHit, EntityHit, PersonHit, PlaceEntry, Vocabulary } from "./types";
+import type { CpvHit, EntityHit, PersonHit, PlaceEntry, PriceProduct, Vocabulary } from "./types";
 
 /**
  * In-memory Vocabulary with /api/suggest's matching semantics, for unit tests
@@ -15,6 +15,8 @@ export interface MemoryFixture {
   authorities: (EntityHit & { total: number; cui?: string })[];
   suppliers: (EntityHit & { total: number; cui?: string })[];
   persons: PersonHit[];
+  /** The products compared per unit; none unless a test gives them. */
+  priceProducts?: PriceProduct[];
 }
 
 const f = (s: string) => fold(s).trim();
@@ -30,6 +32,9 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
     },
     async synonyms() {
       return fx.synonyms.map((s) => f(s.term));
+    },
+    async priceProducts() {
+      return fx.priceProducts ?? [];
     },
     async spelling() {
       return buildSpelling(fx.catalog.map((c) => c.name));

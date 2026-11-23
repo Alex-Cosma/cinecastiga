@@ -26,12 +26,14 @@ const periodLabel=periodText;
 
 /** The words name „my” town hall or locality: which one is not known (lib/intent notes). */
 export const OWN_PLACE_NOTE=/nu știm ce localitate/;
+/** The unit prices' note (lib/intent/rules.ts unitPriceNote): /preturi is linked beside it. */
+const UNIT_PRICE_NOTE=/pagina Prețuri/;
 /**
  * What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). A
  * town hall not named („primăria mea”) gets the home page's town hall picker beside its note (UX audit Z1-33).
  */
-function ReadingNotes({notes}:{notes:string[]}){
- return notes.length?<>{notes.map(n=><Fragment key={n}><p className="topic-help topic-reading-note">{n}</p>{OWN_PLACE_NOTE.test(n)&&<TownHallPicker trigger={show=><button type="button" className="topic-control topic-pick-hall" aria-haspopup="dialog" onClick={show}><DiscoveryIcon name="pin"/>Alege primăria ta</button>}/>}</Fragment>)}</>:null;
+function ReadingNotes({notes,priceHref=null}:{notes:string[];priceHref?:string|null}){
+ return notes.length?<>{notes.map(n=><Fragment key={n}><p className="topic-help topic-reading-note">{n}{priceHref&&UNIT_PRICE_NOTE.test(n)&&<> <Link prefetch={false} href={priceHref}>Vezi prețurile pe unitate →</Link></>}</p>{OWN_PLACE_NOTE.test(n)&&<TownHallPicker trigger={show=><button type="button" className="topic-control topic-pick-hall" aria-haspopup="dialog" onClick={show}><DiscoveryIcon name="pin"/>Alege primăria ta</button>}/>}</Fragment>)}</>:null;
 }
 
 /** One part of the sentence the person can change: its words, underlined, open a short menu of what else it can be. */
@@ -174,7 +176,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   return t.problem&&t.askHref&&!t.entityChoice?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
  }
  // Only a note („primăria” without its locality, „la noi”): the note alone, without an empty „Am înțeles” line.
- if(!t.question&&!t.subject&&!placeChip&&!period&&!t.kind&&!t.placeAmbiguous&&!t.note)return <section className="topic-understood" aria-label="Cum am înțeles căutarea"><ReadingNotes notes={t.notes}/></section>;
+ if(!t.question&&!t.subject&&!placeChip&&!period&&!t.kind&&!t.placeAmbiguous&&!t.note)return <section className="topic-understood" aria-label="Cum am înțeles căutarea"><ReadingNotes notes={t.notes} priceHref={t.priceHref}/></section>;
  // The sentence: the question, the place's own statement, what „Pe scurt” answers; else what the lists search.
  const answered=t.answer?(t.answer.top?.sentence??t.answer.total.sentence):null;
  const sentence=t.question?.sentence??(t.placeAlone&&t.answer?placeSentence(t.answer.total.sentence):null)??answered
@@ -210,7 +212,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din {t.subject.parts.length} · <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link> <InfoMark title="Un domeniu" text={`„Pe scurt” numără doar domeniul ales, unul din cele ${t.subject.parts.length} numărate la „${t.subject.label}”. Listele de mai jos caută în continuare cuvântul, în toate domeniile.`}/></p>}
   {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
-  <ReadingNotes notes={t.notes}/>
+  <ReadingNotes notes={t.notes} priceHref={t.priceHref}/>
   {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
   {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
  </section>;

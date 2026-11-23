@@ -13,7 +13,7 @@ import type { Place, TopicScope } from './shared';
 import type { PlaceAround } from './around';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { LARGEST_RECORDS, largestSentence, STOPWORDS, tokenize } from '../intent/text';
-import { NEVER_SUBJECT, NO_DOMAIN_SAID, TOWN_HALL_UNKNOWN } from '../intent/rules';
+import { NEVER_SUBJECT, NO_DOMAIN_SAID, TOWN_HALL_UNKNOWN, UNIT_PRICE_NOTE } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -108,6 +108,8 @@ export interface TopicInterpretation {
    * all of them are none (re-judging, 10 November 2026: 0 titles, while „revelion” alone has 16).
    */
   alsoTry: string[];
+  /** A price per unit was asked (Interpretation.unitPrice): the product's page of /preturi, or /preturi, linked beside the note. */
+  priceHref: string | null;
   /**
    * The words are a place and nothing else („Cluj”, „Cisnădie 2023”): the place is the filter, „Pe scurt” is the place's
    * own total and first three firms, and the lists search the words as typed within it (UX audit Z1-01, 16 November 2026).
@@ -149,7 +151,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     q: scope.q, applied: { q: scope.q, place: scope.place, from: scope.from, to: scope.to },
     fromWords: { place: null, period: null }, kind: null, note: null, notes: [], explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
     sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false, entityChoice: false,
-    alsoTry: [],
+    alsoTry: [], priceHref: null,
   };
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
@@ -183,6 +185,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     placeAmbiguous: i.placeAmbiguous,
     sentence: result.sentence, problem: result.problem, confidence: i.confidenceLabel, hasEntity,
     entityChoice: i.entityAlternatives.length > 0 && !i.authority && !i.supplier,
+    // „prețul unui…” (search probe, 23 November 2026): the unit prices have their own page, linked beside the note.
+    priceHref: i.unitPrice ? (i.unitPrice.product ? `/preturi/${i.unitPrice.product.slug}` : '/preturi') : null,
   };
   // The words that explain the rest: subjects and the kind of buyer.
   const keep: Span[] = i.subjects.map((s) => s.matched);
@@ -405,7 +409,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     // (Întreabă's pointer to the sources list under its total is not this page's: here the question line links there.)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && n !== LARGEST_IN_SOURCES && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
-  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
+  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || UNIT_PRICE_NOTE.test(n) || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
   // a total is shown after all (a question, or one within the page's place and period): the note says what it counts
   if (out.answer) out.notes = out.notes.map((n) => n.replace(/ un domeniu: fără total, /, ' un domeniu: totalul numără tot domeniul; '));
