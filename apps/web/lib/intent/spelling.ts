@@ -18,6 +18,8 @@ const NOT_IN_CATALOGUE: Record<string, string> = {
   licente: "licențe",
   rasaduri: "răsaduri",
   avocatura: "avocatură",
+  // „achiziții IT”: the curated term is stored folded; people write it in capitals (owner, 23 November 2026)
+  it: "IT",
 };
 
 const commaBelow = (w: string) => w.replace(/ş/g, "ș").replace(/Ş/g, "Ș").replace(/ţ/g, "ț").replace(/Ţ/g, "Ț");

@@ -3,7 +3,7 @@
 -- Engine resolves a term: its include rows (code like prefix||'%') minus its
 -- exclude rows (exclude = true); a term without rows falls back to trigrams.
 -- A row's note is shown to people wherever the term is used: write it as a
--- sentence for a reader. Migrations 0080, 0081, 0082, 0101, 0102, 0103, 0104 and 0108 bring an existing database
+-- sentence for a reader. Migrations 0080, 0081, 0082, 0101, 0102, 0103, 0104, 0108 and 0114 bring an existing database
 -- to this same state; keep them in step.
 -- Reproducible seed — re-run to rebuild. Extend freely.
 create schema if not exists reference;
@@ -925,4 +925,9 @@ insert into reference.cpv_synonym (term, cpv_prefix, note, exclude) values
 ('sampon','33711600',null,false),
 ('sampoane','33711600',null,false),
 ('furnituri de birou','30190000',null,false),
-('furnituri','30190000',null,false);
+('furnituri','30190000',null,false),
+('it','30200000',null,false),
+('it','48000000',null,false),
+('it','72000000',null,false),
+('brad de craciun','39298910',null,false),
+('brazi de craciun','39298910',null,false);

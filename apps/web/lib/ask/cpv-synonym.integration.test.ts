@@ -103,8 +103,12 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     for (const name of ["0101_cpv_synonym_probe_vocabulary", "0102_cpv_synonym_probe_vocabulary_2", "0103_cpv_synonym_probe_vocabulary_3",
       "0104_cpv_synonym_open_items"]) for (const statement of migration(name).split("--> statement-breakpoint")) await sql.unsafe(statement);
     await apply("0108_cpv_synonym_lay_terms_4");
+    // „IT” and „brad de crăciun” (search probe, 23 November 2026), idempotent too.
+    await apply("0114_cpv_synonym_it_christmas_tree");
     const latest = await rows();
-    expect(latest).toHaveLength(915);
+    expect(latest).toHaveLength(920);
+    expect(latest.filter((r) => r.startsWith("it|")).map((r) => r.split("|")[1])).toEqual(["30200000", "48000000", "72000000"]);
+    expect(latest.filter((r) => /^bra(d|zi) de craciun\|/.test(r))).toEqual(["brad de craciun|39298910||", "brazi de craciun|39298910||"]);
     expect(latest.filter((r) => r.startsWith("psihoterapie|"))).toEqual(["psihoterapie|85121270||"]);
     expect(latest.filter((r) => r.startsWith("sare|")).map((r) => r.split("|")[1])).toEqual(["14400000", "34927100"]);
     await sql.unsafe(seed);

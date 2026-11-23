@@ -576,6 +576,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const h of c.all(/\b(?:lucrar(?:e|ea|ii)|tez(?:a|ei)|examen(?:ul|ului)?|proiect(?:ul|ului)?|diplom(?:a|ei))(?: (?:mea|meu|mele|noastra|nostru))? de (?:licenta|disertatie|doctorat|masterat|master)\b/)) c.take(h.i, h.j, "filler");
     await this.namedRuns(c, out);
     await this.subjects(c, out);
+    // „piața de IT”, „piața de catering”: the market for a subject is that subject (search probe, 23 November 2026)
+    for (let k = 0; k + 2 < c.tokens.length; k++)
+      if (!c.used[k] && /^(?:piata|pietei)$/.test(c.f(k)) && /^(?:de|pentru)$/.test(c.f(k + 1)) && c.used[k + 2] === "subject") c.take(k, k + 1, "filler");
     await this.unitPriceProduct(c, out);
     // „a organizat”, „au derulat”: the question's verb is a word understood, never a name to look up
     for (let k = 1; k < c.tokens.length; k++) if (!c.used[k] && c.f(k).length >= 6 && isParticiple(c, k)) c.take(k, k + 1, "filler");
@@ -1772,8 +1775,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       const words: { k: number; hit: CpvHit | null }[] = await Promise.all(
         c.tokens.slice(i, j).map(async (t, idx) => ({
           k: i + idx,
-          // „IT”: two letters are a subject only as a curated term written exactly so
-          hit: (t.f.length >= 3 || (t.f.length === 2 && synonyms.includes(t.f))) && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !ADJECTIVE.has(t.f) && !NEVER_SUBJECT.has(t.f) && !retiredTerm(t.f)
+          // „IT”: two letters are a subject only as a curated term written exactly so; in a question read from English
+          // („how much did it cost”) only in capitals, the pronoun is not the term (owner, 23 November 2026: „IT” is curated)
+          hit: (t.f.length >= 3 || (t.f.length === 2 && synonyms.includes(t.f) && !(out.typed !== undefined && t.f === "it" && t.raw !== "IT"))) && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !ADJECTIVE.has(t.f) && !NEVER_SUBJECT.has(t.f) && !retiredTerm(t.f)
             ? notParticiple(c, i + idx, await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms)) : null,
         })),
       );

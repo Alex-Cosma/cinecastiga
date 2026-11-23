@@ -12,8 +12,9 @@ import { resultFor } from "./to-spec";
 const NOW = new Date("2026-10-22T12:00:00Z");
 const fixture: MemoryFixture = {
   ...FIXTURE,
-  // the site's curated list has „crăciun” (decorations, trees, lights)
-  synonyms: [...FIXTURE.synonyms, { term: "craciun", prefix: "39298910" }],
+  // the site's curated list has „crăciun” (decorations, trees, lights); the phrase „brad de crăciun” (migration 0114,
+  // it-christmas-tree.test.ts) is left out here: these cases are about a word that is also a town
+  synonyms: [...FIXTURE.synonyms.filter((s) => !/^bra(?:d|zi) de craciun$/.test(s.term)), { term: "craciun", prefix: "39298910" }],
   authorities: [...FIXTURE.authorities,
     { id: 9200001, name: "MUNICIPIUL ADJUD (CONSILIUL LOCAL AL MUNICIPIULUI ADJUD)", county: "Vrancea", total: 300_000_000 },
     { id: 9200002, name: "SPITALUL MUNICIPAL ADJUD", county: "Vrancea", total: 90_000_000 },

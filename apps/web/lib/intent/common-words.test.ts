@@ -82,10 +82,11 @@ describe("a domain word is the subject, or is said", () => {
     expect((await read("lucrari in cluj")).i.subjects).toEqual([]);
   });
   it("reads two letters only as a curated term written exactly so, and says «IT» when there is none", async () => {
-    const none = await read("achizitii IT cluj 2025");
-    expect([none.i.subjects, none.i.leftover]).toEqual([[], ["IT"]]);
-    const withTerm = new RulesInterpreter(memoryVocabulary({ ...fixture, synonyms: [...fixture.synonyms, { term: "it", prefix: "72000000" }] }));
-    const i = await withTerm.interpret("achizitii IT cluj 2025", { now: NOW });
+    // the curated list has „it” since migration 0114 (it-christmas-tree.test.ts); without the term the word is said
+    const without = new RulesInterpreter(memoryVocabulary({ ...fixture, synonyms: fixture.synonyms.filter((s) => s.term !== "it") }));
+    const none = await without.interpret("achizitii IT cluj 2025", { now: NOW });
+    expect([none.subjects, none.leftover]).toEqual([[], ["IT"]]);
+    const { i } = await read("achizitii IT cluj 2025");
     expect([i.subjects.map((s) => s.term), i.leftover]).toEqual([["it"], []]);
   });
   it("corrects two neighbouring letters typed in the other order", async () => {
