@@ -143,6 +143,10 @@ export interface Interpretation {
   holder?: boolean;
   /** The words that asked for the counties compared („care județ”, „pe județe”; rules.cues). */
   byCounty?: Span;
+  /** Several institutions carry one side's name: the pairs are the choice (rules.compare). */
+  compareAmbiguous?: boolean;
+  /** „Cluj vs Timiș”: two counties compared are read on the counties' map, both named in a note (rules.compare). */
+  countyPair?: { a: string; b: string };
   /** Second entity for "compară X cu Y". */
   compareWith: EntityMatch | null;
   person: PersonMatch | null;

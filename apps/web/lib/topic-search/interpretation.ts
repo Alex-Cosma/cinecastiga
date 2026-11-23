@@ -463,6 +463,14 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
     const years = specFor(reading, 'trend', choice).spec;
     if (years?.block === 'timeseries') top = { spec: years, sentence: sentenceFor(years, labels), kind: 'years' };
   }
+  // „2024 față de 2023” (search probe, 23 November 2026: the other year was dropped): the total is the year asked
+  // about, and beside it the two years, each its own figure.
+  const versus = reading.period?.versus;
+  if (then === 'years' && oneYear && versus && reading.period) {
+    const both: Interpretation = { ...reading, period: { ...reading.period, yearFrom: Math.min(versus.main, versus.other), yearTo: Math.max(versus.main, versus.other) } };
+    const years = specFor(both, 'trend', choice).spec;
+    if (years?.block === 'timeseries') top = { spec: years, sentence: sentenceFor(years, labels), kind: 'years' };
+  }
   // the largest records of a selection narrowed by a subject, a place, a buyer or a firm: the records of the whole
   // country (even its direct acquisitions alone) are an 8–15-second read, not a short answer
   const f = total.filters;

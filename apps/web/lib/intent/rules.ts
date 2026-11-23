@@ -124,6 +124,7 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
  * „firme din alte județe” is the firm's seat (lens-phrases.ts), „două județe” a number of them.
  */
 const COUNTIES_CUE = /\b(?:(?:in|din|pe|la) )?(?:care|ce) judete?\b|\b(?:(?:pe|in|din|pentru|la|per) )?fiecare judet\b|\b(?:pe|dupa|per|intre) judet(?:e|ele)?\b|\bla nivel(?:ul)? (?:de judet|judetean)\b|(?<!\b(?:alt|alte|acelasi|aceleasi|unele|cateva|multe|doua|trei|patru) )\bjudete(?:le|lor)?\b|\b(?:by|per) county\b|\bcounties\b/;
+const countyName = (county: string) => (county === "București" ? "București" : `Județul ${county}`);
 export const countiesNotCompared = (words: string) => `„${words}”: județele nu se pot compara încă la această întrebare.`;
 export const COUNTIES_SINGLE_OFFER_NOTE = "Județele nu se pot compara încă după ponderea licitațiilor cu un singur ofertant; harta arată toate contractele din proceduri.";
 
@@ -438,7 +439,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     this.townHallKind(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
     await this.institutions(c, out, compareCue !== null);
-    await this.compare(c, out, compareCue);
+    await this.compare(c, out, compareCue, byKey, localities);
+    if (out.countyPair && compareCue !== null) cues.push({ intent: "counties", at: compareCue });
     await this.suppliersByMarker(c, out);
     this.monthsAlone(c, out);
     this.ownPlace(c, out);
@@ -593,7 +595,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anii\\s+)?${YR}\\s+${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       // "în 2025 față de 2024": the two years of a change, the earlier first; to-spec keeps both only where
       // each year is its own figure (a trend, an evolution), never summed on a total or a ranking.
-      [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anul\\s+)?${YR}\\s+fata\\s+de\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])],
+      // „2024 comparativ cu 2023”, „2024 vs 2025” are the same two years, never the cue of two entities compared (search
+      // probe, 23 November 2026: the second year was dropped, or „vs” asked for two institutions).
+      [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anul\\s+)?${YR}\\s+(?:fata\\s+de|comparativ\\s+cu|in\\s+comparatie\\s+cu|comparat\\s+cu|vs|versus)\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])],
         (m) => ({ main: Number(m[1]), other: Number(m[2]) })],
       [new RegExp(`\\b(?:pana|pina)(?:\\s+(?:in|la))?\\s+(?:anul\\s+)?${YR}(?:\\s+inclusiv)?\\b`), (m) => [undefined, Number(m[1])]],
       [new RegExp(`\\binainte de\\s+(?:anul\\s+)?${YR}\\b`), (m) => [undefined, Number(m[1]) - 1]],
@@ -1651,82 +1655,240 @@ export class RulesInterpreter implements QuestionInterpreter {
   /**
    * "compară X cu Y": two institutions or two firms, named on each side of
    * the connector ("primăria X" names the town hall of X). Both must be
-   * single identities; otherwise no comparison is proposed.
+   * single identities; several institutions under one side's name are offered as pairs to choose from.
+   *
+   * „X vs Y”, „X față de Y”, „X comparativ cu Y” (search probe, 23 November 2026: the second side was dropped): the
+   * cue is the connector, so the first side is the name before it. Two counties („Cluj vs Timiș”) are not two
+   * institutions: the counties' map answers, with both named in a note (settleIntent).
    */
-  private async compare(c: Cursor, out: Interpretation, cueAt: number | null) {
+  private async compare(c: Cursor, out: Interpretation, cueAt: number | null, byKey: Map<string, PlaceEntry[]>, localities: PlaceEntry[]) {
     if (cueAt === null) return;
-    const connector = c.all(/\b(?:cu|si|vs|versus|fata de)\b/).find((h) => h.i > cueAt);
+    const own = (k: number) => (/^(?:vs|versus)$/.test(c.f(k)) ? 1 : c.f(k) === "fata" && c.f(k + 1) === "de" ? 2 : 0);
+    let connector: { i: number; j: number } | null = null;
+    for (let k = cueAt; k < c.tokens.length && !connector; k++) {
+      const len = own(k);
+      if (len && (!c.used[k] || c.used[k] === "cue")) connector = { i: k, j: k + len };
+      else if (k > cueAt && !c.used[k] && /^(?:cu|si)$/.test(c.f(k))) connector = { i: k, j: k + 1 };
+    }
     if (!connector) return;
     const side = (from: number, to: number) => {
       const ks: number[] = [];
       for (let k = from; k < to; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k))) ks.push(k);
       return ks;
     };
+    // Nothing but the cue before the connector: the first side is before the cue, up to the words already read.
+    let infix = true;
+    for (let k = cueAt; k < connector.i && infix; k++) if (c.used[k] !== "cue" && !STOPWORDS.has(c.f(k))) infix = false;
+    const before = () => {
+      let from = cueAt;
+      while (from > 0 && (!c.used[from - 1] || STOPWORDS.has(c.f(from - 1)))) from--;
+      return side(from, cueAt);
+    };
+    // The second side ends at the first word already read („… vs primăria Iași cheltuieli 2024”).
+    const after = () => {
+      let to = connector!.j;
+      while (to < c.tokens.length && (!c.used[to] || STOPWORDS.has(c.f(to)))) to++;
+      return side(connector!.j, to);
+    };
+    const opening = (k: number) => /^primari(?:a|ei)$/.test(c.f(k)) || INSTITUTION_NOUN.test(c.f(k));
+    // „… față de cele din județul ei”, „față de restul țării”, „față de noi” name a group or nobody, not a second side
+    // (the distribution's group has its own words, lens-phrases.ts); after „față de” only an institution's noun or a
+    // county opens one.
+    if (infix && /^(?:cele|cei|cea|cel|celelalte|ceilalti|alte|alti|altele|altii|restul|toata|toate|toti|noi|ei|el|ea|lui|media|medie|nivelul)$/.test(c.f(connector.j))) return;
+    type Side = { one: EntityHit & { role: "authority" | "supplier" } } | { many: EntityHit[] };
     // One identity per side. Several firms may carry the name („Strabag”): the one whose name is exactly the words is
     // compared, and said (owner, 10 November 2026: „compară Strabag cu Porr Construct” was not read at all).
-    const lookup = async (ks: number[], role: "authority" | "supplier" | null) => {
-      const typed = significant(ks.map((k) => c.f(k)).join(" "));
+    const lookup = async (ks: number[], role: "authority" | "supplier" | null): Promise<Side | null> => {
+      const typed = significant(ks.map((k) => (ACRONYMS[c.f(k)] ?? c.f(k))).join(" "));
       if (!typed.length) return null;
       const roles: ("authority" | "supplier")[] = role ? [role] : ["supplier", "authority"];
+      let many: EntityHit[] | null = null;
+      // „primăria Sector 1”: the sector's own row („Sector 1 (Sectorul 1 al municipiului București)”), not the bodies named after it
+      const sector = /^primari\w* sector\w* ([1-6])$/.exec(ks.map((k) => c.f(k)).join(" "));
+      if (sector && role !== "supplier") {
+        const { hits } = await this.vocab.entities("authority", `sector ${sector[1]}`);
+        const own = hits.filter((e) => new RegExp(`^sector(?:ul)? ${sector[1]} `).test(`${fold(e.name).replace(/[^a-z0-9]+/g, " ")} `));
+        if (own.length === 1) return { one: { ...own[0]!, role: "authority" } };
+      }
       for (const r of roles) {
-        const res = await this.resolve(r, typed);
-        if (res.kind === "one") return { ...res.hit, role: r };
-        if (res.kind === "many") {
-          const exact = res.hits.filter((e) => sameName(typed, e.name));
-          if (exact.length === 1) {
-            const others = res.total - 1, text = ks.map((k) => c.tokens[k]!.raw).join(" ");
-            out.notes.push(`Am comparat „${exact[0]!.name}”, singura cu exact acest nume; ${others === 1 ? "încă una are" : `încă ${others} au`} „${text}” în nume.`);
-            return { ...exact[0]!, role: r };
+        const shapes: string[][] = [];
+        // „primăria Cluj”, „primăria Piatra”: a town named by the start of its name, the largest one (as rules.markedPlaces)
+        if (r === "authority" && /^primari/.test(typed[0]!) && typed.length > 1) {
+          const key = placeKey(typed.slice(1).join(" "));
+          if (!byKey.get(key)?.some((e) => e.kind === "locality")) {
+            const town = localities.filter((e) => e.key.startsWith(`${key} `) && (e.tip === "municipiu" || e.tip === "oraș")).sort((x, y) => (y.population ?? 0) - (x.population ?? 0))[0];
+            if (town) shapes.push(["primaria", ...town.key.split(" ")]);
+          }
+        }
+        shapes.push(typed);
+        if (r === "authority") {
+          // "Spitalul Județean de Urgență Satu Mare" is registered as "SPITALUL JUDETEAN SATU MARE" (as rules.institutions)
+          const relaxed = typed.filter((w) => !OPTIONAL_NAME_WORD.test(w));
+          if (relaxed.length >= 2 && relaxed.length < typed.length) shapes.push(relaxed);
+          // „Spital Clinic Județean…”: a registry name without the article the person typed
+          if (/ul$/.test(typed[0]!)) for (const base of [relaxed, typed]) shapes.push([typed[0]!.slice(0, -2), ...base.slice(1)], [typed[0]!.slice(0, -1), ...base.slice(1)]);
+        }
+        for (const shape of shapes) {
+          const res = await this.resolve(r, shape);
+          if (res.kind === "one") return { one: { ...res.hit, role: r } };
+          if (res.kind === "many") {
+            // The same name written twice in one county's registry is one institution; the larger row is compared, and
+            // said (as comparePlaces). The same name in two counties is two institutions: a choice.
+            if (r === "authority" && res.hits.length > 1 && res.hits.every((e) => fold(e.name) === fold(res.hits[0]!.name) && fold(e.county ?? "") === fold(res.hits[0]!.county ?? ""))) {
+              out.notes.push(`În registru, „${res.hits[0]!.name}” apare de ${res.hits.length} ori; am comparat rândul cu cele mai multe achiziții.`);
+              return { one: { ...res.hits[0]!, role: r } };
+            }
+            const exact = res.hits.filter((e) => sameName(shape, e.name));
+            if (exact.length === 1) {
+              const others = res.total - 1, text = ks.map((k) => c.tokens[k]!.raw).join(" ");
+              out.notes.push(`Am comparat „${exact[0]!.name}”, singura cu exact acest nume; ${others === 1 ? "încă una are" : `încă ${others} au`} „${text}” în nume.`);
+              return { one: { ...exact[0]!, role: r } };
+            }
+            // Several institutions carry the name: the reader chooses the pair (never a guess, never one side dropped).
+            if (r === "authority" && !many && res.total <= 6 && opening(ks[0]!)) many = res.hits.slice(0, 3);
           }
         }
       }
-      return null;
+      return many ? { many } : null;
     };
+    const span = (ks: number[]) => c.span(ks[0]!, ks[ks.length - 1]! + 1);
     let focal: EntityMatch | null = out.supplier ?? out.authority;
     // The name after the connector was read first („… cu Porr Construct”, the name before it has several firms): it is
     // the other side, and the comparison starts from the name before it.
     if (focal && focal.matched.from >= connector.j) {
-      const firstKs = side(cueAt, connector.i);
+      const firstKs = infix ? before() : side(cueAt, connector.i);
       const first = await lookup(firstKs, focal.role);
-      if (!first || first.id === focal.id) return;
+      if (!first || !("one" in first) || first.one.id === focal.id) return;
       const second = focal;
-      focal = { role: first.role, id: first.id, name: first.name, county: first.county, matched: c.span(firstKs[0]!, firstKs[firstKs.length - 1]! + 1) };
+      focal = { role: first.one.role, id: first.one.id, name: first.one.name, county: first.one.county, matched: span(firstKs) };
       for (const k of firstKs) c.take(k, k + 1, "entity");
       if (focal.role === "supplier") out.supplier = focal; else out.authority = focal;
       c.take(connector.i, connector.j, "cue");
       out.compareWith = { role: second.role, id: second.id, name: second.name, county: second.county, matched: second.matched };
       return;
     }
+    const leftAll = infix ? before() : side(cueAt, connector.i);
+    const rightAll = infix ? after() : side(connector.j, c.tokens.length);
+    // Two counties are no pair of institutions: the map of the counties, both named (settleIntent).
+    const county = !focal && !out.entityAlternatives.length;
+    if (county) {
+      const pair = this.countyPair(c, leftAll, rightAll, byKey);
+      if (pair) {
+        for (const k of pair.ks) c.take(k, k + 1, "place");
+        c.take(connector.i, connector.j, "cue");
+        out.countyPair = { a: pair.a, b: pair.b };
+        return;
+      }
+    }
+    if (infix && c.f(connector.i) === "fata" && !(rightAll.length && opening(rightAll[0]!))) return;
     // two named institutions or firms first; two places only when no name resolves
     const placesInstead = async () => {
       if (out.supplier || out.authority) return;
-      const pairs = await this.comparePlaces(c, side(cueAt, connector.i), side(connector.j, c.tokens.length), out.notes);
+      const pairs = await this.comparePlaces(c, leftAll, rightAll, out.notes);
       if (!pairs.length) return;
       out.compareChoices = pairs;
-      for (let k = cueAt; k < c.tokens.length; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k))) c.take(k, k + 1, "entity");
+      for (const k of [...leftAll, ...rightAll]) c.take(k, k + 1, "entity");
       c.take(connector.i, connector.j, "cue");
     };
+    // The first side: the institution or firm already read, the institutions its name has, or the words before the
+    // connector, from the institution's noun on („achiziții primăria Sector 1 vs …”).
     let focalKs: number[] = [];
-    if (!focal) {
-      focalKs = side(cueAt, connector.i);
-      const hit = await lookup(focalKs, null);
-      if (!hit) return placesInstead();
-      focal = { role: hit.role, id: hit.id, name: hit.name, county: hit.county, matched: c.span(focalKs[0]!, focalKs[focalKs.length - 1]! + 1) };
+    let first: Side | null = focal ? { one: { id: focal.id, name: focal.name, county: focal.county, role: focal.role } as EntityHit & { role: "authority" | "supplier" } } : null;
+    const readAlternatives = !focal && out.entityAlternatives.length > 0 && out.entityAlternatives.every((e) => e.role === "authority" && e.matched.to <= connector!.i);
+    if (readAlternatives) first = { many: out.entityAlternatives.slice(0, 3).map((e) => ({ id: e.id, name: e.name, county: e.county }) as EntityHit) };
+    else if (!focal && out.entityAlternatives.length) return;
+    if (!first) {
+      const at = infix ? leftAll.findIndex(opening) : 0;
+      focalKs = at > 0 ? leftAll.slice(at) : at === 0 || leftAll.length <= 3 ? leftAll : [];
+      first = focalKs.length ? await lookup(focalKs, null) : null;
+      if (!first) return placesInstead();
     }
+    const role = "one" in first ? first.one.role : "authority";
     // "… cu ELBI din Buzău": a place after the second name is the clients' (plan §2.7, final compare §3.5), not part of
-    // the name; the whole rest is tried when the cut name resolves to nothing ("… cu Construcții la Cheie").
-    const rest = side(connector.j, c.tokens.length);
-    let cut = c.tokens.length;
-    for (let k = connector.j + 1; k < c.tokens.length; k++) if (PLACE_CUT.test(c.f(k))) { cut = k; break; }
-    const named = cut < c.tokens.length ? side(connector.j, cut) : rest;
-    const first = named.length ? await lookup(named, focal.role) : null;
-    const [other, ks] = first || named === rest ? [first, named] : [await lookup(rest, focal.role), rest];
-    if (!other || other.id === focal.id) return placesInstead();
-    for (const k of focalKs) c.take(k, k + 1, "entity");
-    if (!out.supplier && !out.authority) { if (focal.role === "supplier") out.supplier = focal; else out.authority = focal; }
-    c.take(connector.i, connector.j, "cue");
-    for (const k of ks) c.take(k, k + 1, "entity");
-    out.compareWith = { role: focal.role, id: other.id, name: other.name, county: other.county, matched: c.span(ks[0]!, ks[ks.length - 1]! + 1) };
+    // the name; „… vs primăria Sector 2 la deszăpezire”: nor is what the comparison is about. The whole rest is tried
+    // when a cut name resolves to nothing ("… cu Construcții la Cheie").
+    const cuts: number[][] = [];
+    for (let n = 1; n < rightAll.length; n++) {
+      const gap = c.tokens.slice(rightAll[n - 1]! + 1, rightAll[n]!).some((t) => PLACE_CUT.test(t.f) || /^(?:pe|pentru|privind)$/.test(t.f));
+      if (PLACE_CUT.test(c.f(rightAll[n]!)) || gap) cuts.push(rightAll.slice(0, n));
+    }
+    cuts.push(rightAll);
+    let second: Side | null = null, ks: number[] = [];
+    for (const cut of cuts) {
+      if (!cut.length) continue;
+      second = await lookup(cut, role);
+      ks = cut;
+      if (second) break;
+    }
+    const taken = () => {
+      for (const k of focalKs) c.take(k, k + 1, "entity");
+      c.take(connector!.i, connector!.j, "cue");
+      for (const k of ks) c.take(k, k + 1, "entity");
+    };
+    if (!second) {
+      // The first side is read and the second is not found: said by its name, never dropped in silence.
+      const named = cuts.find((cut) => cut.length && opening(cut[0]!));
+      if ((focal || readAlternatives) && named) {
+        for (const k of named) c.take(k, k + 1, "blocked");
+        out.notes.push(`Nu am găsit a doua instituție, „${span(named).text}”. Scrie numele complet, de exemplu cu localitatea.`);
+        return;
+      }
+      return placesInstead();
+    }
+    if ("one" in first && "one" in second) {
+      if (second.one.id === first.one.id) return placesInstead();
+      taken();
+      if (!focal) {
+        focal = { role: first.one.role, id: first.one.id, name: first.one.name, county: first.one.county, matched: span(focalKs) };
+        if (focal.role === "supplier") out.supplier = focal; else out.authority = focal;
+      }
+      out.compareWith = { role: focal.role, id: second.one.id, name: second.one.name, county: second.one.county, matched: span(ks) };
+      return;
+    }
+    // One side has several institutions under its name: each pair is a choice.
+    const firstSpan = focal ? focal.matched : readAlternatives ? out.entityAlternatives[0]!.matched : span(focalKs);
+    const lefts = "one" in first ? [first.one] : first.many, rights = "one" in second ? [second.one] : second.many;
+    const named = (e: EntityHit) => `${e.name}${e.county ? ` (${e.county})` : ""}`;
+    const pairs: NonNullable<Interpretation["compareChoices"]> = [];
+    for (const a of lefts) for (const b of rights) if (a.id !== b.id && pairs.length < 6)
+      pairs.push({ label: `${named(a)} și ${named(b)}`,
+        focal: { role: "authority", id: a.id, name: a.name, county: a.county, matched: firstSpan }, other: { role: "authority", id: b.id, name: b.name, county: b.county, matched: span(ks) } });
+    if (!pairs.length) return;
+    taken();
+    out.compareChoices = pairs;
+    out.compareAmbiguous = true;
+    // The pair is the choice now: the first side's own list of names is not asked a second time.
+    if (readAlternatives) {
+      out.notes = out.notes.filter((n) => !/ se potrivesc cu „/.test(n));
+      out.entityAlternatives = [];
+      out.choicesPartial = null;
+    }
+  }
+
+  /**
+   * „Cluj vs Timiș”, „compară județul Dolj cu Olt”: the first side ends with a county's name and the second starts with
+   * one. A name a town carries too („Buzău”, „Iași”) is left to the town halls and county councils (comparePlaces).
+   */
+  private countyPair(c: Cursor, left: number[], right: number[], byKey: Map<string, PlaceEntry[]>): { a: string; b: string; ks: number[] } | null {
+    const county = (ks: number[]) => {
+      if (!ks.length || ks[ks.length - 1]! - ks[0]! !== ks.length - 1) return null;
+      const entries = byKey.get(placeKey(ks.map((k) => c.f(k)).join(" "))) ?? [];
+      const hit = entries.find((e) => e.kind === "county");
+      return hit && !entries.some((e) => e.kind === "locality" && (e.tip === "municipiu" || e.tip === "oraș")) ? hit.county : null;
+    };
+    const marker = (k: number) => /^(?:judetul|judetului|jud)$/.test(c.f(k));
+    const read = (ks: number[], fromEnd: boolean) => {
+      for (const n of [2, 1]) {
+        if (ks.length < n) continue;
+        const part = fromEnd ? ks.slice(-n) : ks.slice(0, n);
+        const name = county(part);
+        if (name) return { name, ks: part };
+      }
+      return null;
+    };
+    const a = read(left, true), b = read(right.filter((k) => !marker(k)), false);
+    if (!a || !b || a.name === b.name) return null;
+    return { a: a.name, b: b.name, ks: [...left.filter((k) => marker(k)), ...a.ks, ...right.filter((k) => marker(k) && k < b.ks[0]!), ...b.ks] };
   }
 
   /**
@@ -1917,7 +2079,11 @@ export class RulesInterpreter implements QuestionInterpreter {
     else if (has("counties")) primary = "counties";
     // A lone "și de la cine" asks who sold, as "de la cine" does.
     else primary = ordered.find((k) => k !== "compare" && k !== "flow") ?? (has("flow") ? "ranking_suppliers" : null);
-    if (has("compare") && !out.compareWith && !out.compareChoices?.length)
+    // Two counties compared: the map shows every county, the two said; the county councils alone can still be compared.
+    if (out.countyPair && primary === "counties")
+      out.notes.push(`${countyName(out.countyPair.a)} și ${countyName(out.countyPair.b)}: harta arată toate județele; cele două se citesc pe ea. Două instituții se compară direct, de exemplu „compară Consiliul Județean ${out.countyPair.a} cu Consiliul Județean ${out.countyPair.b}”.`);
+    else if (out.countyPair) out.notes.push(countiesNotCompared(`${out.countyPair.a} și ${out.countyPair.b}`));
+    else if (has("compare") && !out.compareWith && !out.compareChoices?.length)
       out.notes.push("Pentru o comparație, numește două instituții sau două firme, de exemplu „compară Spitalul Județean de Urgență Buzău cu Spitalul Județean de Urgență Brăila”.");
     // Signals, an evolution, a network: not by county yet, and said (never another question in silence).
     if (out.byCounty && primary !== "counties") out.notes.push(countiesNotCompared(out.byCounty.text));
@@ -1934,6 +2100,15 @@ export class RulesInterpreter implements QuestionInterpreter {
         // "contractele de peste 1 milion de lei din Cluj": the total says the size, "Ce cumpără" does not offer it.
         : (out.place || out.authorityKind) && !selectionLens(out, "filters.purchaseValueMin") && !selectionLens(out, "filters.purchaseValueMax") ? "breakdown"
         : "total";
+    }
+    // „2024 față de 2023”, „2024 comparativ cu 2023” on a total, on what is bought or on a plain subject (search probe,
+    // 23 November 2026: the second year was dropped): the person asked for the two years, each its own figure. A ranking
+    // asked in words („ce firme…”) keeps the first year, with its note (to-spec).
+    const asked = out.intent;
+    if (out.period?.versus && asked && (asked === "total" || asked === "breakdown" || (out.intentSource === "default" && asked.startsWith("ranking")))) {
+      out.intent = "trend";
+      out.intentSource = "cue";
+      ordered.push(asked);
     }
     out.otherIntents = unique(ordered.filter((k) => k !== out.intent && k !== "compare"));
   }
@@ -1975,7 +2150,7 @@ const selectionLens = (i: Interpretation, path?: string) => i.lenses.some((l) =>
 /** Something in the question narrows the answer beyond "everything, everywhere". */
 export function hasNamedScope(i: Interpretation): boolean {
   return Boolean(i.subjects.length || i.subjectChoices || i.place || i.placeAmbiguous || i.authorityKind || i.authority || i.supplier || i.entityAlternatives.length
-    || i.person || i.personAlternatives.length || i.period || i.dataset || i.singleBidder || i.employees || i.measure === "value_per_capita" || selectionLens(i));
+    || i.person || i.personAlternatives.length || i.period || i.dataset || i.singleBidder || i.employees || i.measure === "value_per_capita" || selectionLens(i) || i.countyPair);
 }
 
 interface PlaceFound {

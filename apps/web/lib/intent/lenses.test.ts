@@ -177,10 +177,10 @@ describe("winners are never a trend group (precedence, plan §2.7)", () => {
 });
 
 describe("«în Y față de X» is two years only where each year is its own figure", () => {
-  it("a total keeps the year asked about, with the note, never both years summed", async () => {
+  it("a total is the two years, each its own figure, never summed (search probe, 23 November 2026: the second year was dropped with a note)", async () => {
     const { r } = await ask("Cât s-a cheltuit în județul Cluj în 2025 față de 2024?");
-    expect(r.spec).toMatchObject({ block: "stat", filters: { county: "Cluj", yearFrom: 2025, yearTo: 2025 } });
-    expect(r.interpretation.notes).toContain("Am folosit prima perioadă din întrebare; „2024” nu a fost aplicată.");
+    expect(r.spec).toMatchObject({ block: "timeseries", filters: { county: "Cluj", yearFrom: 2024, yearTo: 2025 } });
+    expect(r.interpretation.notes.join(" ")).not.toMatch(/prima perioadă/);
   });
   it("a ranking keeps the year asked about", async () => {
     const { r } = await ask("Ce firme au câștigat în județul Cluj în 2025 față de 2024?");

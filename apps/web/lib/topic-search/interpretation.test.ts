@@ -293,7 +293,9 @@ describe('interpretation → /cauta selection', () => {
     const versus = await read('iluminat 2024 fata de 2023');
     const v = applyInterpretation(versus.scope, versus.result, null, NOW);
     expect(v.answer?.total.spec.filters).toMatchObject({ yearFrom: 2024, yearTo: 2024 });
-    expect(v.notes.join(' ')).toMatch(/prima perioadă/);
+    // the two years beside the total of the year asked about, each its own figure (search probe, 23 November 2026)
+    expect(v.answer?.top).toMatchObject({ kind: 'years', spec: { block: 'timeseries', filters: { yearFrom: 2023, yearTo: 2024 } } });
+    expect(v.notes.join(' ')).not.toMatch(/prima perioadă/);
     if (v.fromWords.period) expect(v.fromWords.period).toMatchObject({ from: '2024', to: '2024' });
     const excluded = await read('iluminat fara buzau');
     const e = applyInterpretation(excluded.scope, excluded.result, null, NOW);

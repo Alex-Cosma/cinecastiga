@@ -552,7 +552,7 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
   let spec: AskSpec | null = null;
   let problem: string | null = null;
   if (i.intent === "compare" && !i.compareWith && i.compareChoices.length) {
-    problem = "Ce vrei să compari? Comparăm două instituții, nu două locuri.";
+    problem = i.compareAmbiguous ? "Mai multe instituții au acest nume. Alege perechea pe care o compari." : "Ce vrei să compari? Comparăm două instituții, nu două locuri.";
   } else if (i.intent && i.subjectChoices) {
     // a word that is not a subject on its own: each meaning is an alternative
     problem = i.subjectChoices.message;
