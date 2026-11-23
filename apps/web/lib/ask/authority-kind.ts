@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { countyFold, countylessLegacyCode, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
 import { readPerCapitaPopulations } from "./per-capita";
-import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, type AuthorityKind, type ParsedAuthorityKind } from "./spec";
+import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, MINISTRY_KIND, NAME_LIST_KINDS, TOWN_HALL_KIND, UNIVERSITY_KIND, type AuthorityKind, type NameListKind, type ParsedAuthorityKind } from "./spec";
 
 /*
  * The kind of a buying institution (plan §2.5, D1): one classification for
@@ -34,6 +34,8 @@ import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, type AuthorityKind, 
 export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
   local_admin: "primării și consilii județene (lista strictă a valorii pe locuitor)",
   primarie: "primării (de comună, oraș și municipiu)",
+  minister: "ministere (cu unitățile care cumpără sub numele unui minister)",
+  universitate: "universități",
   comuna: "primării de comună",
   oras_municipiu: "primării de oraș și municipiu",
   consiliu_judetean: "consilii județene / județe",
@@ -45,6 +47,8 @@ export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
 export const KIND_SOURCE: Record<ParsedAuthorityKind, string> = {
   local_admin: "nume, județ și cod SIRUTA concordante, cu populația INS RPL 2021",
   primarie: "registrul localităților, apoi numele",
+  minister: "după nume: începe cu „Ministerul”",
+  universitate: "după nume: începe cu „Universitatea”, plus ASE, SNSPA, Academia de Poliție și Academia Națională de Muzică",
   comuna: "registrul localităților, apoi numele",
   oras_municipiu: "registrul localităților, apoi numele",
   consiliu_judetean: "lista strictă a valorii pe locuitor, apoi numele",
@@ -86,6 +90,27 @@ export function nameKind(name: string): AuthorityKind | null {
   const f = fold(name);
   const matches = AUTHORITY_KINDS.filter((kind) => NAME_RULES[kind].some((rule) => rule.test(f)) || kind === "spital" && isClinicalInstitute(name));
   return matches.length === 1 ? matches[0]! : null;
+}
+
+/**
+ * The name lists (NAME_LIST_KINDS; search probe, 23 November 2026), on the folded name, apart from the five kinds: an
+ * institution may be on a list and have a kind („Ministerul Apărării - Spitalul Militar…” has none, a university's
+ * school may).
+ * - Ministries: the name begins with „Ministerul”. Most of the Ministry of Defence's purchases are recorded under its
+ *   units („Ministerul Apărării - Unitatea Militară 02550”), never under the ministry alone, so the units that buy
+ *   under a ministry's name are on the list: 158 names locally, 61 bn lei, 27 of them (9.5 bn lei) without a unit. An institution
+ *   that only stands by a ministry („… de pe lângă Ministerul Justiției”) is not.
+ * - Universities: the name begins with „Universitatea” (60 names locally, private ones included; 64 names and 13.8 bn lei with the next), and the four that
+ *   are universities under another name. „Academia Română”, the university hospitals, libraries and sports clubs are not.
+ */
+const NAME_LIST_RULES: Record<NameListKind, readonly RegExp[]> = {
+  minister: [/^ministerul /],
+  universitate: [/^universitatea /, /^academia de studii economice\b/, /^scoala nationala de studii politice si administrative\b/, /^academia de politie\b/, /^academia nationala de muzica\b/],
+};
+/** Whether a name is on a name list. */
+export function onNameList(kind: NameListKind, name: string): boolean {
+  const f = fold(name).replace(/\s+/g, " ");
+  return NAME_LIST_RULES[kind].some((rule) => rule.test(f));
 }
 
 /** reference.uat: the type and county of each SIRUTA code. */
@@ -145,18 +170,26 @@ export interface AuthorityKinds {
   byId: ReadonlyMap<string, AuthorityKind>;
   /** The ids of each kind, ascending. */
   ids: Readonly<Record<AuthorityKind, readonly string[]>>;
+  /** The ids of each name list (NAME_LIST_KINDS), ascending. */
+  lists: Readonly<Record<NameListKind, readonly string[]>>;
 }
 
 export function classifyAuthorities(rows: readonly AuthorityKindRow[], registry: LocalityRegistry): AuthorityKinds {
   const byId = new Map<string, AuthorityKind>();
   const ids = Object.fromEntries(AUTHORITY_KINDS.map((kind) => [kind, [] as string[]])) as Record<AuthorityKind, string[]>;
+  const lists = Object.fromEntries(NAME_LIST_KINDS.map((kind) => [kind, [] as string[]])) as Record<NameListKind, string[]>;
+  const listed = new Set<string>();
   for (const row of [...rows].sort((a, b) => Number(a.id) - Number(b.id))) {
+    if (!listed.has(row.id)) {
+      listed.add(row.id);
+      for (const list of NAME_LIST_KINDS) if (onNameList(list, row.name)) lists[list].push(row.id);
+    }
     const kind = classifyAuthority(row, registry);
     if (!kind || byId.has(row.id)) continue;
     byId.set(row.id, kind);
     ids[kind].push(row.id);
   }
-  return { byId, ids };
+  return { byId, ids, lists };
 }
 
 /** One database per process, so one cache, keyed by the marts build of the profiles (a rebuild truncates them). */
@@ -202,6 +235,7 @@ export function forgetAuthorityKinds(): void { cached = null; }
 export async function authorityKindIds(q: DbSql, kind: ParsedAuthorityKind | null | undefined): Promise<readonly string[] | null> {
   if (kind === LOCAL_ADMIN_KIND) return (await readPerCapitaPopulations(q)).ids;
   if (kind === TOWN_HALL_KIND) return townHallIds(await readAuthorityKinds(q));
+  if (kind === MINISTRY_KIND || kind === UNIVERSITY_KIND) return (await readAuthorityKinds(q)).lists[kind];
   return kind ? (await readAuthorityKinds(q)).ids[kind] : null;
 }
 
@@ -224,7 +258,7 @@ export function authorityKindCond(sql: DbSql, ids: readonly string[], column: Re
 }
 
 /** The kind of `column` (an institution id) in SQL, or null: the same lists. */
-export function authorityKindExpression(sql: DbSql, kinds: AuthorityKinds, column: ReturnType<DbSql>): ReturnType<DbSql> {
+export function authorityKindExpression(sql: DbSql, kinds: Pick<AuthorityKinds, "ids">, column: ReturnType<DbSql>): ReturnType<DbSql> {
   const cases = AUTHORITY_KINDS.map((kind) => sql`when ${authorityKindCond(sql, kinds.ids[kind], column)} then ${kind}`).reduce((a, b) => sql`${a} ${b}`);
   return sql`(case ${cases} else null end)`;
 }

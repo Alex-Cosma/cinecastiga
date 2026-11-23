@@ -69,13 +69,24 @@ export type AuthorityKind = (typeof AUTHORITY_KINDS)[number];
 export const LOCAL_ADMIN_KIND = "local_admin";
 /** Every town hall (owner, 23 November 2026: „primăria cu cele mai mari contracte”): the communes' and the towns' together. */
 export const TOWN_HALL_KIND = "primarie";
-export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND | typeof TOWN_HALL_KIND;
-const PARSED_KINDS: readonly string[] = [...AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND];
+/**
+ * Institutions listed by a strict rule on their own name (search probe, 23 November 2026: „ministerele”, „universitățile”
+ * had no kind): the ministries, with the units that buy under a ministry's name, and the universities
+ * (lib/ask/authority-kind.ts NAME_LIST_RULES). Lists of ids like the town halls: no peer group, no kind facet.
+ */
+export const MINISTRY_KIND = "minister";
+export const UNIVERSITY_KIND = "universitate";
+export const NAME_LIST_KINDS = [MINISTRY_KIND, UNIVERSITY_KIND] as const;
+export type NameListKind = (typeof NAME_LIST_KINDS)[number];
+export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND | typeof TOWN_HALL_KIND | NameListKind;
+/** A kind the words of a question can say (the local administrations are the map's own). */
+export type SaidAuthorityKind = Exclude<ParsedAuthorityKind, typeof LOCAL_ADMIN_KIND>;
+const PARSED_KINDS: readonly string[] = [...AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, ...NAME_LIST_KINDS];
 export const isParsedKind = (value: unknown): value is ParsedAuthorityKind => typeof value === "string" && PARSED_KINDS.includes(value);
 /** The kind matched by name patterns. local_admin has none (the engine refuses it before it reads a kind); the town
- * halls are two of them, so they have no peer group or classification of their own. */
+ * halls are two of them and the name lists are lists only, so they have no peer group or classification of their own. */
 export const namedKind = (kind: ParsedAuthorityKind | undefined): AuthorityKind | undefined =>
-  kind === LOCAL_ADMIN_KIND || kind === TOWN_HALL_KIND ? undefined : kind;
+  (AUTHORITY_KINDS as readonly string[]).includes(kind ?? "") ? kind as AuthorityKind : undefined;
 export const PURCHASE_KINDS = ["produse", "servicii", "lucrari"] as const;
 export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare", "altele"] as const;
 /** The firm's seat against the buyer's county on each row (same, other) or abroad. */

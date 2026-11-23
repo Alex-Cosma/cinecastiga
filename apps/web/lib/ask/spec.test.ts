@@ -125,7 +125,7 @@ describe("validateSpec", () => {
     const bad = validateSpec({
       block: "table",
       measure: "value",
-      filters: { authorityKind: "minister" },
+      filters: { authorityKind: "fabrica" },
     });
     expect(bad).toHaveProperty("error");
   });

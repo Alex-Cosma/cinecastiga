@@ -63,9 +63,12 @@ describe("the largest records of a selection", () => {
       const one = await read(q);
       expect([q, one.interpretation.largest, one.interpretation.intent, one.spec?.block]).toEqual([q, undefined, "ranking_authorities", "entity_card"]);
     }
+    // „ministerele” are a kind now (buyer-kinds.test.ts): the noun says who is ranked, as for the other kinds
+    const ministries = await read("ministerele cu cele mai mari achizitii de iluminat in 2024");
+    expect([ministries.interpretation.largest, ministries.interpretation.intent, ministries.interpretation.leftover, ministries.sources]).toEqual([undefined, "ranking_authorities", [], undefined]);
     // a noun the holders do not read leaves the largest records, the word said as not understood
-    const unread = await read("ministerele cu cele mai mari achizitii de iluminat in 2024");
-    expect([unread.interpretation.intent, unread.interpretation.leftover, unread.sources]).toEqual(["total", ["ministerele"], "largest"]);
+    const unread = await read("fabricile cu cele mai mari achizitii de iluminat in 2024");
+    expect([unread.interpretation.intent, unread.interpretation.leftover, unread.sources]).toEqual(["total", ["fabricile"], "largest"]);
     expect(LARGEST_RECORDS.test("cel mai mare spital din cluj")).toBe(false);
     expect(LARGEST_RECORDS.test("cele mai multe contracte")).toBe(false);
   });

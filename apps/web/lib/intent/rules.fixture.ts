@@ -82,6 +82,9 @@ export const FIXTURE: MemoryFixture = {
     { id: 2146743, name: "Spitalul Judetean Giurgiu", county: "Giurgiu", total: 300_000_000 },
     { id: 2135939, name: "Directia de Asistenta Sociala a Municipiului Buzau", county: "Buzau", total: 20_000_000 },
     { id: 2135940, name: "Directia de Asistenta Sociala Focsani", county: "Vrancea", total: 15_000_000 },
+    // a ministry and a university, named in the nominative or the genitive (search probe, 23 November 2026)
+    { id: 6000001, name: "Ministerul Sanatatii", county: "Bucuresti", total: 700_000_000 },
+    { id: 6000002, name: "UNIVERSITATEA DIN CRAIOVA", county: "Dolj", total: 600_000_000 },
     { id: 6000001, name: "COLEGIUL NATIONAL DIMITRIE CANTEMIR", county: "Suceava", total: 3_000_000 },
     { id: 6000002, name: "Colegiul National Dimitrie Cantemir Onesti", county: "Bacau", total: 2_000_000 },
     { id: 2145066, name: "Directia Generala de Asistenta Sociala si Protectia Copilului Iasi", county: "Iasi", total: 90_000_000 },

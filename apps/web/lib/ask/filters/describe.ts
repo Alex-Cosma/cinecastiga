@@ -124,7 +124,7 @@ const STREAM_PILL: Record<string, string> = { all: "toate achizițiile: directe 
 const STREAM_SCOPE: Record<string, string> = { all: "Toate achizițiile: directe și din proceduri", da: "Achizițiile directe", contracts: "Contractele din proceduri" };
 /** The kinds as the windows name them (kit §4 Tipurile), never "Comune", "Orașe și municipii", "Școli și licee". */
 const KIND_SCOPE: Record<ParsedAuthorityKind, string> = {
-  local_admin: "Primării și consilii județene", primarie: "Primării", comuna: "Primării de comună", oras_municipiu: "Primării de oraș și municipiu", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli",
+  local_admin: "Primării și consilii județene", primarie: "Primării", minister: "Ministere", universitate: "Universități", comuna: "Primării de comună", oras_municipiu: "Primării de oraș și municipiu", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli",
 };
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");

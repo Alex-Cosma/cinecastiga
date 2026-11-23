@@ -5,7 +5,7 @@ import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
 import { joinCpvTerms } from '../ask/cpv-terms';
 import { LARGEST_IN_SOURCES, narrowedSelection, sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
-import type { AuthorityKind, TOWN_HALL_KIND } from '../ask/spec';
+import type { SaidAuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import { periodPhrase } from '../ask/filters/words';
 import { periodBounds, periodWindow } from './shared';
@@ -130,8 +130,8 @@ function chip(p: PlaceMatch): ChipPlace | null {
   return id ? { id, label: p.kind === 'county' ? p.name : p.label, kind: p.kind } : null;
 }
 
-const KIND_LABEL: Record<AuthorityKind | typeof TOWN_HALL_KIND, string> = {
-  primarie: 'primăriile', comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
+const KIND_LABEL: Record<SaidAuthorityKind, string> = {
+  primarie: 'primăriile', minister: 'ministerele', universitate: 'universitățile', comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
 };
 const wholeCounty = (county: string) => (county === 'București' ? 'Tot Bucureștiul' : `Tot județul ${county}`);
 /** The year in Bucharest, for open periods ("după 2020"). */

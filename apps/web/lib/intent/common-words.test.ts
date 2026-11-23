@@ -36,8 +36,8 @@ describe("ordinary words are not names", () => {
       const { i } = await read(q);
       expect([q, i.entityAlternatives, i.supplier, i.authority]).toEqual([q, [], null, null]);
     }
-    // the word the answer did not use is said, not dropped
-    expect((await read("ce minister a dat cele mai multe contracte fara licitatie")).i.leftover).toEqual(["minister"]);
+    // „ce minister” is now the ministries' kind (buyer-kinds.test.ts)
+    expect((await read("ce minister a dat cele mai multe contracte fara licitatie")).i.leftover).toEqual([]);
     // „ce procent” is now read as the share asked (measures.test.ts)
     expect((await read("ce procent din achizitiile primariilor sunt achizitii directe")).i.leftover).toEqual([]);
   });

@@ -161,6 +161,8 @@ export const QUESTION_TYPES: {
 export const KIND_OPTIONS = [
   ["", "instituțiile publice", "instituțiilor publice"],
   ["primarie", "primăriile", "primăriilor"],
+  ["minister", "ministerele", "ministerelor"],
+  ["universitate", "universitățile", "universităților"],
   ["comuna", "primăriile de comună", "primăriilor de comună"],
   ["oras_municipiu", "primăriile de oraș și municipiu", "primăriilor de oraș și municipiu"],
   ["consiliu_judetean", "consiliile județene", "consiliilor județene"],
@@ -300,6 +302,9 @@ export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   local_admin: { the: "primăriile și consiliile județene", bare: "primării și consilii județene" },
   // Every town hall (TOWN_HALL_KIND): the communes' and the towns' together.
   primarie: { the: "primăriile", bare: "primării" },
+  // The name lists (NAME_LIST_KINDS): the ministries with the units that buy under their name, and the universities.
+  minister: { the: "ministerele", bare: "ministere" },
+  universitate: { the: "universitățile", bare: "universități" },
   comuna: { the: "primăriile de comună", bare: "primării de comună" },
   oras_municipiu: { the: "primăriile de oraș și municipiu", bare: "primării de oraș și municipiu" },
   consiliu_judetean: { the: "consiliile județene", bare: "consilii județene" },
@@ -310,6 +315,8 @@ export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
 /** One institution of a kind, after "Care" (kit §4 Tipurile, §5.41). */
 export const KIND_ONE: Record<string, string> = {
   primarie: "primărie",
+  minister: "minister",
+  universitate: "universitate",
   comuna: "primărie de comună",
   oras_municipiu: "primărie de oraș sau municipiu",
   consiliu_judetean: "consiliu județean",

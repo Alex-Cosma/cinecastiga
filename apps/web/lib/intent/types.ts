@@ -1,4 +1,4 @@
-import type { AskSpec, AuthorityKind, TOWN_HALL_KIND } from "../ask/spec";
+import type { AskSpec, SaidAuthorityKind } from "../ask/spec";
 import type { LensMatch } from "./lens-phrases";
 import type { Procedure } from "../ask/purchase";
 
@@ -122,8 +122,9 @@ export interface Interpretation {
   placeAlternatives: PlaceMatch[];
   /** The place name matched several localities and none was chosen. */
   placeAmbiguous: boolean;
-  /** A kind of institution; every town hall („primăriile”) is the communes' and the towns' together. */
-  authorityKind: { kind: AuthorityKind | typeof TOWN_HALL_KIND; matched: Span } | null;
+  /** A kind of institution; every town hall („primăriile”) is the communes' and the towns' together, and the
+   * ministries and the universities are lists by name (lib/ask/spec.ts NAME_LIST_KINDS). */
+  authorityKind: { kind: SaidAuthorityKind; matched: Span } | null;
   authority: EntityMatch | null;
   supplier: EntityMatch | null;
   /** Several firms/institutions carry the typed name and none was chosen. */

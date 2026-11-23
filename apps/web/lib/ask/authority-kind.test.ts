@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { AUTHORITY_KINDS } from "./spec";
 import {
-  authorityKindCond, authorityKindExpression, authorityPeerKind, classifyAuthorities, classifyAuthority, countyCouncilKind, isClinicalInstitute, nameKind, townHallKind,
+  authorityKindCond, authorityKindExpression, authorityPeerKind, classifyAuthorities, classifyAuthority, countyCouncilKind, isClinicalInstitute, nameKind, onNameList, townHallKind,
   type AuthorityKindRow, type LocalityRegistry,
 } from "./authority-kind";
 import { authorityPeerKind as peersKind } from "../peers";
@@ -172,6 +172,28 @@ describe("the institutions of each kind", () => {
     ], REGISTRY);
     expect(kinds.ids).toEqual({ comuna: ["7"], oras_municipiu: [], consiliu_judetean: [], spital: ["12", "40"], scoala: [] });
     expect([...kinds.byId]).toEqual([["7", "comuna"], ["12", "spital"], ["40", "spital"]]);
+    // The name lists stand apart from the five kinds: a ministry has no kind and is on its list.
+    expect(kinds.lists).toEqual({ minister: ["3"], universitate: [] });
+  });
+
+  it("lists the ministries (with the units that buy under their name) and the universities by a strict rule on the name (search probe, 23 November 2026)", () => {
+    const ministries = ["Ministerul Sanatatii", "MINISTERUL FINANȚELOR PUBLICE", "Ministerul Lucrărilor Publice, Dezvoltării si Administrației",
+      "Ministerul Apararii - Unitatea Militara 02550 Bucuresti", "MINISTERUL APARARII-UNITATEA MILITARA  01829", "Ministerul Afacerilor Interne- Directia Generala Anticoruptie"];
+    const notMinistries = ["CENTRUL MEDICAL DE DIAGNOSTIC SI TRATAMENT AMBULATOR DE PE LANGA MINISTERUL JUSTITIEI", "Inspectoratul General al Politiei Romane", "Ministerului Sanatatii SRL"];
+    expect(ministries.map((name) => onNameList("minister", name))).toEqual(ministries.map(() => true));
+    expect(notMinistries.map((name) => onNameList("minister", name))).toEqual(notMinistries.map(() => false));
+    const universities = ["UNIVERSITATEA \"BABES-BOLYAI\" Cluj-Napoca", "Universitatea  Constantin  Brâncusi  din  Târgu  Jiu", "Universitatea de Medicina si Farmacie \"Carol Davila\"",
+      "ACADEMIA DE STUDII ECONOMICE", "Scoala Nationala de Studii Politice si Administrative", "Academia de Politie Alexandru Ioan Cuza Bucuresti", "Academia Nationala de Muzica \"Gheorghe Dima\""];
+    const notUniversities = ["SPITALUL UNIVERSITAR DE URGENTA BUCURESTI", "Biblioteca Centrala Universitara Lucian Blaga", "CLUBUL SPORTIV UNIVERSITATEA CRAIOVA", "ACADEMIA ROMÂNĂ",
+      "SCOALA NATIONALA DE GREFIERI Bucuresti", "GRADINITA CU PROGRAM PRELUNGIT  UNIVERSITATII BABES BOLYAI CLUJ NAPOCA", "Academia de Stiinte Medicale"];
+    expect(universities.map((name) => onNameList("universitate", name))).toEqual(universities.map(() => true));
+    expect(notUniversities.map((name) => onNameList("universitate", name))).toEqual(notUniversities.map(() => false));
+    const kinds = classifyAuthorities([
+      { ...row("Universitatea din Oradea", "Bihor"), id: "9" }, { ...row("Ministerul Apararii - Spitalul Militar de Urgenta", "Cluj"), id: "4" },
+      { ...row("Ministerul Culturii", "Bucuresti"), id: "2" }, { ...row("Ministerul Culturii", "Bucuresti"), id: "2" },
+    ], REGISTRY);
+    expect(kinds.lists).toEqual({ minister: ["2", "4"], universitate: ["9"] });
+    expect(kinds.byId.size).toBe(0);
   });
 
   it("are one SQL condition per kind, on an institution id, and one expression for the peer groups", () => {
@@ -196,7 +218,7 @@ describe("the institutions of each kind", () => {
     ] as FilterSpec[]) {
       const ctx = filterContext(spec);
       expect([spec.block, FILTERS.authorityKind.engine[ctx.form]]).toEqual([spec.block, ctx.profile ? "profile" : "row"]);
-      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, "primarie", ...AUTHORITY_KINDS]]);
+      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, "primarie", "minister", "universitate", ...AUTHORITY_KINDS]]);
     }
   });
 });

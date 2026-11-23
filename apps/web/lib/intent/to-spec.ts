@@ -3,7 +3,7 @@ import { titleName } from "../tidy-name";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
 import { questionTitle, type TitleLabels } from "../ask/filters/title";
-import { IMPLEMENTED_KEYS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
+import { IMPLEMENTED_KEYS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset, type SaidAuthorityKind } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
@@ -30,7 +30,9 @@ export const SHARE_IN_RANKING_NOTE = "Ponderea fiecărui rând e în coloana „
 export const SHARE_UNKNOWN_NOTE = "Ponderea nu se poate calcula încă la această întrebare.";
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
-const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean"] satisfies AuthorityKind[];
+const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean", "minister", "universitate"] satisfies SaidAuthorityKind[];
+/** What the county stands in for when a kind is asked in a locality (the locality's records are its town hall's). */
+const COUNTY_FOR_KIND: Record<string, string> = { scoala: "școli", spital: "spitale", consiliu_judetean: "consiliul județean", minister: "ministere", universitate: "universități" };
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey", "procedure"];
 /**
  * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of
@@ -173,7 +175,7 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
     if (i.authorityKind && NOT_IN_LOCALITY.includes(i.authorityKind.kind)) {
       // A locality covers only the town hall; schools and hospitals are separate institutions.
       f.county = place.county;
-      notes.push(`Localitatea include doar primăria; pentru ${f.authorityKind === "scoala" ? "școli" : f.authorityKind === "spital" ? "spitale" : "consiliul județean"} am folosit județul ${place.county}.`);
+      notes.push(`Localitatea include doar primăria; pentru ${COUNTY_FOR_KIND[f.authorityKind ?? ""] ?? "acest tip de instituții"} am folosit județul ${place.county}.`);
     } else {
       f.uatSiruta = place.siruta;
       f.uatName = place.label;

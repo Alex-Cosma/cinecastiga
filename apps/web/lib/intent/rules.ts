@@ -1,4 +1,4 @@
-import { TOWN_HALL_KIND, type AuthorityKind, type Block } from "../ask/spec";
+import { MINISTRY_KIND, TOWN_HALL_KIND, type AuthorityKind, type Block, type SaidAuthorityKind } from "../ask/spec";
 import { valueWords, type Procedure } from "../ask/purchase";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
@@ -100,7 +100,7 @@ class Cursor {
 // ------------------------------------------------------------------- cues
 
 const YR = "(20[0-3]\\d)";
-const KIND_NOUNS = "spitale|spitalele|scoli|scolile|licee|liceele|comune|comunele|orase|orasele|municipii|municipiile|primarii|primariile|consilii|consiliile";
+const KIND_NOUNS = "spitale|spitalele|scoli|scolile|licee|liceele|comune|comunele|orase|orasele|municipii|municipiile|primarii|primariile|consilii|consiliile|ministere|ministerele|universitati|universitatile";
 
 /** Ordered: the more specific phrase first, so it consumes the shared words. */
 const INTENT_CUES: [IntentKind, RegExp][] = [
@@ -129,19 +129,27 @@ export const countiesNotCompared = (words: string) => `„${words}”: județele
 export const COUNTIES_SINGLE_OFFER_NOTE = "Județele nu se pot compara încă după ponderea licitațiilor cu un singur ofertant; harta arată toate contractele din proceduri.";
 
 /** Who a superlative ranks (rules.holders): institutions, by their noun or their kind's, or firms. */
-const HOLDER_BUYERS = "institutia|institutiile|institutii|autoritatea|autoritatile|autoritati|cumparatorul|cumparatorii|primari(?:i|ile) de (?:comuna|comune|oras|orase|municipiu|municipii)|primaria|primariile|primarii|spitalul|spitalele|spitale|scoala|scolile|scoli|liceul|liceele|licee|comuna|comunele|comune|orasul|orasele|orase|municipiul|municipiile|municipii|consiliul judetean|consiliile judetene|consilii judetene|consiliu judetean";
+/** State-owned companies as buyers („companiile de stat”, „regiile autonome”): no list of them yet (STATE_COMPANIES_NOTE). */
+const STATE_COMPANIES = "compani(?:i|ile|ilor) (?:de stat|nationale|publice|ale statului)|societati(?:le|lor)? (?:de stat|nationale)|firme(?:le|lor)? de stat|intreprinderi(?:le|lor)? (?:publice|de stat)|regii(?:le|lor)?(?: autonome)?";
+const STATE_COMPANY = new RegExp(`^(?:${STATE_COMPANIES})$`);
+export const STATE_COMPANIES_NOTE = "Nu putem restrânge încă la companiile de stat; arătăm toate instituțiile.";
+/** The ministries' list holds the units that buy under a ministry's name (lib/ask/authority-kind.ts NAME_LIST_RULES). */
+export const MINISTRIES_NOTE = "Ministerele includ unitățile care cumpără sub numele lor, de exemplu unitățile militare ale Ministerului Apărării.";
+const HOLDER_BUYERS = STATE_COMPANIES + "|ministerul|ministerele|ministere|universitatea|universitatile|universitati|institutia|institutiile|institutii|autoritatea|autoritatile|autoritati|cumparatorul|cumparatorii|primari(?:i|ile) de (?:comuna|comune|oras|orase|municipiu|municipii)|primaria|primariile|primarii|spitalul|spitalele|spitale|scoala|scolile|scoli|liceul|liceele|licee|comuna|comunele|comune|orasul|orasele|orase|municipiul|municipiile|municipii|consiliul judetean|consiliile judetene|consilii judetene|consiliu judetean";
 const HOLDER_SUPPLIERS = "firma|firmele|firme|compania|companiile|companii|furnizorul|furnizorii|furnizori|societatea|societatile|societati|castigatorul|castigatorii";
 const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator)/;
 /** Nouns the kinds read themselves (rules.kinds), left free for them. */
-const HOLDER_KIND = /^(?:primari\w* de \w+|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
+const HOLDER_KIND = /^(?:primari\w* de \w+|ministere\w*|universitati\w*|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
 /** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
-const HOLDER_SINGULAR_KIND: Record<string, AuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu" };
+const HOLDER_SINGULAR_KIND: Record<string, SaidAuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu", ministerul: "minister", universitatea: "universitate" };
 const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc|ia|iau|a luat|au luat|castiga|primeste|primesc|a primit|au primit) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
-const SUPERLATIVE_KIND: Record<string, AuthorityKind> = { oras: "oras_municipiu", municipiu: "oras_municipiu", comuna: "comuna" };
+const SUPERLATIVE_KIND: Record<string, SaidAuthorityKind> = { oras: "oras_municipiu", municipiu: "oras_municipiu", comuna: "comuna", minister: "minister", universitate: "universitate" };
 const HOLDER_TOP_N = new RegExp(`\\b(?:top|primele|primii|primul) (?:\\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece) (?:de )?(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS})\\b`);
 /** „spitale care cumpără mănuși”: the institutions that buy, as „ce spitale cumpără” asks. */
 const HOLDER_WHO = new RegExp(`\\b(${HOLDER_BUYERS}) care (?:cumpara|achizitioneaza|au cumparat|a cumparat|au achizitionat|a achizitionat|cheltuie|cheltuiesc|au cheltuit|a cheltuit)\\b`);
-const HOLDER_TOP = new RegExp(`\\b(top|topul|clasament|clasamentul)(?: (?:de|cu|al|pe))?(?: (${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}|primariilor|spitalelor|scolilor|institutiilor|firmelor|comunelor|oraselor))?(?! \\d)\\b`);
+/** „ministere top cheltuieli 2025”: the ranking's word after the noun. */
+const HOLDER_BEFORE_TOP = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:top|topul|clasament|clasamentul)\\b`);
+const HOLDER_TOP = new RegExp(`\\b(top|topul|clasament|clasamentul)(?: (?:de|cu|al|pe))?(?: (${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}|primariilor|spitalelor|scolilor|institutiilor|firmelor|comunelor|oraselor|ministerelor|universitatilor))?(?! \\d)\\b`);
 
 // The measure asked (search probe, 23 November 2026: a count, a share, a price per unit were answered with the default).
 /** „câte contracte”, „numărul de achiziții”, „de câte ori”: the number of records of the selection (the modifiers read the words). */
@@ -184,7 +192,10 @@ const GUILT = /\b(?:corupt\w*|coruptie|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mit
 const RETIRED_RAPID = /\b(?:finalizar\w* rapid\w*|finalizat\w* rapid)\b/;
 export const RETIRED_RAPID_NOTE = "„Finalizare rapidă” nu mai este un semnal: nu intră în risc. Arătăm tot grupul.";
 
-const KIND_CUES: [AuthorityKind, RegExp][] = [
+const KIND_CUES: [SaidAuthorityKind, RegExp][] = [
+  // The name lists (search probe, 23 November 2026): the plural is the kind; „Ministerul Sănătății” is a named institution.
+  ["minister", /\b(?:ministere(?:le|lor)?)\b/],
+  ["universitate", /\b(?:universitati(?:le|lor)?)\b/],
   ["consiliu_judetean", /\b(?:consili(?:ul|ului|ile|ilor|i|u) judete(?:an|n)\w*|cj)\b/],
   ["spital", /\b(?:spital(?:e|ele|elor|ul|ului)?)\b/],
   ["scoala", /\b(?:scol(?:i|ile|ilor)|scoala|scolii|licee(?:le|lor)?|liceu(?:l|lui)?|gradinit(?:e|ele|elor|a)|colegii(?:le)?|unitati(?:le)? de invatamant|invatamant\w*)\b/],
@@ -194,9 +205,11 @@ const KIND_CUES: [AuthorityKind, RegExp][] = [
 
 /** Abbreviations that open an institution's name („ISJ Cluj”, „SUUB”); „caș” is cheese, not a health insurance house. */
 const OPENING_ABBREVIATIONS = Object.keys(ABBREVIATIONS).filter((k) => k !== "cas");
-const KIND_PLURAL: Record<AuthorityKind, string> = { consiliu_judetean: "consiliile județene", spital: "spitalele", scoala: "școlile", comuna: "comunele", oras_municipiu: "orașele și municipiile" };
+const KIND_PLURAL: Record<SaidAuthorityKind, string> = { consiliu_judetean: "consiliile județene", spital: "spitalele", scoala: "școlile", comuna: "comunele", oras_municipiu: "orașele și municipiile", primarie: "primăriile", minister: "ministerele", universitate: "universitățile" };
 /** A singular institution noun opens a named authority ("Spitalul Județean…"). */
-const INSTITUTION_NOUN = new RegExp(`\\b(?:consiliul|cj|spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf|${OPENING_ABBREVIATIONS.join("|")})\\b`);
+const INSTITUTION_NOUN = new RegExp(`\\b(?:consiliul|cj|spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|ministerului|universitatii|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf|${OPENING_ABBREVIATIONS.join("|")})\\b`);
+/** A name opened in the genitive („achizițiile Ministerului Sănătății”, „contractele Universității din Craiova”) is looked up by its nominative. */
+const GENITIVE_HEAD: Record<string, string> = { ministerului: "ministerul", universitatii: "universitatea" };
 /** Words of institution names: never a purchase subject, and they keep a following name from being read as a locality. */
 const INSTITUTION_WORD = /^(?:spital\w*|liceu\w*|licee\w*|colegi\w*|scoal\w*|scoli\w*|universitat\w*|directi\w*|inspectorat\w*|agenti\w*|administrati\w*|regia|institut\w*|teatr\w*|muze\w*|bibliotec\w*|club\w*|minister\w*|autoritat\w*|oficiu\w*|tribunal\w*|curte\w*|parchet\w*|primari\w*|consili\w*|judetean\w*|national\w*|gimnazial\w*|tehnolog\w*|teoretic\w*|clinic\w*|municipal\w*|orasenesc|asistenta|sociala|sociale|strada|strazi|strazii|strazile|strazilor|capital\w*|nr|numarul)$/;
 /** Words that open or qualify a singular institution name ("Colegiul Național Dimitrie Cantemir"): a name after them is not a locality. */
@@ -560,6 +573,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (out.authorityKind?.kind === "consiliu_judetean" && /^(cj|consiliul|consiliului)$/.test(fold(out.authorityKind.matched.text.split(/\s+/)[0] ?? ""))
       && !out.place && !out.placeAmbiguous && !out.authority) out.notes.push(COUNTY_COUNCILS_NOTE);
     this.townHallsNote(out, townHalls.said);
+    if (out.authorityKind?.kind === MINISTRY_KIND && !out.authority) out.notes.push(MINISTRIES_NOTE);
     this.settleIntent(cues, out);
     this.leftover(c, out);
     this.score(c, out);
@@ -771,7 +785,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       // The noun of a kind (a hospital, a school) stays free: it is the kind, which the rules read next.
       else { out.dimHint = "authority"; if (!adjective) c.take(from, from + 1, "cue"); }
     };
-    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|consiliu(?= judetean)|oras|municipiu|comuna)\b/)) superlative(h, false);
+    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|consiliu(?= judetean)|oras|municipiu|comuna|minister|universitate)\b/)) superlative(h, false);
     for (const h of c.all(/\b(?:cel|cea)\s+mai\s+(?:riscant\w*|mare|bogat\w*|important\w*)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|client|clientul)\b/)) superlative(h, true);
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
   }
@@ -805,7 +819,18 @@ export class RulesInterpreter implements QuestionInterpreter {
       }
     }
     this.measureAsked(c, out, found);
+    // „companiile de stat”, „regiile autonome” (search probe, 23 November 2026: „companiile” ranked firms): buyers the
+    // data cannot tell apart yet. Said, never a ranking of firms; their words are understood after the holders read them.
+    const stateCompanies = c.all(new RegExp(`\\b(?:${STATE_COMPANIES})\\b`));
+    if (stateCompanies.length) out.notes.push(STATE_COMPANIES_NOTE);
+    // „ce companii de stat cheltuie cei mai mulți bani”: which of them, as „ce instituții” asks
+    for (const h of stateCompanies) if (/^(?:ce|care)$/.test(c.f(h.i - 1)) && c.isFree(h.i - 1, h.i)) {
+      c.take(h.i - 1, h.i, "cue");
+      found.push({ intent: "ranking_authorities", at: h.i - 1 });
+      out.dimHint = out.dimHint ?? "authority";
+    }
     this.holders(c, out, found, townHalls);
+    for (const h of stateCompanies) for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "modifier";
     this.largestRecords(c, out);
     for (const [intent, re] of INTENT_CUES) {
       for (const h of c.all(re)) {
@@ -906,7 +931,7 @@ export class RulesInterpreter implements QuestionInterpreter {
    */
   private holders(c: Cursor, out: Interpretation, found: { intent: IntentKind; at: number }[], townHalls: { said: boolean }) {
     const rank = (i: number, j: number, noun: string, from: number, to: number) => {
-      const buyer = !HOLDER_SUPPLIER.test(noun);
+      const buyer = STATE_COMPANY.test(noun) || !HOLDER_SUPPLIER.test(noun);
       // The phrase's own words are understood; a kind's noun stays free for the kinds („spitalul”, „școlile”).
       for (let k = from; k < to; k++) if (!c.used[k]) c.used[k] = "cue";
       found.push({ intent: buyer ? "ranking_authorities" : "ranking_suppliers", at: i });
@@ -929,6 +954,10 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const h of c.over(HOLDER_TOP_N, ["modifier"])) {
       const j = h.j - h.m[1]!.split(" ").length;
       if (c.isFree(j, h.j)) rank(j, h.j, h.m[1]!, j, j);
+    }
+    for (const h of c.all(HOLDER_BEFORE_TOP)) {
+      const j = h.i + h.m[1]!.split(" ").length;
+      rank(h.i, j, h.m[1]!, j, h.j);
     }
     for (const h of c.all(HOLDER_TOP)) {
       const first = h.i + h.m[1]!.split(" ").length;
@@ -1088,7 +1117,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   private async institutions(c: Cursor, out: Interpretation, comparing: boolean) {
     for (const h of c.all(INSTITUTION_NOUN)) {
       if (out.authority || out.entityAlternatives.length) break;
-      const head = c.f(h.i);
+      const head = GENITIVE_HEAD[c.f(h.i)] ?? c.f(h.i);
       // „MAI” is the interior ministry only typed in capitals: „mai” is the month and „cel mai”
       if (head === "mai" && c.tokens[h.i]!.raw !== "MAI") continue;
       // „ISJ Cluj”, „IPJ Iași”, „SUUB”: an abbreviation is a name of its own (owner probe, 10 November 2026)
