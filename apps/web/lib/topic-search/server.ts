@@ -9,7 +9,7 @@ import {placesAround,type PlaceAround} from './around';
 import {COUNTIES} from '../counties';
 import {buildPlaces} from '../intent/places';
 import {localityInstitutions} from '../locality-institutions';
-import {fold,PAGE_SIZE,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
+import {fold,PAGE_SIZE,periodWindow,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
 export function topicFailure(e:unknown,slow:string){
  if(e instanceof TopicInputError)return Response.json({error:e.message},{status:400});
@@ -70,9 +70,20 @@ function scopeSql(q:DbSql,s:TopicScope,others:Others=null){
  let where=q`true`;
  if(s.place.startsWith('county:'))where=q`${where} and a.county=${s.place.slice(7)}`;
  if(s.place.startsWith('uat:'))where=others?.length?q`${where} and (a.uat_siruta=${Number(s.place.slice(4))} or a.authority_id=any(${others}::bigint[]))`:q`${where} and a.uat_siruta=${Number(s.place.slice(4))}`;
- if(s.from)where=q`${where} and a.year between ${Number(s.from)} and ${Number(s.to)}`;
+ where=q`${where}${periodSql(q,s)}`;
  if(s.type!=='all')where=q`${where} and a.kind=${s.type}`;
  return where;
+}
+/**
+ * The period of a selection: the years, and inside them the months when the address carries them (owner, 23 November
+ * 2026). A record's day is text („2024-12-03”, „2024-12-03 14:20”), so its month is its first seven characters, compared
+ * byte by byte; a record without a day is in no month.
+ */
+function periodSql(q:DbSql,s:TopicScope){
+ const w=s.from?periodWindow(s.from,s.to):null;
+ if(!w)return q``;
+ const years=q` and a.year between ${w.yearFrom} and ${w.yearTo}`;
+ return w.monthFrom===undefined?years:q`${years} and left(a.date,7) collate "C" between ${s.from} and ${s.to}`;
 }
 /** Whole words by their base, alternatives with „sau” (words.ts titleTerms); the phrase mode keeps the order as typed. */
 function titleQuery(q:DbSql,s:TopicScope){
@@ -80,7 +91,10 @@ function titleQuery(q:DbSql,s:TopicScope){
  return s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:terms?q`to_tsquery('simple',${terms})`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
 }
 async function bounded<T>(fn:(q:DbSql)=>Promise<T>):Promise<T>{
- return await db().begin(async tx=>{const q=tx as unknown as DbSql;await q`set local statement_timeout='15000'`;return fn(q);}) as T;
+ return await db().begin(async tx=>{const q=tx as unknown as DbSql;await q`set local statement_timeout='15000'`;
+  // The values are planned as written: after a connection's fifth run of a statement Postgres may keep one plan for any
+  // values, which took 15 s on a common subject and a year or a month („medicamente 2024”; 23 November 2026).
+  await q`set local plan_cache_mode=force_custom_plan`;return fn(q);}) as T;
 }
 async function acquisitions(s:TopicScope,others:Others=null):Promise<TopicResult['acquisitions']>{return bounded(async q=>{
  const ts=titleQuery(q,s);
@@ -237,7 +251,7 @@ async function otherTitles(s:TopicScope):Promise<number>{
  const {others}=await placeOthers({...s,hall:false});
  if(!others?.length)return 0;
  return bounded(async q=>{
-  const where=q`a.authority_id=any(${others}::bigint[]) and a.search @@ ${titleQuery(q,s)}${s.from?q` and a.year between ${Number(s.from)} and ${Number(s.to)}`:q``}${s.type!=='all'?q` and a.kind=${s.type}`:q``}`;
+  const where=q`a.authority_id=any(${others}::bigint[]) and a.search @@ ${titleQuery(q,s)}${periodSql(q,s)}${s.type!=='all'?q` and a.kind=${s.type}`:q``}`;
   const [row]=await q`select count(*)::int n from marts.topic_acquisitions a where ${where}`;
   return Number(row!.n);
  });

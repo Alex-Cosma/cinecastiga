@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { memoryVocabulary } from "./memory-vocabulary";
 import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
-import { resultFor, wholeYears } from "./to-spec";
+import { resultFor } from "./to-spec";
 
 /*
  * Search probe, 23 November 2026 (five readers, 309 questions): a negation read as its opposite, the months and the
@@ -84,14 +84,7 @@ describe("periods", () => {
   it("keeps whole years where the question takes no months, and says so", async () => {
     const change = await read("ce firme au crescut la iluminat in decembrie 2025 fata de 2024");
     expect(change.r.spec?.filters.monthFrom).toBeUndefined();
-    // /cauta searches by whole years: the months leave the reading, with the note
-    const { i } = await read("ce au cumparat spitalele in decembrie 2024");
-    const whole = wholeYears(i);
-    expect(whole.period).toEqual({ yearFrom: 2024, yearTo: 2024, matched: i.period!.matched });
-    expect(whole.notes).toContain("„decembrie 2024”: am folosit tot anul 2024.");
-    expect(resultFor(whole).spec?.filters.monthFrom).toBeUndefined();
-    const months = wholeYears((await read("iluminat in ultimele 3 luni")).i);
-    expect(months.notes).toContain("„ultimele 3 luni”: am folosit tot anul 2026.");
+    expect(change.r.interpretation.notes.join(" ")).toMatch(/„decembrie 2025”: am folosit/);
   });
   it("leaves a month without a year unread, with its note", async () => {
     const { i } = await read("iluminat in decembrie");

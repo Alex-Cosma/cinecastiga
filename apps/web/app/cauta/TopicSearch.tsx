@@ -12,7 +12,7 @@ import {formatInt} from '@/lib/format';
 import {titleName} from '../../lib/tidy-name';
 import {countWords} from '@/lib/ask/answer-text';
 import Lei from '@/components/Lei';
-import {parseTopicScope,cleanTopicParams,topicParams,documentScope,withoutDomain,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
+import {parseTopicScope,cleanTopicParams,topicParams,documentScope,withoutDomain,fold,periodText,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,OWN_PLACE_NOTE,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {markRanges,pageRuns,textSource} from '@/lib/topic-search/passage';
@@ -97,11 +97,12 @@ function PlacePicker({value,selected,onChange,only}:{value:string;selected:Place
  </div>;
 }
 function PeriodPicker({scope,onChange,only}:{scope:TopicScope;onChange:(patch:Partial<TopicScope>)=>void;only?:'complet'|undefined}){
- const [open,setOpen]=useState(false),[from,setFrom]=useState(scope.from),[to,setTo]=useState(scope.to),[error,setError]=useState('');const box=useRef<HTMLDivElement>(null),button=useRef<HTMLButtonElement>(null),id=useId();
- useEffect(()=>{setFrom(scope.from);setTo(scope.to);setError('');},[scope.from,scope.to,open]);
+ const [open,setOpen]=useState(false),[from,setFrom]=useState(scope.from.slice(0,4)),[to,setTo]=useState(scope.to.slice(0,4)),[error,setError]=useState('');const box=useRef<HTMLDivElement>(null),button=useRef<HTMLButtonElement>(null),id=useId();
+ // The picker is by years (owner, 23 November 2026): a month window read from the words opens on its years, and applying replaces it.
+ useEffect(()=>{setFrom(scope.from.slice(0,4));setTo(scope.to.slice(0,4));setError('');},[scope.from,scope.to,open]);
  useEffect(()=>{const outside=(e:PointerEvent)=>{if(!box.current?.contains(e.target as Node))setOpen(false);};document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
  const apply=()=>{try{parseTopicScope(new URLSearchParams({from,to}));if(!from||!to)throw Error('Completează ambii ani sau alege „Toți anii”.');onChange({from,to});setOpen(false);button.current?.focus();}catch(e){setError((e as Error).message);}};
- return <div className="topic-period" data-only={only} ref={box} onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);button.current?.focus();}}}><label htmlFor={id}>Perioada</label><button ref={button} id={id} type="button" aria-label={`Perioada: ${scope.from?scope.from===scope.to?scope.from:`${scope.from}–${scope.to}`:'Toți anii'}`} className="topic-control" aria-expanded={open} aria-controls={`${id}-panel`} onClick={()=>setOpen(!open)}>{scope.from?scope.from===scope.to?scope.from:`${scope.from}–${scope.to}`:'Toți anii'}<DiscoveryIcon name="calendar"/></button>
+ return <div className="topic-period" data-only={only} ref={box} onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);button.current?.focus();}}}><label htmlFor={id}>Perioada</label><button ref={button} id={id} type="button" aria-label={`Perioada: ${scope.from?periodText(scope.from,scope.to):'Toți anii'}`} className="topic-control" aria-expanded={open} aria-controls={`${id}-panel`} onClick={()=>setOpen(!open)}>{scope.from?periodText(scope.from,scope.to):'Toți anii'}<DiscoveryIcon name="calendar"/></button>
  {open&&<div className="topic-period-panel" id={`${id}-panel`}><h3>Alege intervalul</h3><div className="topic-year-pair"><label>Din anul<input type="number" min={1900} max={new Date().getFullYear()+1} value={from} onChange={e=>setFrom(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();apply();}}}/></label><label>Până în anul<input type="number" min={1900} max={new Date().getFullYear()+1} value={to} onChange={e=>setTo(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();apply();}}}/></label></div>{error&&<p role="alert" className="topic-error">{error}</p>}<button type="button" className="topic-primary" onClick={apply}>Aplică intervalul</button><button type="button" className="topic-text-button" onClick={()=>{onChange({from:'',to:''});setOpen(false);button.current?.focus();}}>Toți anii</button></div>}
  </div>;
 }
@@ -236,10 +237,10 @@ export default function TopicSearch(){
  const tab=(id:SearchTab)=>update({tab:id,role:''});
  const placeName=effective.place?(place?.id===effective.place?place.name:''):'';
  const where=effective.place?placeName||'locul ales':'toată țara';
- const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
+ const period=effective.from?periodText(effective.from,effective.to):'toți anii';
  // A question's words searched as written: when nothing matches, one quiet line instead of empty sections.
  const [literalOpen,setLiteralOpen]=useState('');
- const filterSummary=[placeLabel(effective.place&&place?.id===effective.place?place:null),effective.from?(effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`):'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
+ const filterSummary=[placeLabel(effective.place&&place?.id===effective.place?place:null),effective.from?periodText(effective.from,effective.to):'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
  const copy=async()=>{try{await navigator.clipboard.writeText(new URL(`/cauta?${topicParams(scope)}${literal?'&literal=1':''}`,window.location.origin).href);setCopied('');raiseCopied();}catch{setCopied('Nu am putut copia linkul. Copiază adresa din browser.');}};
  /*
   * The answer area for a view: the status line, „Am înțeles”, „Pe scurt” and the result panels. `result` null draws
@@ -254,7 +255,7 @@ export default function TopicSearch(){
   const vPlace=result?.place??(place?.id===effective.place?place:null);
   const placeName=effective.place?(vPlace?.id===effective.place?vPlace.name:''):'';
   const where=effective.place?placeName||'locul ales':'toată țara';
-  const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
+  const period=effective.from?periodText(effective.from,effective.to):'toți anii';
   // The place as its chip in „Am înțeles” names it („Municipiul Sibiu”, „Județul Cluj”), without the county after a locality.
   const chipPlace=t?.fromWords.place??(t?.explicitPlace?.id===effective.place?t.explicitPlace:null);
   const answerWhere=!effective.place?(answerPlace(t?.answer?.total.spec.filters)??where):chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { memoryVocabulary } from "./memory-vocabulary";
 import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
-import { resultFor, wholeYears } from "./to-spec";
+import { resultFor } from "./to-spec";
 import { applyInterpretation } from "../topic-search/interpretation";
 import { parseTopicScope } from "../topic-search/shared";
 
@@ -32,9 +32,9 @@ describe("periods, regions and places people write (owner probe, 10 November 202
     const winter = await read("deszapezire iarna trecuta");
     expect(winter.period).toMatchObject({ yearFrom: 2025, yearTo: 2026 });
     const march = await read("iluminat in martie 2025");
-    // the month is read (23 November 2026); a search by whole years (/cauta) keeps the year and says so
+    // the month is read (23 November 2026), and /cauta searches inside it (owner, the same day)
     expect(march.period).toMatchObject({ yearFrom: 2025, yearTo: 2025, monthFrom: 3, monthTo: 3 });
-    expect(wholeYears(march).notes.join(" ")).toMatch(/tot anul 2025/);
+    expect(applyInterpretation(parseTopicScope(new URLSearchParams("q=iluminat in martie 2025")), resultFor(march)).applied).toMatchObject({ q: "iluminat", from: "2025-03", to: "2025-03" });
     // a month without a year is understood and said, never applied; „cel mai mare” is no May
     const alone = await read("iluminat in martie");
     expect(alone.period).toBeNull();

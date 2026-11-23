@@ -421,7 +421,8 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
     notes.push("Am arătat toți anii, ca să se vadă schimbarea de la an la an.");
   }
   // The months of the period where the question takes them (a change compares whole years; a profile has no period):
-  // elsewhere the whole years, said, never dropped silently (search probe, 23 November 2026).
+  // elsewhere the whole years, said, never dropped silently (search probe, 23 November 2026). /cauta narrows its lists
+  // by the same months (lib/topic-search: owner, 23 November 2026).
   if (lf.monthFrom !== undefined || lf.monthTo !== undefined) {
     const whole = { ...lensed, filters: { ...lf } } as Record<string, unknown>;
     delete (whole.filters as Record<string, unknown>).monthFrom; delete (whole.filters as Record<string, unknown>).monthTo;
@@ -439,16 +440,6 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
 export function wholeYearsNote(period: Pick<PeriodMatch, "yearFrom" | "yearTo" | "monthsSaid">): string {
   const { yearFrom: from, yearTo: to } = period;
   return `„${period.monthsSaid ?? "lunile"}”: am folosit ${from === to ? `tot anul ${from}` : `anii ${from}–${to} întregi`}.`;
-}
-
-/**
- * The reading with whole years, for a search that has no months (/cauta: its titles and „Pe scurt” are by year):
- * the months leave the period and the note says so.
- */
-export function wholeYears(i: Interpretation): Interpretation {
-  if (!i.period || i.period.monthFrom === undefined) return i;
-  const { monthFrom: _from, monthTo: _to, monthsSaid: _said, ...period } = i.period;
-  return { ...i, period, notes: [...i.notes, wholeYearsNote(i.period)] };
 }
 
 /** A relation without its centre (S5): the words asked for one entity's partners or flow, none was named. */

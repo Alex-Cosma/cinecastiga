@@ -7,6 +7,8 @@ import { joinCpvTerms } from '../ask/cpv-terms';
 import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
 import type { AuthorityKind, TOWN_HALL_KIND } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
+import { periodPhrase } from '../ask/filters/words';
+import { periodBounds, periodWindow } from './shared';
 import type { Place, TopicScope } from './shared';
 import type { PlaceAround } from './around';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
@@ -192,8 +194,15 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // „2024 față de 2023” is about 2024: the other year is said in a note, never added to it
   const versus = i.period?.versus;
   const yf = versus ? versus.main : i.period?.yearFrom, yt = versus ? versus.main : i.period?.yearTo;
+  // The months said with the years („în decembrie 2024”, „ultimele 6 luni”) narrow the search as the years do (owner,
+  // 23 November 2026: /cauta filters by month too). A question that keeps whole years (a change from year to year)
+  // says so in its note, and the search keeps them with it.
+  const monthsKept = !result.spec || result.spec.filters.monthFrom !== undefined;
+  const wordsMonths = !versus && monthsKept && i.period?.monthFrom !== undefined && i.period.monthTo !== undefined && yf !== undefined && yt !== undefined
+    ? { yearFrom: yf, yearTo: yt, monthFrom: i.period.monthFrom, monthTo: i.period.monthTo } : null;
   const wordsPeriod = !scope.from && i.period && (yf !== undefined || yt !== undefined)
-    ? { from: String(yf ?? 2000), to: String(yt ?? thisYear(now)), label: yf !== undefined && yt !== undefined ? (yf === yt ? String(yf) : `${yf}–${yt}`) : yf !== undefined ? `din ${yf}` : `până în ${yt}` }
+    ? wordsMonths ? { ...periodBounds(wordsMonths), label: periodPhrase(wordsMonths).value }
+      : { from: String(yf ?? 2000), to: String(yt ?? thisYear(now)), label: yf !== undefined && yt !== undefined ? (yf === yt ? String(yf) : `${yf}–${yt}`) : yf !== undefined ? `din ${yf}` : `până în ${yt}` }
     : null;
   const remove: Span[] = [];
   if (!scope.place && interpretedPlace && interpretedChip) remove.push(interpretedPlace.matched!);
@@ -235,10 +244,12 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     const placeShown = !i.place || Boolean(applied) || Boolean(scope.place);
     const periodShown = !i.period || Boolean(appliedPeriod) || Boolean(scope.from);
     if (!result.spec || !placeShown || !periodShown || (scope.place && !answerPlace)) return null;
-    const years = scope.from ? { yearFrom: Number(scope.from), yearTo: Number(scope.to) } : appliedPeriod ? { yearFrom: yf, yearTo: yt } : null;
+    const years: { yearFrom?: number | undefined; yearTo?: number | undefined; monthFrom?: number; monthTo?: number } | null
+      = scope.from ? periodWindow(scope.from, scope.to) : appliedPeriod ? wordsMonths ?? { yearFrom: yf, yearTo: yt } : null;
     const answerReading: Interpretation = {
       ...i, topN: 3, superlative: false,
-      period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}), ...(versus && !scope.from ? { versus } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
+      period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}),
+        ...(years.monthFrom !== undefined && years.monthTo !== undefined ? { monthFrom: years.monthFrom, monthTo: years.monthTo } : {}), ...(versus && !scope.from ? { versus } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
     };
     const explicit = Boolean(scope.place || scope.from);
     // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
@@ -256,7 +267,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const pageScope = Boolean(scope.place || scope.from) && !i.place && !i.period && !(scope.place && !named);
   if (pageScope && !applies && !out.answer && scope.type === 'all' && isCleanQuestion(result) && i.intent && ANSWERED.includes(i.intent)) {
     const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
-    const scoped: Interpretation = scope.from ? { ...i, period: { yearFrom: Number(scope.from), yearTo: Number(scope.to || scope.from), matched: { text: '', from: 0, to: 0 } } } : i;
+    const scoped: Interpretation = scope.from ? { ...i, period: { ...periodWindow(scope.from, scope.to || scope.from)!, matched: { text: '', from: 0, to: 0 } } } : i;
     out.answer = shortAnswer({ ...scoped, topN: 3, superlative: false, measure: null }, named ? { place: named } : {}, labels, askHref, then);
   }
   const scopedAnswer = Boolean(pageScope && out.answer);
@@ -360,7 +371,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (!out.answer && !out.question && !applies && !loose && !hasEntity && !i.subjects.length && !i.leftover.length && !i.placeAmbiguous
     && interpretedPlace && interpretedChip && (!scope.place || scope.place === interpretedChip.id) && !(scope.from && i.period) && scope.type === 'all'
     && i.intentSource !== 'cue' && !placeUnknown && placeAlone(i.text, interpretedPlace.matched!, i.period?.matched)) {
-    const reading: Interpretation = scope.from ? { ...i, period: { yearFrom: Number(scope.from), yearTo: Number(scope.to), matched: { text: '', from: 0, to: 0 } } } : i;
+    const reading: Interpretation = scope.from ? { ...i, period: { ...periodWindow(scope.from, scope.to)!, matched: { text: '', from: 0, to: 0 } } } : i;
     const answer = shortAnswer({ ...reading, topN: 3, superlative: false, measure: null }, {}, {}, askHref);
     if (answer) {
       out.answer = answer;

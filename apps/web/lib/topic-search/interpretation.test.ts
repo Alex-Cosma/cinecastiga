@@ -40,6 +40,45 @@ describe('interpretation → /cauta selection', () => {
     expect(largest.answer?.top?.kind).toBe('records');
   });
 
+  it('narrows the search and «Pe scurt» by the months the words say (owner, 23 November 2026)', async () => {
+    const one = await read('iluminat in decembrie 2024');
+    const t = applyInterpretation(one.scope, one.result);
+    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2024-12', to: '2024-12', names: 'exact' });
+    expect(t.fromWords.period).toEqual({ from: '2024-12', to: '2024-12', label: 'dec. 2024' });
+    expect(t.notes.join(' ')).not.toMatch(/tot anul/);
+    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', yearFrom: 2024, yearTo: 2024, monthFrom: 12, monthTo: 12 });
+    expect(t.answer?.total.sentence).toContain('în dec. 2024');
+    // several months, and months counted back from today (22 October 2026: the current month and the two before it)
+    const range = await read('iluminat ianuarie-martie 2024');
+    expect(applyInterpretation(range.scope, range.result).applied).toMatchObject({ from: '2024-01', to: '2024-03' });
+    const last = await read('iluminat in ultimele 3 luni');
+    expect(applyInterpretation(last.scope, last.result, null, NOW).fromWords.period).toEqual({ from: '2026-08', to: '2026-10', label: 'aug.–oct. 2026' });
+    // a question keeps them too
+    const asked = await read('cat s-a cheltuit pe iluminat in decembrie 2024');
+    const q = applyInterpretation(asked.scope, asked.result);
+    expect(q.question?.sentence).toContain('în dec. 2024');
+    expect(q.applied).toMatchObject({ q: 'iluminat', from: '2024-12', to: '2024-12' });
+    expect(q.answer?.total.spec.filters).toMatchObject({ monthFrom: 12, monthTo: 12 });
+    // a change from year to year compares whole years: its note says so, and the search keeps the year with it
+    const change = await read('ce firme au crescut la iluminat in decembrie 2025 fata de 2024');
+    const c = applyInterpretation(change.scope, change.result);
+    expect(c.notes).toContain('„decembrie 2025”: am folosit tot anul 2025.');
+    expect(c.applied).toMatchObject({ from: '2025', to: '2025' });
+    expect(c.answer?.total.spec.filters.monthFrom).toBeUndefined();
+  });
+
+  it('answers within a month window of the address, and a year chosen on the page replaces the words\' months', async () => {
+    const shared = await read('iluminat', '&from=2024-12&to=2024-12');
+    const t = applyInterpretation(shared.scope, shared.result);
+    expect(t.applied).toMatchObject({ q: 'iluminat', from: '2024-12', to: '2024-12' });
+    expect(t.answer?.total.spec.filters).toMatchObject({ yearFrom: 2024, yearTo: 2024, monthFrom: 12, monthTo: 12 });
+    const chosen = await read('iluminat in decembrie 2024', '&from=2023&to=2023');
+    const c = applyInterpretation(chosen.scope, chosen.result);
+    expect(c.applied).toMatchObject({ from: '2023', to: '2023' });
+    expect(c.answer?.total.spec.filters.monthFrom).toBeUndefined();
+    expect(c.answer?.total.spec.filters).toMatchObject({ yearFrom: 2023, yearTo: 2023 });
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

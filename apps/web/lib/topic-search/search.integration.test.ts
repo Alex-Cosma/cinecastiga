@@ -9,8 +9,8 @@ suite('public subject search against PostgreSQL',()=>{
  let q:ReturnType<typeof createDb>['sql'];let search:typeof import('./server')['searchTopics'];let documents:typeof import('./server')['searchTopicDocuments'];
  beforeAll(async()=>{
   process.env.DATABASE_URL=url!;q=createDb(url).sql;
-  await q.unsafe(`create extension if not exists unaccent;create schema core;create schema marts;create schema app;create schema reference;create schema raw;
-  create table core.entities(id bigint primary key,name_display text,name_normalized text,cui_canonical text,county text);
+  await q.unsafe(`create extension if not exists unaccent;create extension if not exists pg_trgm;create schema core;create schema marts;create schema app;create schema reference;create schema raw;
+  create table core.entities(id bigint primary key,name_display text,name_normalized text,cui_canonical text,county text,cui_valid boolean default true);
   create table marts.entity_profile(entity_id bigint,role text,total_ron_full numeric);
   create table reference.uat(siruta int,name text,county text,population int,tip text);
   create table reference.authority_uat(entity_id bigint,uat_siruta int);
@@ -22,7 +22,7 @@ suite('public subject search against PostgreSQL',()=>{
   create table marts.contract_transactions(contract_id bigint,authority_id bigint,supplier_id bigint,county text,finalization_date text,contract_value_full numeric);
   create table core.notices(c_notice_id bigint,sys_notice_type_id int,authority_entity_id bigint,raw_id bigint);
   create table app.document_notices(key text,notice_id text,notice_type int,notice_no text,title text,url text);
-  create table app.procurement_documents(id uuid,filename text,notice_key text,processed_at timestamptz,pdf_hash text);
+  create table app.procurement_documents(id uuid,filename text,notice_key text,processed_at timestamptz,pdf_hash text,privacy_hold text);
   create table app.document_pages(document_id uuid,page int,text text not null,method text,primary key(document_id,page));
   `);
   await q.unsafe((await readFile('../../packages/db/migrations/0039_ancient_gressill.sql','utf8')).replaceAll('--> statement-breakpoint',''));
@@ -121,6 +121,17 @@ suite('public subject search against PostgreSQL',()=>{
  });
  it('matches accentless words and distinguishes ordered phrases',async()=>{const r=await run('q=locuri+de+joaca&match=phrase');expect(r.acquisitions.total).toBe(1);expect(r.acquisitions.hits[0]?.value).toBe('123456789012345.6789');});
  it('includes both year boundaries and applies all filters to documents',async()=>{expect((await run('q=locuri&from=2022&to=2024')).acquisitions.total).toBe(2);expect((await run('q=locuri&from=2022&to=2022')).acquisitions.total).toBe(1);const d=await docs('q=locuri&from=2022&to=2022');expect(d.documents.total).toBe(0);expect(d.coverage.known).toBe(0);expect((await docs('q=locuri&from=2024&to=2024')).documents.total).toBe(1);});
+ it('narrows the titles, the names’ activity and the documents to the months of the address (owner, 23 November 2026)',async()=>{
+  expect((await run('q=locuri&from=2022-12&to=2022-12')).acquisitions.total).toBe(1);
+  expect((await run('q=locuri&from=2024-01&to=2024-01')).acquisitions.total).toBe(1);
+  expect((await run('q=locuri&from=2022-12&to=2024-01')).acquisitions.total).toBe(2);
+  expect((await run('q=locuri&from=2023-01&to=2023-12')).acquisitions.total).toBe(0);
+  expect((await run('q=locuri&from=2024-02&to=2024-12')).acquisitions.total).toBe(0);
+  expect((await run('q=firma&from=2022-12&to=2022-12')).entities.hits.map(x=>x.id)).toEqual(['2']);
+  expect((await run('q=firma&from=2022-01&to=2022-11')).entities.total).toBe(0);
+  expect((await docs('q=locuri&from=2024-12&to=2024-12')).documents.total).toBe(1);
+  expect((await docs('q=locuri&from=2024-01&to=2024-11')).documents.total).toBe(0);
+ });
  it('uses a specific UAT instead of all authorities in the county',async()=>{expect((await run('q=locuri&place=county:buzau')).acquisitions.total).toBe(2);expect((await run('q=locuri&place=uat:44818')).acquisitions.total).toBe(1);expect((await docs('q=locuri&place=uat:999')).documents.total).toBe(0);expect((await docs('q=locuri&place=uat:44818')).documents.total).toBe(1);await expect(docs('q=locuri&place=uat:1234567')).rejects.toThrow('catalog');});
  it('applies buyer location and period to suppliers’ activity',async()=>{expect((await run('q=firma&place=uat:44818&from=2022&to=2022')).entities.hits.map(x=>x.id)).toEqual(['2']);});
  it('honors phrase order for entity names as well',async()=>{expect((await run('q=buzau+municipiul')).entities.total).toBe(1);expect((await run('q=buzau+municipiul&match=phrase')).entities.total).toBe(0);});

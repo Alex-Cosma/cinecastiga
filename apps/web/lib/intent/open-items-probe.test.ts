@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { memoryVocabulary, type MemoryFixture } from "./memory-vocabulary";
 import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
-import { resultFor, wholeYears } from "./to-spec";
+import { resultFor } from "./to-spec";
 import { applyInterpretation } from "../topic-search/interpretation";
 import { parseTopicScope } from "../topic-search/shared";
 
@@ -148,10 +148,10 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     expect(app.answer).toBeNull();
     expect(app.subject).toBeNull();
     expect(app.notes.join(" ")).toMatch(/CPV nu are o clasă pentru aplicațiile mobile/);
-    // „luna trecută” is a month, never dropped silently: read (23 November 2026), and said where the search is by whole years
+    // „luna trecută” is a month, never dropped silently: read (23 November 2026), and /cauta searches inside it
     const lastMonth = await read("asfalt buzau luna trecuta");
     expect(lastMonth.period?.monthFrom).toBe(lastMonth.period?.monthTo);
-    expect(wholeYears(lastMonth).notes.join(" ")).toMatch(/„luna trecuta”: am folosit tot anul/);
+    expect((await page("asfalt buzau luna trecuta")).applied.from).toMatch(/^\d{4}-\d{2}$/);
     // „cheltuielilor” asks for the value
     expect((await read("evolutia cheltuielilor cu iluminatul")).leftover).toEqual([]);
     // „Universitatea din București” is its name, not a university in a place

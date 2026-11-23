@@ -13,7 +13,7 @@ import {countWords} from '@/lib/ask/answer-text';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {answerShape,fold,topicParams,withoutDomain,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {answerShape,fold,periodText,topicParams,withoutDomain,type Place,type TopicScope} from '@/lib/topic-search/shared';
 import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
 import {markParts,placeSentence,placeTexts} from '@/lib/topic-search/sentence';
 import {TownHallPicker} from '../TownHallTile';
@@ -22,7 +22,7 @@ import {scrollMotion} from '../../components/motion/scroll';
 const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 /** A /cauta link for the same selection with some parts changed. */
 export const searchHref=(scope:TopicScope,patch:Partial<TopicScope>,literal=false)=>{const p=topicParams({...scope,tab:'all',page:1,role:'',...patch});if(literal)p.set('literal','1');return `/cauta?${p}`;};
-const periodLabel=(from:string,to:string)=>from===to?from:`${from}–${to}`;
+const periodLabel=periodText;
 
 /** The words name „my” town hall or locality: which one is not known (lib/intent notes). */
 export const OWN_PLACE_NOTE=/nu știm ce localitate/;

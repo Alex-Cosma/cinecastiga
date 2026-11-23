@@ -1,3 +1,4 @@
+import { periodPhrase } from '../ask/filters/words';
 import { parseRoleParam } from '../role-param';
 export type SearchTab='all'|'acquisitions'|'documents'|'entities';
 export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier';/** The acquisitions' order: the newest first unless asked („cel mai mare contract” or the panel's switch). */order?:'value'|'date';/** The words are a subject: the names panel lists only names that carry them, never the closest names. */names?:'exact';/** A locality: only its town hall („Doar primăria”), not all of its institutions (owner, 13 November 2026). */hall?:boolean;/** One CPV domain of the subject („34993000-4”), kept alone in „Pe scurt” (owner, 16 November 2026); a new search drops it. */domain?:string};
@@ -13,13 +14,36 @@ export type TopicLocality={townHall:number;groups:{kind:'primarie'|'institutie'|
 /** Prepared document pages for the same selection, from /api/topic-search/documents. */
 export type TopicDocumentsResult={scope:TopicScope;documents:{total:number;hits:DocumentHit[]};coverage:{known:number;ready:number;pages:number}};
 export const PAGE_SIZE=10;
+/**
+ * A bound of the period in the address: a year („2024”) or a month of one („2024-12”). Owner, 23 November 2026: /cauta
+ * filters by month too; only the words („în decembrie 2024”, „ultimele 6 luni”) and such an address set months, the
+ * page's own period picker stays by years. Both bounds are years or both are months.
+ */
+const PERIOD_BOUND=/^(\d{4})(?:-(0[1-9]|1[0-2]))?$/;
+export type PeriodWindow={yearFrom:number;yearTo:number;monthFrom?:number;monthTo?:number};
+/** The address's period as years and months (the first month of yearFrom, the last of yearTo), or null when unread. */
+export function periodWindow(from:string,to:string):PeriodWindow|null{
+ const a=PERIOD_BOUND.exec(from),b=PERIOD_BOUND.exec(to);
+ if(!a||!b||Boolean(a[2])!==Boolean(b[2]))return null;
+ return {yearFrom:Number(a[1]),yearTo:Number(b[1]),...(a[2]&&b[2]?{monthFrom:Number(a[2]),monthTo:Number(b[2])}:{})};
+}
+/** The same window as the address writes it. */
+export function periodBounds(w:PeriodWindow):{from:string;to:string}{
+ const bound=(y:number,m?:number)=>m===undefined?String(y):`${y}-${String(m).padStart(2,'0')}`;
+ return {from:bound(w.yearFrom,w.monthFrom),to:bound(w.yearTo,w.monthTo)};
+}
+/** The period as the page says it: „2024”, „2023–2024”, „dec. 2024”, „iun.–nov. 2026” (the sentence's own words). */
+export function periodText(from:string,to:string):string{
+ const w=periodWindow(from,to);
+ return w?periodPhrase(w).value:from===to?from:`${from}–${to}`;
+}
 export function parseTopicScope(p:URLSearchParams):TopicScope {
  const q=(p.get('q')??'').trim().replace(/\s+/g,' ');
  if(q.length>150)throw Error('Căutarea poate avea cel mult 150 de caractere.');
  if(q&&q.length<2)throw Error('Scrie cel puțin două caractere.');
  const from=p.get('from')??'',to=p.get('to')??'';
- const year=(v:string)=>/^\d{4}$/.test(v)&&Number(v)>=1900&&Number(v)<=new Date().getFullYear()+1;
- if((from||to)&&(!year(from)||!year(to)||from>to))throw Error('Alege un interval valid: anul de început nu poate depăși anul de sfârșit.');
+ const year=(v:string)=>PERIOD_BOUND.test(v)&&Number(v.slice(0,4))>=1900&&Number(v.slice(0,4))<=new Date().getFullYear()+1;
+ if((from||to)&&(!year(from)||!year(to)||from.length!==to.length||from>to))throw Error('Alege un interval valid: anul de început nu poate depăși anul de sfârșit.');
  const place=p.get('place')??'';
  if(place&&!/^(county:[a-z -]{2,40}|uat:\d{1,7})$/.test(place))throw Error('Alege o localitate sau un județ din sugestii.');
  const type=p.get('type')??'all',match=p.get('match')??'words',tab=p.get('tab')??'all';

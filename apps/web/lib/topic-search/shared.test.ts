@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {parseTopicScope,topicParams,documentScope,answerShape,cleanTopicParams} from './shared';
+import {parseTopicScope,topicParams,documentScope,answerShape,cleanTopicParams,periodBounds,periodText,periodWindow} from './shared';
 describe('subject search URLs',()=>{
  it('defaults to all years and all sources',()=>{expect(parseTopicScope(new URLSearchParams('q=iluminat'))).toMatchObject({from:'',to:'',type:'all',place:'',page:1});});
  it('round-trips a shared selection, including a county with accents folded',()=>{const s=parseTopicScope(new URLSearchParams('q=locuri+de+joacă&place=county:buzau&from=2022&to=2024&type=contracts&match=phrase&tab=documents&page=2'));expect(parseTopicScope(topicParams(s))).toEqual(s);});
@@ -12,6 +12,25 @@ describe('subject search URLs',()=>{
   expect(key('q=iluminat&tab=entities&rol=furnizor')).toBe(key('q=iluminat'));
   expect(key('q=iluminat&tab=documents&page=2')).toBe('q=iluminat&tab=documents&page=2');
   expect(key('q=iluminat&match=phrase&type=contracts')).not.toBe(key('q=iluminat'));
+ });
+ it('reads a month window in the address, both bounds as months (owner, 23 November 2026)',()=>{
+  const s=parseTopicScope(new URLSearchParams('q=iluminat&from=2024-12&to=2024-12'));
+  expect(s).toMatchObject({from:'2024-12',to:'2024-12'});
+  expect(topicParams(s).toString()).toBe('q=iluminat&from=2024-12&to=2024-12');
+  expect(parseTopicScope(new URLSearchParams('q=iluminat&from=2025-12&to=2026-02'))).toMatchObject({from:'2025-12',to:'2026-02'});
+  for(const p of ['from=2024-12&to=2024','from=2024&to=2024-12','from=2024-13&to=2024-13','from=2024-00&to=2024-01','from=2024-1&to=2024-2','from=2024-12&to=2024-11','from=2024-12-01&to=2024-12-31','from=1800-01&to=1800-02'])
+   expect(()=>parseTopicScope(new URLSearchParams(p))).toThrow();
+  // an unreadable month window leaves the address, the words stay
+  expect(cleanTopicParams(new URLSearchParams('q=iluminat&from=2024-13&to=2024-13'))?.toString()).toBe('q=iluminat');
+ });
+ it('gives the period as years and months, and says it as the sentence does',()=>{
+  expect(periodWindow('2024','2025')).toEqual({yearFrom:2024,yearTo:2025});
+  expect(periodWindow('2026-06','2026-11')).toEqual({yearFrom:2026,yearTo:2026,monthFrom:6,monthTo:11});
+  expect(periodWindow('2024-12','2024')).toBeNull();
+  expect(periodBounds({yearFrom:2025,yearTo:2026,monthFrom:12,monthTo:2})).toEqual({from:'2025-12',to:'2026-02'});
+  expect(periodBounds({yearFrom:2024,yearTo:2024})).toEqual({from:'2024',to:'2024'});
+  expect([periodText('2024','2024'),periodText('2023','2024'),periodText('2024-12','2024-12'),periodText('2026-06','2026-11'),periodText('2025-12','2026-02')])
+   .toEqual(['2024','2023–2024','dec. 2024','iun.–nov. 2026','dec. 2025 – feb. 2026']);
  });
  it('allows a single year, and punctuation remains data',()=>{expect(parseTopicScope(new URLSearchParams('from=2022&to=2022&q=%25%27')).q).toBe("%'");});
 });
