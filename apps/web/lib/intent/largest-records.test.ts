@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { memoryVocabulary } from "./memory-vocabulary";
 import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
-import { LARGEST_RECORDS } from "./text";
+import { questionTitle } from "../ask/filters/title";
+import { LARGEST_RECORDS, largestSentence } from "./text";
 import { LARGEST_IN_SOURCES, resultFor } from "./to-spec";
 
 /*
@@ -71,5 +72,16 @@ describe("the largest records of a selection", () => {
     expect([unread.interpretation.intent, unread.interpretation.leftover, unread.sources]).toEqual(["total", ["fabricile"], "largest"]);
     expect(LARGEST_RECORDS.test("cel mai mare spital din cluj")).toBe(false);
     expect(LARGEST_RECORDS.test("cele mai multe contracte")).toBe(false);
+  });
+  it("gives the answer's title and its drawer's the question asked, from the title of the total (owner, 23 November 2026)", async () => {
+    // Întreabă (AskPanel heading) passes the total's title through largestSentence: it must begin as the reading does
+    for (const q of ["cel mai mare contract de iluminat din 2024", "cea mai mare achizitie directa de iluminat din 2024", "cele mai mari contracte ale primariei buzau"]) {
+      const r = await read(q);
+      const title = questionTitle(r.spec!);
+      expect([q, /^Cât valorează (achizițiile|contractele)/.test(title), largestSentence(title).startsWith("Care sunt cele mai mari ")]).toEqual([q, true, true]);
+      expect(largestSentence(title).replace(/^Care sunt cele mai mari \S+/, "")).toBe(title.replace(/^Cât valorează \S+/, ""));
+    }
+    // any other title is left as it is
+    expect(largestSentence("Ce cumpără primăria Buzău, în toți anii?")).toBe("Ce cumpără primăria Buzău, în toți anii?");
   });
 });

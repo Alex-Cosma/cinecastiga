@@ -26,6 +26,7 @@ import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords, localityName } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
+import { largestSentence } from "@/lib/intent/text";
 import { copyShortLink, prepareShortLink, shortLink } from "@/lib/short-link-client";
 import { namedThread, rememberThreadNames } from "./thread-names";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
@@ -253,6 +254,10 @@ export default function AskPanel({
   const [asked, setAsked] = useState<AskSpec | null>(linked?.run ? linked.link : null);
   const [dirty, setDirty] = useState(false);
   const [resp, setResp] = useState<AskResponse | null>(null);
+  // The largest records of the selection were asked („cel mai mare contract de…”): the answer is the total, opened on
+  // its sources list by value, and its title and the drawer's say the question asked, as „Am înțeles” does (owner,
+  // 23 November 2026). Any other run of the answer drops it.
+  const [largestAsked, setLargestAsked] = useState(false);
   const [error, setError] = useState<string | null>(link?.kind === "error" ? link.error : null);
   /** Technical text behind a failed answer, shown only under "Detalii tehnice". */
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
@@ -434,6 +439,8 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
+        const largest = drill && opts.sort === "value" && answer.spec.block === "stat";
+        if (!("tablePage" in body)) setLargestAsked(largest);
         // An answer reloaded for a 409 is not reloaded again for one (reloadOutdated); a new page of it stays that answer.
         if (!("tablePage" in body)) reloadedFor409.current = Boolean(opts.reloaded);
         // The executed identities, plus an explicit data stream the link asked for.
@@ -493,7 +500,7 @@ export default function AskPanel({
             ...(savedFilters ? { filters: savedFilters } : {}),
             title:
               answer.question ||
-              questionTitle(answer.spec, answerLabels(answer)),
+              (largest ? largestSentence(questionTitle(answer.spec, answerLabels(answer))) : questionTitle(answer.spec, answerLabels(answer))),
             ...(opts.drillLabel ? { scopeLabel: typeof opts.drillLabel === "function" ? opts.drillLabel(answer) : opts.drillLabel } : {}),
             // A trend's sources list the months this answer counted (plan §2.8).
             ...(answer.executed ? { months: answer.executed.months } : {}),
@@ -754,6 +761,9 @@ export default function AskPanel({
     (titled
       ? questionTitle(titled, { cpvName, ...answerLabels(resp) })
       : "Răspunsul tău");
+  // What the answer's heading and its sources drawer say: the largest records' question where that was asked. The
+  // saved question, the export and the empty hints keep the title of what the spec computes (the total).
+  const heading = largestAsked && titled?.block === "stat" && !resp?.question ? largestSentence(title) : title;
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
   const shown = resp && applied ? shownWords(resp, applied) : { pills: [] as string[] };
@@ -931,7 +941,7 @@ export default function AskPanel({
           spec: selected,
           ...(effectiveScope ? { scope: effectiveScope } : {}),
           ...(opts.filters ? { filters: opts.filters } : {}),
-          title,
+          title: heading,
           ...(label ? { scopeLabel: label } : {}),
           ...(months ? { months } : {}),
           ...(opts.sort ? { sort: opts.sort } : {}),
@@ -939,7 +949,7 @@ export default function AskPanel({
         });
       }
     },
-    [applied, title, resp?.executed?.months, answered],
+    [applied, heading, resp?.executed?.months, answered],
   );
   /**
    * A trend's sources answered 409 (plan §2.8): the data moved the months its
@@ -1368,7 +1378,7 @@ export default function AskPanel({
           )}
         </div>
       )}
-      {resp?.ok && data && applied && <QuestionBand spec={applied} cpvName={cpvName} title={title} onChange={() => setBuilderCollapsed(false)} />}
+      {resp?.ok && data && applied && <QuestionBand spec={applied} cpvName={cpvName} title={heading} onChange={() => setBuilderCollapsed(false)} />}
       {resp?.ok && data && applied && (
         <AnswerEvidence.Provider value={{ open: openEvidence, exclude: excludeRow }}>
           <section
@@ -1383,7 +1393,7 @@ export default function AskPanel({
               <div>
                 {/* Z2-03 B: beside its builder the title is the editable sentence, drawn here by the builder (LiveBuilder). */}
                 {live ? <div className="cq-live-host" ref={setLiveHost} /> : <>
-                  <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
+                  <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(heading, titleEntities(applied, resp.townHall))}</h2>
                   {line && <IntentLine line={line} onAdopt={adopt} />}
                   <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} caveats={resp.caveats} />
                 </>}
