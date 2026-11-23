@@ -110,10 +110,10 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["flow", /\bsi de la cine\b/],
   // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
   ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
-  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mita|aranjat\w*|trucat\w*|vinovat\w*|condamnat\w*|ilegal\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
+  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mita|aranjat\w*|trucat\w*|vinovat\w*|condamnat\w*|ilegal\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fraction\w*|fragmenta[tr]\w*|(?:impartit\w*|spart\w*)(?: (?:achiziti\w*|contract\w*|cumparar\w*|lucrar\w*))? (?:ca sa|pentru a) (?:evit\w*|ocol\w*) (?:o )?licitati\w*|spart\w* in (?:mai multe )?(?:bucati|achizitii|contracte)|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste (?:plafon|prag)\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
   ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|an dupa an|(?:in|pe|pentru|din) fiecare an|de la un an la altul|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
-  ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
-  ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor)|clienti(?:i|lor)?)\\b`)],
+  ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?|operator(?:i|ii|ilor|ul)? economic(?:i|ilor)?|ofertant(?:i|ii|ilor))\b/],
+  ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|entitati(?:le|lor)?(?= contractante)|cumparator(?:i|ii|ilor)|clienti(?:i|lor)?)\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
   ["total", /\b(?:market size|(?:marimea|dimensiunea|valoarea) pietei|cat de mare (?:e|este) piata|cat inseamna|cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul|a|e)?|in total|sum(?:a|ei|ele)|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
@@ -136,8 +136,8 @@ export const STATE_COMPANIES_NOTE = "Nu putem restrânge încă la companiile de
 /** The ministries' list holds the units that buy under a ministry's name (lib/ask/authority-kind.ts NAME_LIST_RULES). */
 export const MINISTRIES_NOTE = "Ministerele includ unitățile care cumpără sub numele lor, de exemplu unitățile militare ale Ministerului Apărării.";
 const HOLDER_BUYERS = STATE_COMPANIES + "|ministerul|ministerele|ministere|universitatea|universitatile|universitati|institutia|institutiile|institutii|autoritatea|autoritatile|autoritati|cumparatorul|cumparatorii|primari(?:i|ile) de (?:comuna|comune|oras|orase|municipiu|municipii)|primaria|primariile|primarii|spitalul|spitalele|spitale|scoala|scolile|scoli|liceul|liceele|licee|comuna|comunele|comune|orasul|orasele|orase|municipiul|municipiile|municipii|consiliul judetean|consiliile judetene|consilii judetene|consiliu judetean";
-const HOLDER_SUPPLIERS = "firma|firmele|firme|compania|companiile|companii|furnizorul|furnizorii|furnizori|societatea|societatile|societati|castigatorul|castigatorii";
-const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator)/;
+const HOLDER_SUPPLIERS = "firma|firmele|firme|compania|companiile|companii|furnizorul|furnizorii|furnizori|societatea|societatile|societati|castigatorul|castigatorii|operatorii economici|operatori economici|ofertantii|ofertanti";
+const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator|operator|ofertant)/;
 /** Nouns the kinds read themselves (rules.kinds), left free for them. */
 const HOLDER_KIND = /^(?:primari\w* de \w+|ministere\w*|universitati\w*|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
 /** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
@@ -185,6 +185,23 @@ const OUTSIDE_DATA: [RegExp, string][] = [
   [/\b(?:s a terminat|s au terminat|a fost terminat\w*|au fost terminat\w*|(?:e|este|sunt) gata|cand (?:e|este|va fi|vor fi) gata|lucrar\w* (?:terminat\w*|finalizat\w*|neterminat\w*|nefinalizat\w*)|in ce stadiu|stadiul(?: lucrar\w*)?|intarzier\w*|intarziat\w*|receptionat\w*|proasta calitate|prost facut\w*|calitatea(?: lucrar\w*)?)\b/, EXECUTION_NOTE],
   [/\b(?:(?:licitati\w* |proceduri\w* |anunturi\w* )?(?:sunt )?(?:deschise|active|in curs|in desfasurare|in derulare) (?:acum|azi|astazi|in prezent|momentan)|la care (?:pot|putem|se poate) (?:participa|depune)(?: ofert\w*)?|unde pot (?:licita|participa|depune ofert\w*)|pot depune ofert\w*|licitatii(?:le)? viitoare|urmatoarele licitatii|licitatii(?:le)? in curs)\b/, OPEN_TENDERS_NOTE],
 ];
+// Words of the trade the selection cannot carry (search probe, 23 November 2026: a procurement officer's terms were
+// dropped or read as another question). Understood, never a subject, a name or a leftover; one note each.
+export const FRAMEWORK_NOTE = "Nu putem alege doar acordurile-cadru sau doar contractele subsecvente. Plafonul unui acord-cadru nu intră în sume; contractele subsecvente, când sunt în date, intră.";
+export const ESTIMATE_NOTE = "Valoarea estimată o avem doar la achizițiile directe și nu o comparăm încă cu cea atribuită; răspunsul folosește valoarea atribuită.";
+export const THRESHOLD_NOTE = "Nu putem filtra după pragul legal: diferă pe ani și pe tipuri de achiziții. Scrie o sumă, de exemplu „peste 100.000 lei”.";
+export const SPLIT_NOTE = "Fracționarea e un semnal de verificat, nu o dovadă: mai multe achiziții directe la aceeași firmă, fiecare sub plafon, toate la un loc peste el.";
+/** The notes of the trade's terms: said wherever the words lead, on /cauta too (lib/topic-search). */
+export const JARGON_NOTES: readonly string[] = [FRAMEWORK_NOTE, ESTIMATE_NOTE, THRESHOLD_NOTE, SPLIT_NOTE];
+const JARGON_EARLY: [RegExp, string][] = [
+  [/\b(?:acord(?:ul|uri|urile|urilor|ului)? cadru|contract(?:e|ul|ele|elor|ului)? subsecvent(?:e|ele|elor)?|subsecvent(?:e|ele|elor|a)?)\b/, FRAMEWORK_NOTE],
+  // „valoarea estimată vs valoarea atribuită”: the pair is the phrase, so its „vs” is no comparison of two institutions
+  [/\b(?:valo(?:are|area|ri|rile|rii) estimat\w*(?: (?:vs|versus|fata de|comparat\w* cu|in comparatie cu|si|sau) (?:valo(?:are|area|ri|rile) )?(?:atribuit\w*|contractat\w*|final\w*|real\w*|adjudecat\w*))?|(?:valo(?:are|area|ri|rile) )?(?:atribuit\w*|contractat\w*|final\w*|adjudecat\w*) (?:vs|versus|fata de|comparat\w* cu|in comparatie cu) (?:valo(?:are|area|ri|rile) )?estimat\w*|economi\w* fata de (?:valoarea )?estimat\w*|(?:sub|peste|fata de)(?: valoarea)? estimat\w*|estimat(?:a|e|ul|ele|arile|area|ari)?)\b/, ESTIMATE_NOTE],
+];
+/** A legal threshold without a sum, after the amounts and the signals took theirs („peste pragul de 270.000 lei”, „chiar sub plafon”). */
+const THRESHOLD = /\b(?:(?:sub|pana la|peste|la|langa|in jurul) )?(?:prag(?:ul|uri|urile|ului|urilor)?|plafon(?:ul|ului|uri|urile)?)(?: (?:legal\w*|valoric\w*|(?:de|pentru|la) (?:achiziti(?:e|i|a|ile) direct(?:a|e)|licitati(?:e|i)|procedur\w* simplificat\w*)))?\b/;
+const SPLIT_SAID = /\b(?:fraction\w*|fragmenta[tr]\w*)\b|\b(?:impartit\w*|spart\w*)(?: \w+)? (?:ca sa|pentru a|in)\b/;
+
 /** Words of guilt beside the signals' cue: the signals answer, and the note says what they are. */
 const GUILT = /\b(?:corupt\w*|coruptie|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mita|aranjat\w*|trucat\w*|fraud\w*|vinovat\w*|condamnat\w*|ilegal\w*)\b/;
 
@@ -228,7 +245,7 @@ const ACRONYMS: Record<string, string> = {
  * (understood as the contracts stream); the qualifier after it names a
  * procedure type the engine cannot filter on yet.
  */
-const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)|restrans(?:a|e))|(procedur(?:a|i|ii|ile|ilor))\s+(?:simplificat(?:a|e)|(?:de\s+)?negociere(?:\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?)?|competitiv(?:a|e))|(negocier(?:e|ea|i|ile))\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?|(dialog(?:ul)?)\s+competitiv|(cerer(?:e|ea|i|ile))\s+de\s+ofert(?:e|a)|(concurs(?:ul)?)\s+de\s+solutii|(parteneriat(?:ul)?)\s+pentru\s+inovare)\b/;
+const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)|restrans(?:a|e))|(proc|procedur(?:a|i|ii|ile|ilor))\s+(?:simplificat(?:a|e)|(?:de\s+)?negociere(?:\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?)?|competitiv(?:a|e))|(negocier(?:e|ea|i|ile))\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?|(dialog(?:ul)?)\s+competitiv|(cerer(?:e|ea|i|ile))\s+de\s+ofert(?:e|a)|(concurs(?:ul)?)\s+de\s+solutii|(parteneriat(?:ul)?)\s+pentru\s+inovare)\b/;
 /**
  * The procedures the engine names (lib/ask/purchase.ts PROCEDURE_TYPES): an
  * open tender (accelerated too), the simplified procedure, negotiation without
@@ -236,7 +253,7 @@ const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)
  */
 const NAMED_PROCEDURES: readonly (readonly [RegExp, Procedure])[] = [
   [/^licitati\w*\s+deschis/, "deschisa"],
-  [/^procedur\w*\s+simplificat/, "simplificata"],
+  [/^proc\w*\s+simplificat/, "simplificata"],
   [/negocier\w*\s+fara\s+publicare/, "negociere_fara_publicare"],
 ];
 /**
@@ -489,12 +506,14 @@ export class RulesInterpreter implements QuestionInterpreter {
     const coded = this.countyCodes(c, byKey);
     this.regions(c, out);
     this.outside(c, out);
+    this.jargon(c, out);
     this.modifiers(c, out);
     await this.fiscalCodes(c, out);
     await this.people(c, out);
     const townHalls = { said: false };
     const cues = this.cues(c, out, townHalls);
     this.lenses(c, out);
+    this.thresholds(c, out);
     await this.kinds(c, out);
     this.townHallKind(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
@@ -879,6 +898,32 @@ export class RulesInterpreter implements QuestionInterpreter {
         if (note === OFFICIALS_NOTE) for (let k = h.i; k < h.j; k++) if (/^primar(?:ul|ului)$/.test(c.f(k))) c.used[k] = null;
         if (!out.notes.includes(note)) out.notes.push(note);
       }
+  }
+
+  /**
+   * The trade's terms the selection cannot carry (JARGON_EARLY; search probe, 23 November 2026): framework agreements
+   * and their call-offs, the estimated value. Read before the cues, so „estimată vs atribuită” is no comparison.
+   */
+  private jargon(c: Cursor, out: Interpretation) {
+    for (const [re, note] of JARGON_EARLY)
+      for (const h of c.all(re)) {
+        c.take(h.i, h.j, "modifier");
+        if (!out.notes.includes(note)) out.notes.push(note);
+      }
+  }
+
+  /**
+   * After the amounts and the signals' phrases: a legal threshold without a sum cannot be a filter (its value changes
+   * with the year and the kind of purchase, and the rules hold none), and the split-purchase signal is said to be a lead.
+   */
+  private thresholds(c: Cursor, out: Interpretation) {
+    // „sub pragul de achiziție directă”: the stream's words are already read (modifiers)
+    for (const h of c.over(THRESHOLD, ["modifier"])) {
+      if (!Array.from({ length: h.j - h.i }, (_, d) => h.i + d).some((k) => !c.used[k] && /^(?:prag|plafon)/.test(c.f(k)))) continue;
+      for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "modifier";
+      if (!out.notes.includes(THRESHOLD_NOTE)) out.notes.push(THRESHOLD_NOTE);
+    }
+    if (out.lenses.some((l) => l.path === "scatter.flag" && l.value === "da_split") && SPLIT_SAID.test(c.s) && !out.notes.includes(SPLIT_NOTE)) out.notes.push(SPLIT_NOTE);
   }
 
   /**
@@ -2327,7 +2372,11 @@ export class RulesInterpreter implements QuestionInterpreter {
       out.intentSource = "default";
       const supplierLike = out.supplier || (out.entityAlternatives[0]?.role === "supplier");
       const authorityLike = out.authority || (out.entityAlternatives[0]?.role === "authority");
+      // „achiziții directe peste 100.000 lei la primăria Sibiu”: the total says the size, „Ce cumpără” does not offer it
+      // (search probe, 23 November 2026: the size was dropped with a note).
+      const sized = selectionLens(out, "filters.purchaseValueMin") || selectionLens(out, "filters.purchaseValueMax");
       out.intent = supplierLike && !authorityLike ? "ranking_authorities"
+        : sized && !out.subjects.length && (authorityLike || out.place?.kind === "locality") ? "total"
         : authorityLike || ((out.place?.kind === "locality" || out.placeAmbiguous) && !out.subjects.length) ? "breakdown"
         : out.subjects.length || out.subjectChoices || out.person || out.personAlternatives.length || out.singleBidder || out.employees || selectionLens(out, "filters.purchaseKind") ? "ranking_suppliers"
         // "contractele de peste 1 milion de lei din Cluj": the total says the size, "Ce cumpără" does not offer it.

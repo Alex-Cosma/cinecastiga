@@ -91,8 +91,10 @@ const AMOUNT_WORDS: Readonly<Record<string, number>> = { un: 1, o: 1, una: 1, do
  * number needs lei or a magnitude ("peste 2000" alone may be a year). An
  * entity's total is not a purchase's size: "au cheltuit peste 10 milioane",
  * "a câștigat peste …" are not read.
+ * „peste pragul de 270.000 lei” is the same bound (search probe, 23 November 2026): the sum is the person's, never a legal
+ * threshold the code holds.
  */
-const AMOUNT_BODY = String.raw`\b(?:de )?(peste|mai mari de|mai mare de|de minimum|sub|mai mici de|mai mica de|de maximum)\s+${AMOUNT_NUMBER}(?:\s+(?:de\s+)?(mie|mii|mil|milion|milioane|mld|miliard|miliarde))?(?:\s+(?:de\s+)?(lei|ron))?\b`;
+const AMOUNT_BODY = String.raw`\b(?:de )?(peste|mai mari de|mai mare de|de minimum|sub|mai mici de|mai mica de|de maximum)\s+(?:(?:pragul|plafonul|limita|valoarea|suma)\s+de\s+)?${AMOUNT_NUMBER}(?:\s+(?:de\s+)?(mie|mii|mil|milion|milioane|mld|miliard|miliarde))?(?:\s+(?:de\s+)?(lei|ron))?\b`;
 export const AMOUNT_LENS = new RegExp(String.raw`(?<!\b(?:cheltuit|cheltuie|cheltuiesc|castigat|castiga|incasat|primit|totalizat|insumat|adunat)(?: \w+)?\s)${AMOUNT_BODY}`);
 /**
  * Any amount with a bound ("peste 10 milioane de lei"), a purchase's size or not: what AMOUNT_LENS leaves (an
@@ -160,10 +162,10 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   // plafon", "Declarate directe, peste plafon", "Mulți bani contractați în decembrie", "O firmă are mare parte din valoare" (until 7 November "O firmă primește mare parte din bani"), "Un
   // singur client public mare") are understood, and so are the older ones a reader may still type.
   scatter: [
-    { re: /\bfractionar\w*|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b|\bpeste plafon(?:ul)? cumulat\b|\badunat\w*,? (?:cu altele,? )?trec\w* de plafon\b/, path: "scatter.flag", value: "da_split", quiet: true },
+    { re: /\bfraction\w*|\bfragmenta[tr]\w*|\b(?:impartit\w*|spart\w*)(?: (?:achiziti\w*|contract\w*|cumparar\w*|lucrar\w*))? (?:ca sa|pentru a) (?:evit\w*|ocol\w*) (?:o )?licitati\w*|\bspart\w* in (?:mai multe )?(?:bucati|achizitii|contracte)\b|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b|\bpeste plafon(?:ul)? cumulat\b|\badunat\w*,? (?:cu altele,? )?trec\w* de plafon\b/, path: "scatter.flag", value: "da_split", quiet: true },
     { re: /\b(?:varf(?:ul)?|concentrar\w*|cheltuiel\w*|achizitii\w*) (?:de |in |la )?(?:final de an|decembrie)\b|\bmulti bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)\b/, path: "scatter.flag", value: "da_year_end", quiet: true },
     { re: /\b(?:valoar\w* )?aproape de prag\b|\b(?:prea des )?(?:chiar|imediat) sub plafon\w*/, path: "scatter.flag", value: "da_round", quiet: true },
-    { re: /\bpeste plafon(?:ul)?(?! cumulat)\b|\bdesi trec\w* de plafon\b/, path: "scatter.flag", value: "da_above_ceiling", quiet: true },
+    { re: /\bpeste (?:plafon|prag)(?:ul)?(?! cumulat| de \d)\b|\bdesi trec\w* de plafon\b/, path: "scatter.flag", value: "da_above_ceiling", quiet: true },
     { re: /\bconcentrar\w* pe un (?:singur )?furnizor\b|\b(?:o firma )?(?:ia|primeste) (?:o )?mare parte din bani\b|\b(?:o firma )?are (?:o )?mare parte din valoare\b/, path: "scatter.flag", value: "da_concentration", quiet: true },
     { re: /\bdependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)\b|\b(?:un )?singur client public(?: mare)?\b/, path: "scatter.flag", value: "da_dependence", quiet: true },
     { re: /\b(?:cele mai mari valori|dupa valoare|dupa suma)\b/, path: "scatter.rankBy", value: "value", quiet: true },

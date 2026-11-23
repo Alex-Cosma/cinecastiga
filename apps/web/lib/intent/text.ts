@@ -51,6 +51,10 @@ export const STOPWORDS = new Set([
   "lei", "ron", "euro", "suma", "sume", "sumele", "valoare", "valori", "valoarea", "date", "datele", "informatii", "lista", "listele",
   "chestii", "ceva", "fel", "tip", "tipuri", "anul", "ani", "anii", "anului", "luna", "luni", "perioada", "perioadei",
   "cumparat", "cumparate", "cumparata", "cumparati", "facut", "facute", "facuta", "dat", "date", "dati", "data", "luat", "luate",
+  // words of the trade that say nothing more (search probe, 23 November 2026: „contracte atribuite”, „semnate în martie”,
+  // „autorități contractante”, „instituții cumpărătoare”, „pt” left /cauta searching the literal words)
+  "atribuit", "atribuite", "atribuita", "atribuiti", "atribuire", "atribuirea", "atribuirii", "atribuiri", "semnat", "semnate", "semnata",
+  "incheiat", "incheiate", "incheiata", "contractanta", "contractante", "cumparatoare", "pt", "ptr",
   // verbs that only restate the question once its cue is understood
   "cumpara", "cumpar", "cumparam", "cheltuie", "cheltuiesc", "cheltuieste", "castiga", "castigat", "castigate", "primeste", "primesc",
   "primit", "livreaza", "vinde", "vand", "face", "fac", "ia", "iau", "lucreaza", "lucreza", "achizitioneaza", "plateste", "platit",

@@ -104,6 +104,20 @@ describe('interpretation → /cauta selection', () => {
     expect(t.applied.order).toBe('value');
   });
 
+  it('reads a question with the trade\'s filler words as a question, and carries the trade\'s notes (search probe, 23 November 2026)', async () => {
+    const buyers = await read('top 20 autoritati contractante judetul Buzau dupa valoare 2024');
+    const t = applyInterpretation(buyers.scope, buyers.result);
+    expect(t.question?.sentence).toBe('Ce instituții publice din județul Buzău cumpără cel mai mult, prin toate achizițiile, în 2024?');
+    expect(t.notes).toEqual([]);
+    // „semnate” is no title word to search beside the subject
+    const signed = await read('contracte de catering semnate in 2025');
+    expect(applyInterpretation(signed.scope, signed.result).applied).toMatchObject({ q: 'catering', from: '2025', to: '2025' });
+    const framework = await read('contracte subsecvente din acord cadru vaccinuri');
+    expect(applyInterpretation(framework.scope, framework.result).notes).toEqual(['Nu putem alege doar acordurile-cadru sau doar contractele subsecvente. Plafonul unui acord-cadru nu intră în sume; contractele subsecvente, când sunt în date, intră.']);
+    const single = await read('licitatii cu un singur ofertant la consiliul judetean buzau');
+    expect(applyInterpretation(single.scope, single.result).notes.join(' ')).toContain('Numărul de oferte îl știm doar');
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

@@ -13,7 +13,7 @@ import type { Place, TopicScope } from './shared';
 import type { PlaceAround } from './around';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { LARGEST_RECORDS, largestSentence, STOPWORDS, tokenize } from '../intent/text';
-import { NEVER_SUBJECT, NO_DOMAIN_SAID, OUTSIDE_DATA_NOTES, TOWN_HALL_UNKNOWN, UNIT_PRICE_NOTE } from '../intent/rules';
+import { JARGON_NOTES, NEVER_SUBJECT, NO_DOMAIN_SAID, OUTSIDE_DATA_NOTES, TOWN_HALL_UNKNOWN, UNIT_PRICE_NOTE } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -409,7 +409,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     // (Întreabă's pointer to the sources list under its total is not this page's: here the question line links there.)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && n !== LARGEST_IN_SOURCES && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
-  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || OUTSIDE_DATA_NOTES.includes(n) || UNIT_PRICE_NOTE.test(n) || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
+  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || OUTSIDE_DATA_NOTES.includes(n) || JARGON_NOTES.includes(n) || SINGLE_OFFER_SAID.test(n) || UNIT_PRICE_NOTE.test(n) || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
   // a total is shown after all (a question, or one within the page's place and period): the note says what it counts
   if (out.answer) out.notes = out.notes.map((n) => n.replace(/ un domeniu: fără total, /, ' un domeniu: totalul numără tot domeniul; '));
@@ -435,6 +435,8 @@ export function isCleanQuestion(result: IntentResult): boolean {
 }
 
 const OWN_PLACE_SAID = /nu știm ce localitate/;
+/** The single-bidder notes (to-spec.ts): said wherever the words lead (search probe, 23 November 2026: /cauta dropped them). */
+const SINGLE_OFFER_SAID = /Numărul de oferte îl știm doar|nu au oferte de numărat/;
 
 /** Words that only mark a place („în Cluj”, „județul Iași”, „orașul Cisnădie”); „primăria” names an institution. */
 const PLACE_ONLY_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'localitatea']);
