@@ -1,4 +1,4 @@
-import { AUTHORITY_KINDS, SEAT_RULES, SELECTION_RULES, WINNERS_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
+import { AUTHORITY_KINDS, LIST_KINDS, TOWN_HALL_KIND, SEAT_RULES, SELECTION_RULES, WINNERS_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
 import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "./context";
 import { FILTERS } from "./defs";
@@ -20,7 +20,11 @@ import type { Availability, FilterCtx, FilterId, FilterSpec, Slot } from "./type
 /** One row of a window: the filter it writes and its value (undefined: the window's first row, R4). */
 export interface Choice { filter: FilterId; value: unknown }
 /** The subject window's rows: firms, institutions with their kind, or counties. */
-export interface SubjectChoice { dim: "supplier" | "authority" | "county"; kind?: AuthorityKind }
+export interface SubjectChoice { dim: "supplier" | "authority" | "county"; kind?: SubjectKind }
+/** The kinds the subject's window names: every town hall and the lists (ministries, universities, public enterprises)
+ * before the five classes, as in the buyer's window (owner, 23 November 2026: a ranking of „primării” showed „Firme” ticked). */
+export type SubjectKind = AuthorityKind | typeof TOWN_HALL_KIND | (typeof LIST_KINDS)[number];
+const SUBJECT_KINDS: readonly SubjectKind[] = [TOWN_HALL_KIND, ...LIST_KINDS, ...AUTHORITY_KINDS];
 
 /**
  * The answer's shape: its window has no empty row, the first row is a value ("Toate achizițiile", "valoarea
@@ -73,7 +77,7 @@ export function choicesOf(slot: Slot, spec: FilterSpec, ctx: FilterCtx = filterC
     case "subject": {
       const dims = FILTERS.dim.choices(spec, ctx) as SubjectChoice["dim"][];
       return dims.flatMap((dim): Choice[] => dim !== "authority" ? [{ filter: "dim", value: { dim } }]
-        : [{ filter: "dim", value: { dim } }, ...AUTHORITY_KINDS.map((kind) => ({ filter: "dim" as const, value: { dim, kind } }))]);
+        : [{ filter: "dim", value: { dim } }, ...SUBJECT_KINDS.map((kind) => ({ filter: "dim" as const, value: { dim, kind } }))]);
     }
     case "buyer": case "from": {
       const family = PICKER_FAMILY[slot.picker]!;

@@ -464,7 +464,7 @@ describe("what F1b does about each refusal of today's builder (TODAY_REFUSALS)",
     },
     "ranking-pair": () => {
       const spec = { ...base("table firms"), filters: { authorityName: "Comuna Exemplu", authorityId: 101 } };
-      expect(choicesOn(spec).filter((p) => p.slot.picker === "subject" && (p.choice.value as { dim: string }).dim === "authority").map((p) => p.state.state)).toEqual(Array(6).fill("disabled"));
+      expect(choicesOn(spec).filter((p) => p.slot.picker === "subject" && (p.choice.value as { dim: string }).dim === "authority").map((p) => p.state.state)).toEqual(Array(10).fill("disabled"));
     },
     "ranking-pair-firm": () => {
       const spec = { ...base("table institutions"), filters: { supplierName: "Firma Exemplu SRL", supplierId: 202 } };
