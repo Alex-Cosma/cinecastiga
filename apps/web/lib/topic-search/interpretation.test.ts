@@ -144,6 +144,20 @@ describe('interpretation → /cauta selection', () => {
     }
   });
 
+  it('answers the counties compared with the map\'s own spec: its total and its first three (owner, 23 November 2026)', async () => {
+    const { scope, result } = await read('cat s-a cheltuit pe iluminat pe judete in 2025');
+    const t = applyInterpretation(scope, result);
+    const map = { block: 'map', measure: 'value', filters: { cpvTerm: 'iluminat', yearFrom: 2025, yearTo: 2025 } };
+    expect(t.question?.sentence).toBe(result.sentence);
+    expect(t.answer).toMatchObject({ total: { spec: map }, top: { kind: 'counties', spec: map } });
+    expect(t.answer?.href).toBe(`/intreaba?q=${encodeURIComponent('cat s-a cheltuit pe iluminat pe judete in 2025')}`);
+    // the measure asked is the map's: records, or the value per inhabitant of the local administrations
+    const count = applyInterpretation(...Object.values(await read('numarul de achizitii directe pe fiecare judet')) as [typeof scope, typeof result]);
+    expect(count.answer?.top).toMatchObject({ kind: 'counties', spec: { block: 'map', measure: 'count', dataset: 'da' } });
+    const capita = applyInterpretation(...Object.values(await read('care judet a cheltuit cel mai mult pe cap de locuitor in 2024')) as [typeof scope, typeof result]);
+    expect(capita.answer?.top).toMatchObject({ kind: 'counties', spec: { block: 'map', measure: 'value_per_capita', filters: { authorityKind: 'local_admin' } } });
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

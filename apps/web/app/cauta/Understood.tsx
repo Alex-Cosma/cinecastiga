@@ -10,6 +10,8 @@ import {G,Ghost} from '@/components/ghost/Ghost';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import {titleName} from '../../lib/tidy-name';
 import {countWords} from '@/lib/ask/answer-text';
+import {countyName} from '@/lib/counties';
+import {countyHref,countyRows,mapTotal,type MapData} from '@/lib/topic-search/short-answer';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
@@ -219,7 +221,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
 }
 
 type Side={entityId:string|null;name:string;value:number;count:number};
-type AskData={block:'stat';stat:{value:number;count:number}}|{block:'table';rows:Side[]}|{block:'timeseries';series:{year:number;value:number;count:number}[]}|{block:'compare';entities:Side[]};
+type AskData={block:'stat';stat:{value:number;count:number}}|{block:'table';rows:Side[];totals?:{value:number;count:number;entities:number}}|{block:'timeseries';series:{year:number;value:number;count:number}[]}|{block:'compare';entities:Side[]}|MapData;
 /** One record of /api/ask/rows: the largest records of the selection. */
 type RecordRow={title:string|null;cpvName:string|null;date:string|null;authorityId?:string|null;authority:string|null;supplierId?:string|null;supplier:string|null;value:number|null;src:'da'|'contracts';refId:string|null;contractValueFull?:string|null;nWinners?:number|null};
 /** A party of a record: its name, linked to its page when the registry identifies it. */
@@ -264,8 +266,10 @@ export function prefetchAnswer(answer:Answer):Promise<Pair>{
  const key=answerKey(answer),hit=asked.get(key);
  if(hit&&Date.now()-hit.at<FRESH_MS)return hit.pair;
  const entry:{at:number;pair:Promise<Pair>;done?:Pair}={at:Date.now(),pair:Promise.resolve({total:null,top:null,failed:true})};
- const top=answer.top?(answer.top.kind==='records'?largest(answer.top.spec):ask(answer.top.spec)):Promise.resolve(null);
- entry.pair=Promise.all([ask(answer.total.spec),top]).then(([total,top])=>({total,top,failed:false}),()=>({total:null,top:null,failed:true}));
+ // The counties' total and rows are one answer (the map's): asked once.
+ const total=ask(answer.total.spec);
+ const top=answer.top?(answer.top.kind==='records'?largest(answer.top.spec):answer.top.kind==='counties'?total:ask(answer.top.spec)):Promise.resolve(null);
+ entry.pair=Promise.all([total,top]).then(([total,top])=>({total,top,failed:false}),()=>({total:null,top:null,failed:true}));
  void entry.pair.then(pair=>{if(pair.failed)asked.delete(key);else entry.done=pair;});
  asked.delete(key);asked.set(key,entry);if(asked.size>40)asked.delete(asked.keys().next().value!);
  return entry.pair;
@@ -281,14 +285,16 @@ export type AnswerCount={key:string;count:number|null}|null;
 /** Where and when „Pe scurt” counted, in the words of the chips of „Am înțeles”: one line beside its title. */
 export type AnswerScope={subject:string;kind:string|null;where:string;period:string;named?:boolean;who?:boolean};
 /** The label above the rows: what they are, never a question (the question is in „Am înțeles”). */
-const LIST_LABEL={records:'Cele mai mari achiziții',suppliers:'Cine a câștigat cel mai mult',authorities:'Cine a contractat cel mai mult',years:'Pe ani'} as const;
+const LIST_LABEL={records:'Cele mai mari achiziții',suppliers:'Cine a câștigat cel mai mult',authorities:'Cine a contractat cel mai mult',years:'Pe ani',counties:'Județele cu cele mai mari valori'} as const;
 type ListKind=keyof typeof LIST_LABEL;
+/** The counties' rows are ranked by the measure asked, and their label says which. */
+const listLabel=(kind:ListKind,measure?:string)=>kind==='counties'&&measure==='count'?'Județele cu cele mai multe achiziții':kind==='counties'&&measure==='value_per_capita'?'Județele cu cea mai mare valoare pe locuitor':LIST_LABEL[kind];
 /**
  * Whether the rows are the answer and the total their context (owner, 10 November 2026: „Pe scurt” arăta foarte prost):
  * the largest purchases, and a question that asked who or which years, whose sentence is the rows' own. A subject and a
  * „cât” question lead with the total. The rows come first in the page's order too, so a phone reads them first.
  */
-const rowsLead=(answer:Answer,question:string|undefined,who=false)=>Boolean(answer.top&&(answer.top.kind==='records'||(who&&(answer.top.kind==='suppliers'||answer.top.kind==='authorities'))||(question!==undefined&&answer.top.sentence===question)));
+const rowsLead=(answer:Answer,question:string|undefined,who=false)=>Boolean(answer.top&&(answer.top.kind==='records'||answer.top.kind==='counties'||(who&&(answer.top.kind==='suppliers'||answer.top.kind==='authorities'))||(question!==undefined&&answer.top.sentence===question)));
 /** The first year of the archive: an evolution over all the years has one row per year from it (its ghost too). */
 const FIRST_YEAR=2018;
 const yearRows=(answer:Answer)=>{const f=answer.top?.spec.filters;return Math.max(2,Math.min(12,(f?.yearTo??new Date().getFullYear())-(f?.yearFrom??FIRST_YEAR)+1));};
@@ -358,13 +364,15 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  const done=settledAnswer(key),ready=state?.key===key?state:done?{key,...done}:null;
  const data=(r:AskReply|null|undefined)=>r?.ok?r.data:undefined;
  const totalData=data(ready?.total),topData=data(ready?.top);
- const total=totalData?.block==='stat'?totalData.stat:null;
+ const mapData=topData?.block==='map'?topData:null,measure=answer.top?.spec.measure;
+ const total=totalData?.block==='stat'?totalData.stat:answer.top?.kind==='counties'&&mapData?mapTotal(mapData):null;
  // „compară X cu Y”: both sides are the answer, each with its records
  const sides=totalData?.block==='compare'?totalData.entities:null;
  const kind:ListKind|null=answer.top?.kind??null;
  const rows=topData?.block==='table'?topData.rows:null;
  const years=topData?.block==='timeseries'?topData.series.filter(y=>y.count>0):null;
  const records=kind==='records'&&ready?.top?.ok&&ready.top.rows?largestRecords(ready.top.rows):null;
+ const counties=kind==='counties'&&mapData?countyRows(mapData,measure):null;
  const shape=sides?(sides.some(x=>x.count>0)?'value':'empty'):answerShape(total);
  // Reported once answered (null count: no total), so the page knows when to stop waiting for it.
  useEffect(()=>{onCount?.(ready?{key,count:total?.count??null}:null);
@@ -405,6 +413,14 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
     {bar(max>0?y.value/max:0,i,note?' is-partial':'')}
     <span className="topic-answer-amount">{formatRon(y.value)}</span><span className="topic-answer-n">{recordsWord(y.count)}</span>
    </li>;});})():null)
+  :kind==='counties'?(counties?.length?counties.map((c,i)=>{const name=countyName(c.county),href=countyHref(answer.top!.spec,name);
+   const whole=total?(measure==='count'?total.count:total.value):0,part=measure!=='value_per_capita'&&whole>0?(measure==='count'?c.count:c.value)/whole:null;
+   return <li key={c.county} className="topic-answer-row">
+    <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
+    <span className="topic-answer-what">{href?<Link prefetch={false} href={href}>{name}</Link>:name}
+     <small data-only="complet">{measure==='count'?formatRon(c.value):recordsWord(c.count)}{part!=null&&<> · {shareText(part)} din total</>}</small></span>
+    <span className="topic-answer-amount">{measure==='count'?recordsWord(c.count):measure==='value_per_capita'?<>{formatInt(Math.round(c.metric))} lei<small>pe locuitor</small></>:formatRon(c.value)}</span>
+   </li>;}):null)
   :kind&&rows?.length?rows.map((r,i)=>{const part=total&&total.value>0?r.value/total.value:null;
    return <li key={r.entityId??r.name} className="topic-answer-row">
     <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
@@ -414,7 +430,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
    </li>;}):null;
  // `data-answer` below: how „Pe scurt” ended. Under a whole question Esențial hides the word lists unless it failed or
  // found nothing (esential-cauta-domenii.css; owner, 18 November 2026).
- const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{LIST_LABEL[kind]}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
+ const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{listLabel(kind,measure)}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
  const rail=total&&<div className="topic-answer-rail">
   {led&&list&&<p className="topic-answer-label">Total</p>}
   <p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><InfoMark title="Valoare înregistrată" text="Valoarea înregistrată a contractelor și achizițiilor directe, nu plăți."/></>:<strong>{recordsWord(total.count)}</strong>}</p>
@@ -448,7 +464,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
 function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.ReactNode;answer:Answer;kind:ListKind|null;led:boolean;compare:boolean;notes:string[];literal:boolean}){
  const widths=[58,46,52,40,54,44,50,38,56,42,48,36];
  const n=kind==='years'?yearRows(answer):3;
- const list=kind&&<div className="topic-answer-main"><p className="topic-answer-label">{LIST_LABEL[kind]}</p>
+ const list=kind&&<div className="topic-answer-main"><p className="topic-answer-label">{listLabel(kind,answer.top?.spec.measure)}</p>
   <ol className={`topic-answer-list is-${kind}`} role="list" aria-hidden="true">{Array.from({length:n},(_,i)=>kind==='years'
    ?<li key={i} className="topic-answer-row is-year"><span className="topic-answer-year"><G.Line inline w="2.4em"/>{partialLikely(answer,i)&&<small><G.Line inline w="4.5em"/></small>}</span><span className="topic-answer-bar"/><span className="topic-answer-amount"><G.Line inline w="5em"/></span><span className="topic-answer-n"><G.Line inline w="7em"/></span></li>
    :<li key={i} className={`topic-answer-row${kind==='records'?' is-record':''}`}><span className="topic-answer-rank">{i+1}</span>

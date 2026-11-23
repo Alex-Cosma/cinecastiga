@@ -123,7 +123,11 @@ export interface TopicInterpretation {
  * institution); the largest records („cel mai mare contract de iluminat”, read by /api/ask/rows). A comparison's total
  * is both sides (its spec is the compare block) and has none.
  */
-export interface AnswerTop { spec: AskSpec; sentence: string; kind: 'suppliers' | 'authorities' | 'years' | 'records' }
+export interface AnswerTop {
+  spec: AskSpec; sentence: string;
+  /** `counties`: the first three counties of a question that compares them (the map's spec; owner, 23 November 2026). */
+  kind: 'suppliers' | 'authorities' | 'years' | 'records' | 'counties';
+}
 
 function chip(p: PlaceMatch): ChipPlace | null {
   const id = placeId(p);
@@ -291,6 +295,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     // only the largest records answer their question: the whole country has none (shortAnswer), and its total is no answer
     if (largest && out.answer && out.answer.top?.kind !== 'records') out.answer = null;
     if (!out.answer && i.intent === 'compare' && i.compareWith) out.answer = compareAnswer(i, {}, labels, typedHref);
+    // The counties compared („iluminat pe județe în 2025”): their total and the first three, from the map's own spec.
+    if (!out.answer && i.intent === 'counties' && result.spec?.block === 'map') out.answer = countiesAnswer(result.spec, result.sentence!, typedHref);
     // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse");
     // several subjects are counted together ("parcuri + spatii verzi").
     const counted = out.answer?.total.spec.filters.cpvTerm;
@@ -548,6 +554,19 @@ function compareAnswer(reading: Interpretation, choice: { pair?: NonNullable<Int
   if (!spec) return null;
   const sentence = sentenceFor(spec, labels);
   return { total: { spec, sentence }, top: null, href: href(spec), evidenceHref: askHref(spec), empty: 'Nicio achiziție înregistrată pentru cele două.', domains: null, cpv: [], cpvExcluded: [] };
+}
+
+/**
+ * The counties compared (rules: intent `counties`, the map block): „Pe scurt” reads one answer, the map's, for both its
+ * total (the counties added up, with the records no county is known for) and its first three counties, so the figures
+ * are the same selection's whatever the measure (per inhabitant compares only the local administrations).
+ */
+function countiesAnswer(map: AskSpec, sentence: string, href: (top: AskSpec) => string): TopicInterpretation['answer'] {
+  return {
+    total: { spec: map, sentence }, top: { spec: map, sentence, kind: 'counties' },
+    href: href(map), evidenceHref: `${askHref(map)}&drill=1`,
+    empty: 'Nicio achiziție înregistrată pentru această selecție.', domains: null, cpv: [], cpvExcluded: [],
+  };
 }
 
 /** A registry name without its legal form and punctuation („SC Strabag SRL” → „strabag”). */
