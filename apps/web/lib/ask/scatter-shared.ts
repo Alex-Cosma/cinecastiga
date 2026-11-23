@@ -261,7 +261,7 @@ export function groupPlural(role: ScatterRole, kind: string | null | undefined):
 /** The pill's noun: "82 de primării de comună", "72.655 de firme". */
 export function groupNoun(n: number, role: ScatterRole, kind: string | null | undefined): string {
   if (role === "supplier") return countWords(n, "firmă", "firme");
-  const word = kind ? { one: KIND_ONE[kind] ?? "instituție publică", many: ({ primarie: "primării", minister: "ministere", universitate: "universități", comuna: "primării de comună", oras_municipiu: "primării de oraș și municipiu", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli" } as Record<string, string>)[kind] ?? "instituții publice" }
+  const word = kind ? { one: KIND_ONE[kind] ?? "instituție publică", many: ({ primarie: "primării", minister: "ministere", universitate: "universități", companie_stat: "companii de stat și locale", comuna: "primării de comună", oras_municipiu: "primării de oraș și municipiu", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli" } as Record<string, string>)[kind] ?? "instituții publice" }
     : { one: "instituție publică", many: "instituții publice" };
   return countWords(n, word.one, word.many);
 }

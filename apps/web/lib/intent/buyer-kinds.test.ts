@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { memoryVocabulary } from "./memory-vocabulary";
-import { MINISTRIES_NOTE, RulesInterpreter, STATE_COMPANIES_NOTE } from "./rules";
+import { MINISTRIES_NOTE, RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { resultFor } from "./to-spec";
 
@@ -61,16 +61,7 @@ describe("the ministries and the universities as kinds", () => {
 });
 
 describe("state-owned companies", () => {
-  it("are buyers the data cannot tell apart yet: said, never a ranking of firms", async () => {
-    for (const q of ["companiile de stat cu cele mai mari achizitii de iluminat", "regiile autonome cu cele mai mari achizitii de iluminat", "top companii nationale la iluminat",
-      "ce companii de stat cheltuie cei mai multi bani pe iluminat"]) {
-      const { i, spec } = await read(q);
-      expect([q, i.intent, i.authorityKind, i.leftover, i.notes]).toEqual([q, "ranking_authorities", null, [], [STATE_COMPANIES_NOTE]]);
-      expect(spec).toMatchObject({ block: "table", dim: "authority" });
-    }
-    const total = await read("cat au cheltuit companiile de stat pe iluminat in 2024");
-    expect([total.spec.block, total.i.notes, total.i.leftover]).toEqual(["stat", [STATE_COMPANIES_NOTE], []]);
-  });
+  // Their readings as a kind are in state-companies.test.ts (owner, 23 November 2026: variant A).
   it("leaves «companiile» and «firmele» alone the firms", async () => {
     const { i, spec } = await read("companiile cu cele mai mari contracte pe iluminat");
     expect([i.intent, spec.dim, i.notes]).toEqual(["ranking_suppliers", "supplier", []]);

@@ -78,10 +78,19 @@ export const MINISTRY_KIND = "minister";
 export const UNIVERSITY_KIND = "universitate";
 export const NAME_LIST_KINDS = [MINISTRY_KIND, UNIVERSITY_KIND] as const;
 export type NameListKind = (typeof NAME_LIST_KINDS)[number];
-export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND | typeof TOWN_HALL_KIND | NameListKind;
+/**
+ * The public enterprises (owner, 23 November 2026: variant A, „companii de stat” are every public enterprise on the
+ * Ministry of Finance list, central and local): the institutions whose CUI is in reference.public_enterprise (migration
+ * 0115, the list of 21.10.2026). A list of ids like the name lists: no peer group, no kind facet.
+ */
+export const STATE_COMPANY_KIND = "companie_stat";
+/** The kinds that are lists of institution ids read with the kinds (lib/ask/authority-kind.ts AuthorityKinds.lists). */
+export const LIST_KINDS = [...NAME_LIST_KINDS, STATE_COMPANY_KIND] as const;
+export type ListKind = (typeof LIST_KINDS)[number];
+export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND | typeof TOWN_HALL_KIND | ListKind;
 /** A kind the words of a question can say (the local administrations are the map's own). */
 export type SaidAuthorityKind = Exclude<ParsedAuthorityKind, typeof LOCAL_ADMIN_KIND>;
-const PARSED_KINDS: readonly string[] = [...AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, ...NAME_LIST_KINDS];
+const PARSED_KINDS: readonly string[] = [...AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, ...LIST_KINDS];
 export const isParsedKind = (value: unknown): value is ParsedAuthorityKind => typeof value === "string" && PARSED_KINDS.includes(value);
 /** The kind matched by name patterns. local_admin has none (the engine refuses it before it reads a kind); the town
  * halls are two of them and the name lists are lists only, so they have no peer group or classification of their own. */

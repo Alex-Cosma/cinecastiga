@@ -66,14 +66,14 @@ function initialMembers(value?: string): PeerSelectionMember[] | undefined {
   if (!value) return undefined;
   try { return JSON.parse(value) as PeerSelectionMember[]; } catch { return undefined; }
 }
-const kinds: Record<string, string> = { comuna: "comune", oras_municipiu: "orașe / municipii", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli", universitate: "universități", minister: "ministere" };
+const kinds: Record<string, string> = { comuna: "comune", oras_municipiu: "orașe / municipii", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli", universitate: "universități", minister: "ministere", companie_stat: "companii de stat și locale" };
 const DATASETS = [{ value: "all", label: "Toate" }, { value: "da", label: "Directe" }, { value: "contracts", label: "Proceduri" }] as const;
 /** Romanian "de" after a number: 19 înregistrări, 20 de înregistrări, 101 înregistrări, 120 de înregistrări. */
 const de = (n: number) => (takesDe(n) ? " de" : "");
 const recordsWords = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const lowerFirst = (text: string) => (text ? text.charAt(0).toLocaleLowerCase("ro-RO") + text.slice(1) : text);
 /** The kind's institutions, for the group's sentence (UX audit Z4-35: „Spitalele cu activitate asemănătoare…”). */
-const KIND_PLURAL: Record<string, string> = { spital: "Spitalele", scoala: "Școlile", universitate: "Universitățile", minister: "Ministerele", comuna: "Comunele", oras_municipiu: "Orașele și municipiile", consiliu_judetean: "Consiliile județene" };
+const KIND_PLURAL: Record<string, string> = { spital: "Spitalele", scoala: "Școlile", universitate: "Universitățile", minister: "Ministerele", companie_stat: "Companiile de stat și locale", comuna: "Comunele", oras_municipiu: "Orașele și municipiile", consiliu_judetean: "Consiliile județene" };
 /** A long name in the title: two lines, the whole of it on hover, focus or a tap (UX audit Z4-27). */
 function Named({ name }: { name: string }) {
   const long = name.length > 70;

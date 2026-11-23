@@ -173,7 +173,7 @@ describe("the institutions of each kind", () => {
     expect(kinds.ids).toEqual({ comuna: ["7"], oras_municipiu: [], consiliu_judetean: [], spital: ["12", "40"], scoala: [] });
     expect([...kinds.byId]).toEqual([["7", "comuna"], ["12", "spital"], ["40", "spital"]]);
     // The name lists stand apart from the five kinds: a ministry has no kind and is on its list.
-    expect(kinds.lists).toEqual({ minister: ["3"], universitate: [] });
+    expect(kinds.lists).toEqual({ minister: ["3"], universitate: [], companie_stat: [] });
   });
 
   it("lists the ministries (with the units that buy under their name) and the universities by a strict rule on the name (search probe, 23 November 2026)", () => {
@@ -192,8 +192,28 @@ describe("the institutions of each kind", () => {
       { ...row("Universitatea din Oradea", "Bihor"), id: "9" }, { ...row("Ministerul Apararii - Spitalul Militar de Urgenta", "Cluj"), id: "4" },
       { ...row("Ministerul Culturii", "Bucuresti"), id: "2" }, { ...row("Ministerul Culturii", "Bucuresti"), id: "2" },
     ], REGISTRY);
-    expect(kinds.lists).toEqual({ minister: ["2", "4"], universitate: ["9"] });
+    expect(kinds.lists).toEqual({ minister: ["2", "4"], universitate: ["9"], companie_stat: [] });
     expect(kinds.byId.size).toBe(0);
+  });
+
+  it("lists the public enterprises by their CUI alone, whatever the name or the kind (owner, 23 November 2026: variant A)", () => {
+    const enterprises = new Set(["16054368", "201217", "1590120"]);
+    const kinds = classifyAuthorities([
+      { ...row("COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE", "Bucuresti", null, "16054368"), id: "30" },
+      { ...row("Compania de Apa Somes S.A.", "Cluj", null, "201217"), id: "8" },
+      // The authority that holds an enterprise is not one: its CUI is not on the list.
+      { ...row("Ministerul Transporturilor", "Bucuresti", null, "13633330"), id: "11" },
+      { ...row("JUDETUL CLUJ (CONSILIUL JUDETEAN)", "Cluj", -100, "4288110"), id: "12" },
+      // A name that sounds like one, with another CUI or none, is not on the list either.
+      { ...row("Regia Autonoma de Transport Local", "Iasi", null, "9999999"), id: "13" }, { ...row("Compania Nationala Fara Cod", "Bucuresti", null, null), id: "14" },
+      // A listed CUI keeps its place whatever the kind the name gives.
+      { ...row("Spitalul Regiei Nationale a Padurilor", "Brasov", null, "1590120"), id: "15" },
+    ], REGISTRY, enterprises);
+    expect(kinds.lists.companie_stat).toEqual(["8", "15", "30"]);
+    expect(kinds.lists.minister).toEqual(["11"]);
+    expect(kinds.byId.get("15")).toBe("spital");
+    // No list given (a database without the table): nobody is a public enterprise.
+    expect(classifyAuthorities([{ ...row("Compania de Apa Somes S.A.", "Cluj", null, "201217"), id: "8" }], REGISTRY).lists.companie_stat).toEqual([]);
   });
 
   it("are one SQL condition per kind, on an institution id, and one expression for the peer groups", () => {
@@ -218,7 +238,7 @@ describe("the institutions of each kind", () => {
     ] as FilterSpec[]) {
       const ctx = filterContext(spec);
       expect([spec.block, FILTERS.authorityKind.engine[ctx.form]]).toEqual([spec.block, ctx.profile ? "profile" : "row"]);
-      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, "primarie", "minister", "universitate", ...AUTHORITY_KINDS]]);
+      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, "primarie", "minister", "universitate", "companie_stat", ...AUTHORITY_KINDS]]);
     }
   });
 });

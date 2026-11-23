@@ -163,6 +163,7 @@ export const KIND_OPTIONS = [
   ["primarie", "primăriile", "primăriilor"],
   ["minister", "ministerele", "ministerelor"],
   ["universitate", "universitățile", "universităților"],
+  ["companie_stat", "companiile de stat și locale", "companiilor de stat și locale"],
   ["comuna", "primăriile de comună", "primăriilor de comună"],
   ["oras_municipiu", "primăriile de oraș și municipiu", "primăriilor de oraș și municipiu"],
   ["consiliu_judetean", "consiliile județene", "consiliilor județene"],
@@ -305,6 +306,8 @@ export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   // The name lists (NAME_LIST_KINDS): the ministries with the units that buy under their name, and the universities.
   minister: { the: "ministerele", bare: "ministere" },
   universitate: { the: "universitățile", bare: "universități" },
+  // The public enterprises of the Ministry of Finance list, central and local (STATE_COMPANY_KIND; owner, 23 November 2026).
+  companie_stat: { the: "companiile de stat și locale", bare: "companii de stat și locale" },
   comuna: { the: "primăriile de comună", bare: "primării de comună" },
   oras_municipiu: { the: "primăriile de oraș și municipiu", bare: "primării de oraș și municipiu" },
   consiliu_judetean: { the: "consiliile județene", bare: "consilii județene" },
@@ -317,6 +320,7 @@ export const KIND_ONE: Record<string, string> = {
   primarie: "primărie",
   minister: "minister",
   universitate: "universitate",
+  companie_stat: "companie de stat sau locală",
   comuna: "primărie de comună",
   oras_municipiu: "primărie de oraș sau municipiu",
   consiliu_judetean: "consiliu județean",

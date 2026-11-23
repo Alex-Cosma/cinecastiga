@@ -138,7 +138,7 @@ function chip(p: PlaceMatch): ChipPlace | null {
 }
 
 const KIND_LABEL: Record<SaidAuthorityKind, string> = {
-  primarie: 'primăriile', minister: 'ministerele', universitate: 'universitățile', comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
+  primarie: 'primăriile', minister: 'ministerele', universitate: 'universitățile', companie_stat: 'companiile de stat și locale', comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
 };
 const wholeCounty = (county: string) => (county === 'București' ? 'Tot Bucureștiul' : `Tot județul ${county}`);
 /** The year in Bucharest, for open periods ("după 2020"). */

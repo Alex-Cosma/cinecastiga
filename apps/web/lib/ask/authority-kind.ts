@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { countyFold, countylessLegacyCode, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
 import { readPerCapitaPopulations } from "./per-capita";
-import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, MINISTRY_KIND, NAME_LIST_KINDS, TOWN_HALL_KIND, UNIVERSITY_KIND, type AuthorityKind, type NameListKind, type ParsedAuthorityKind } from "./spec";
+import { AUTHORITY_KINDS, LIST_KINDS, LOCAL_ADMIN_KIND, NAME_LIST_KINDS, STATE_COMPANY_KIND, TOWN_HALL_KIND, type AuthorityKind, type ListKind, type NameListKind, type ParsedAuthorityKind } from "./spec";
 
 /*
  * The kind of a buying institution (plan §2.5, D1): one classification for
@@ -36,6 +36,7 @@ export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
   primarie: "primării (de comună, oraș și municipiu)",
   minister: "ministere (cu unitățile care cumpără sub numele unui minister)",
   universitate: "universități",
+  companie_stat: "companii de stat și locale (întreprinderi publice)",
   comuna: "primării de comună",
   oras_municipiu: "primării de oraș și municipiu",
   consiliu_judetean: "consilii județene / județe",
@@ -49,6 +50,7 @@ export const KIND_SOURCE: Record<ParsedAuthorityKind, string> = {
   primarie: "registrul localităților, apoi numele",
   minister: "după nume: începe cu „Ministerul”",
   universitate: "după nume: începe cu „Universitatea”, plus ASE, SNSPA, Academia de Poliție și Academia Națională de Muzică",
+  companie_stat: "după CUI: lista întreprinderilor publice a Ministerului Finanțelor (OMFP 2873/2016) din 21.10.2026, centrale și locale",
   comuna: "registrul localităților, apoi numele",
   oras_municipiu: "registrul localităților, apoi numele",
   consiliu_judetean: "lista strictă a valorii pe locuitor, apoi numele",
@@ -170,19 +172,26 @@ export interface AuthorityKinds {
   byId: ReadonlyMap<string, AuthorityKind>;
   /** The ids of each kind, ascending. */
   ids: Readonly<Record<AuthorityKind, readonly string[]>>;
-  /** The ids of each name list (NAME_LIST_KINDS), ascending. */
-  lists: Readonly<Record<NameListKind, readonly string[]>>;
+  /** The ids of each list (LIST_KINDS: the name lists and the public enterprises), ascending. */
+  lists: Readonly<Record<ListKind, readonly string[]>>;
 }
 
-export function classifyAuthorities(rows: readonly AuthorityKindRow[], registry: LocalityRegistry): AuthorityKinds {
+/**
+ * `publicEnterprises`: the CUIs of reference.public_enterprise (STATE_COMPANY_KIND). An institution is on that list by its
+ * valid CUI alone, whatever its name or kind; an enterprise in insolvency or liquidation stays (its purchases are
+ * historical). The authority that holds an enterprise is never on it: the table has the enterprises' own CUIs only.
+ * Locally 804 of the 1,695 listed enterprises have records as buyers, 408 bn lei: 167 central (333 bn) and 637 local (75 bn).
+ */
+export function classifyAuthorities(rows: readonly AuthorityKindRow[], registry: LocalityRegistry, publicEnterprises: ReadonlySet<string> = new Set()): AuthorityKinds {
   const byId = new Map<string, AuthorityKind>();
   const ids = Object.fromEntries(AUTHORITY_KINDS.map((kind) => [kind, [] as string[]])) as Record<AuthorityKind, string[]>;
-  const lists = Object.fromEntries(NAME_LIST_KINDS.map((kind) => [kind, [] as string[]])) as Record<NameListKind, string[]>;
+  const lists = Object.fromEntries(LIST_KINDS.map((kind) => [kind, [] as string[]])) as Record<ListKind, string[]>;
   const listed = new Set<string>();
   for (const row of [...rows].sort((a, b) => Number(a.id) - Number(b.id))) {
     if (!listed.has(row.id)) {
       listed.add(row.id);
       for (const list of NAME_LIST_KINDS) if (onNameList(list, row.name)) lists[list].push(row.id);
+      if (row.cui && publicEnterprises.has(row.cui)) lists[STATE_COMPANY_KIND].push(row.id);
     }
     const kind = classifyAuthority(row, registry);
     if (!kind || byId.has(row.id)) continue;
@@ -205,7 +214,8 @@ const CACHE_MS = 600_000;
  */
 export async function readAuthorityKinds(q: DbSql): Promise<AuthorityKinds> {
   const [probe] = await q`select coalesce((select c.oid::text || '.' || c.relfilenode::text from pg_class c where c.oid = to_regclass('marts.entity_profile')), '') marker,
-    to_regclass('reference.authority_uat') is not null codes, to_regclass('reference.uat') is not null registry`;
+    to_regclass('reference.authority_uat') is not null codes, to_regclass('reference.uat') is not null registry,
+    to_regclass('reference.public_enterprise') is not null enterprises`;
   const marker = String(probe?.marker ?? "");
   if (cached && cached.marker === marker && Date.now() - cached.at < CACHE_MS) return cached.kinds;
   const kinds = (async () => {
@@ -216,8 +226,10 @@ export async function readAuthorityKinds(q: DbSql): Promise<AuthorityKinds> {
       where ep.role = 'authority' and ep.entity_id <= 9007199254740991 and ep.name_display is not null`;
     const units = probe?.registry ? await q`select siruta, tip, county from reference.uat where tip is not null` : [];
     const registry: LocalityRegistry = new Map(units.map((u) => [Number(u.siruta), { tip: String(u.tip), county: u.county == null ? null : String(u.county) }]));
+    // The public enterprises' CUIs (migration 0115); a database without the table has none.
+    const enterprises = probe?.enterprises ? await q`select cui from reference.public_enterprise` : [];
     return classifyAuthorities(rows.map((r) => ({ id: String(r.id), name: String(r.name), county: r.county == null ? null : String(r.county),
-      cui: r.cui == null ? null : String(r.cui), siruta: r.siruta == null ? null : Number(r.siruta) })), registry);
+      cui: r.cui == null ? null : String(r.cui), siruta: r.siruta == null ? null : Number(r.siruta) })), registry, new Set(enterprises.map((e) => String(e.cui))));
   })();
   cached = { marker, at: Date.now(), kinds };
   // A failed read is not kept: the next question reads again.
@@ -235,8 +247,8 @@ export function forgetAuthorityKinds(): void { cached = null; }
 export async function authorityKindIds(q: DbSql, kind: ParsedAuthorityKind | null | undefined): Promise<readonly string[] | null> {
   if (kind === LOCAL_ADMIN_KIND) return (await readPerCapitaPopulations(q)).ids;
   if (kind === TOWN_HALL_KIND) return townHallIds(await readAuthorityKinds(q));
-  if (kind === MINISTRY_KIND || kind === UNIVERSITY_KIND) return (await readAuthorityKinds(q)).lists[kind];
-  return kind ? (await readAuthorityKinds(q)).ids[kind] : null;
+  if ((LIST_KINDS as readonly string[]).includes(kind ?? "")) return (await readAuthorityKinds(q)).lists[kind as ListKind];
+  return kind ? (await readAuthorityKinds(q)).ids[kind as AuthorityKind] : null;
 }
 
 /** Every town hall (TOWN_HALL_KIND): the communes' and the towns' lists together, ascending; one array per read of the kinds. */

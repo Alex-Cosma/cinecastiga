@@ -30,9 +30,9 @@ export const SHARE_IN_RANKING_NOTE = "Ponderea fiecărui rând e în coloana „
 export const SHARE_UNKNOWN_NOTE = "Ponderea nu se poate calcula încă la această întrebare.";
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
-const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean", "minister", "universitate"] satisfies SaidAuthorityKind[];
+const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean", "minister", "universitate", "companie_stat"] satisfies SaidAuthorityKind[];
 /** What the county stands in for when a kind is asked in a locality (the locality's records are its town hall's). */
-const COUNTY_FOR_KIND: Record<string, string> = { scoala: "școli", spital: "spitale", consiliu_judetean: "consiliul județean", minister: "ministere", universitate: "universități" };
+const COUNTY_FOR_KIND: Record<string, string> = { scoala: "școli", spital: "spitale", consiliu_judetean: "consiliul județean", minister: "ministere", universitate: "universități", companie_stat: "companiile de stat și locale" };
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey", "procedure"];
 /**
  * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of

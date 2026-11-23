@@ -1,6 +1,6 @@
 import { COUNTIES } from "../../../counties";
 import { PROCEDURE_ORDER, PURCHASE_KIND_ORDER, type Procedure, type PurchaseKind } from "../../purchase";
-import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, NAME_LIST_KINDS, TOWN_HALL_KIND, SELECTION_RULES, type AuthorityKind, type ParsedAuthorityKind } from "../../spec";
+import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, LIST_KINDS, TOWN_HALL_KIND, SELECTION_RULES, type AuthorityKind, type ParsedAuthorityKind } from "../../spec";
 import { PROFILE_FORMS, TRANSACTION_FORMS } from "../context";
 import type { FilterDef, FilterSpec } from "../types";
 import { alwaysScope, edited, levels, setFilters } from "./shared";
@@ -70,7 +70,7 @@ export const authorityKind: FilterDef<ParsedAuthorityKind> = {
   write: (spec, value) => edited(setFilters(spec, { authorityKind: value }), (next) => {
     if (value !== LOCAL_ADMIN_KIND && next.block === "map" && next.measure === "value_per_capita") next.measure = "value";
   }),
-  choices: (spec) => [undefined, ...(spec.block === "map" ? [LOCAL_ADMIN_KIND as ParsedAuthorityKind] : []), TOWN_HALL_KIND, ...NAME_LIST_KINDS, ...AUTHORITY_KINDS],
+  choices: (spec) => [undefined, ...(spec.block === "map" ? [LOCAL_ADMIN_KIND as ParsedAuthorityKind] : []), TOWN_HALL_KIND, ...LIST_KINDS, ...AUTHORITY_KINDS],
 };
 
 export const county: FilterDef<string> = {
