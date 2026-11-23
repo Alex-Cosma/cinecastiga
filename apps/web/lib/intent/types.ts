@@ -1,4 +1,4 @@
-import type { AskSpec, AuthorityKind } from "../ask/spec";
+import type { AskSpec, AuthorityKind, TOWN_HALL_KIND } from "../ask/spec";
 import type { LensMatch } from "./lens-phrases";
 import type { Procedure } from "../ask/purchase";
 
@@ -111,7 +111,8 @@ export interface Interpretation {
   placeAlternatives: PlaceMatch[];
   /** The place name matched several localities and none was chosen. */
   placeAmbiguous: boolean;
-  authorityKind: { kind: AuthorityKind; matched: Span } | null;
+  /** A kind of institution; every town hall („primăriile”) is the communes' and the towns' together. */
+  authorityKind: { kind: AuthorityKind | typeof TOWN_HALL_KIND; matched: Span } | null;
   authority: EntityMatch | null;
   supplier: EntityMatch | null;
   /** Several firms/institutions carry the typed name and none was chosen. */
@@ -127,6 +128,8 @@ export interface Interpretation {
   compareChoices: { label: string; focal: EntityMatch; other: EntityMatch }[];
   /** The person asked about town halls ("primării") but the engine ranks every institution. */
   askedTownHalls: boolean;
+  /** The noun before a superlative said who is ranked („primăria cu cele mai mari contracte”, rules.holders). */
+  holder?: boolean;
   /** Second entity for "compară X cu Y". */
   compareWith: EntityMatch | null;
   person: PersonMatch | null;

@@ -23,7 +23,7 @@ import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpre
  */
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
-const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean"];
+const NOT_IN_LOCALITY: string[] = ["scoala", "spital", "consiliu_judetean"] satisfies AuthorityKind[];
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey", "procedure"];
 /**
  * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of

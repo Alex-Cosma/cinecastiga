@@ -196,7 +196,7 @@ describe("the institutions of each kind", () => {
     ] as FilterSpec[]) {
       const ctx = filterContext(spec);
       expect([spec.block, FILTERS.authorityKind.engine[ctx.form]]).toEqual([spec.block, ctx.profile ? "profile" : "row"]);
-      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, ...AUTHORITY_KINDS]]);
+      expect([spec.block, FILTERS.authorityKind.choices(spec, ctx)]).toEqual([spec.block, [undefined, "primarie", ...AUTHORITY_KINDS]]);
     }
   });
 });

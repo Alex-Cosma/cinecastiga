@@ -91,7 +91,7 @@ describe("„Primăriile și consiliile județene” (map final §3.3)", () => {
     expect(validateSpec({ ...local(), block: "stat" })).toEqual({ error: LOCAL_ADMIN_ONLY_MAP });
     expect(validateSpec(map({ ...Y25, authorityKind: "local_admin", county: "Cluj" }))).toEqual({ error: LOCAL_ADMIN_PLACE });
     const spec = map(Y25);
-    expect(FILTERS.authorityKind.choices(spec, filterContext(spec)).slice(0, 3)).toEqual([undefined, "local_admin", "comuna"]);
+    expect(FILTERS.authorityKind.choices(spec, filterContext(spec)).slice(0, 4)).toEqual([undefined, "local_admin", "primarie", "comuna"]);
     expect(FILTERS.authorityKind.choices({ ...spec, block: "stat" }, filterContext({ ...spec, block: "stat" }))).not.toContain("local_admin");
     // Another kind leaves the per-inhabitant lens for the value.
     expect(FILTERS.authorityKind.write(local({ measure: "value_per_capita" }), "spital").measure).toBe("value");

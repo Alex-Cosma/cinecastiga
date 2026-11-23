@@ -27,6 +27,19 @@ describe('interpretation → /cauta selection', () => {
     expect(t.sentence).toBe(result.sentence);
   });
 
+  it('answers «primăria cu cele mai mari contracte» with the town halls ranked, the titles largest first (owner, 23 November 2026)', async () => {
+    const { scope, result } = await read('primaria cu cele mai mari contracte pe iluminat în 2026');
+    const t = applyInterpretation(scope, result);
+    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2026', to: '2026', order: 'value', names: 'exact' });
+    expect(t.notes).toEqual([]);
+    expect(t.kind?.label).toBe('primăriile');
+    expect(t.question?.sentence).toBe('Ce primării din toată țara cumpără cel mai mult pentru „iluminat”, prin toate achizițiile, în 2026?');
+    expect(t.answer?.top).toMatchObject({ kind: 'authorities', spec: { block: 'table', dim: 'authority', topN: 3, filters: { authorityKind: 'primarie', yearFrom: 2026, yearTo: 2026 } } });
+    // „cele mai mari contracte de iluminat” alone is still the largest records
+    const largest = applyInterpretation(...Object.values(await read('cele mai mari contracte de iluminat din 2026')) as [typeof scope, typeof result]);
+    expect(largest.answer?.top?.kind).toBe('records');
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

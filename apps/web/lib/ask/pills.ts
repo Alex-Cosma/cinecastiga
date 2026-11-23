@@ -1,4 +1,4 @@
-import { LOCAL_ADMIN_KIND, namedKind, type AskSpec } from "./spec";
+import { LOCAL_ADMIN_KIND, namedKind, TOWN_HALL_KIND, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
@@ -64,7 +64,7 @@ export function ownPills(spec: AskSpec, labels: { scatterGroup?: number } = {}):
     text: spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni"
       // entity_card (F6c): the podium by value; the first profiles by the risk score (entity_card-3, rf-2026.18).
       : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii după risc" : "locurile 1–3")
-        : group ? groupNoun(labels.scatterGroup!, spec.dim === "supplier" ? "supplier" : "authority", namedKind(spec.filters.authorityKind))
+        : group ? groupNoun(labels.scatterGroup!, spec.dim === "supplier" ? "supplier" : "authority", spec.filters.authorityKind === TOWN_HALL_KIND ? TOWN_HALL_KIND : namedKind(spec.filters.authorityKind))
           : BLOCK_LABEL[spec.block],
     filter: group ? "dim" : null,
   });

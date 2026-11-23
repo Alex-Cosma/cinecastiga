@@ -904,10 +904,10 @@ describe("re-review of 4cda2e6", () => {
     expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului Iasi")).i.authority?.id).toBe(2145066);
     expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului din Iasi")).i.authority?.id).toBe(2145066);
   });
-  it("«ce primărie are cel mai mare risc» says that every institution is ranked", async () => {
+  it("«ce primărie are cel mai mare risc» ranks the town halls (owner, 23 November 2026: every town hall is a kind)", async () => {
     const { r } = await ask("ce primarie are cel mai mare risc in Buzau");
-    expect(r.spec).toMatchObject({ block: "entity_card", rankBy: "risk", filters: { county: "Buzău" } });
-    expect(r.sentence).toContain("nu doar primăriile");
+    expect(r.spec).toMatchObject({ block: "entity_card", rankBy: "risk", filters: { county: "Buzău", authorityKind: "primarie" } });
+    expect(r.sentence).toBe("Care primărie din județul Buzău are cel mai ridicat risc?");
   });
   it("«Consiliul Județean Buzău» is the named council; «consiliile județene» stays a kind", async () => {
     expect((await ask("ce cumpara Consiliul Judetean Buzau")).i.authority?.id).toBe(2144001);

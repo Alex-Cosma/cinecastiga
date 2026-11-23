@@ -160,6 +160,7 @@ export const QUESTION_TYPES: {
 
 export const KIND_OPTIONS = [
   ["", "instituțiile publice", "instituțiilor publice"],
+  ["primarie", "primăriile", "primăriilor"],
   ["comuna", "primăriile de comună", "primăriilor de comună"],
   ["oras_municipiu", "primăriile de oraș și municipiu", "primăriilor de oraș și municipiu"],
   ["consiliu_judetean", "consiliile județene", "consiliilor județene"],
@@ -297,6 +298,8 @@ export function focalRole(spec: QuestionSpec): "authority" | "supplier" {
 export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   // F5, the map only (MAP_RULES): the strict list of the per-inhabitant ranking (map final §3.3).
   local_admin: { the: "primăriile și consiliile județene", bare: "primării și consilii județene" },
+  // Every town hall (TOWN_HALL_KIND): the communes' and the towns' together.
+  primarie: { the: "primăriile", bare: "primării" },
   comuna: { the: "primăriile de comună", bare: "primării de comună" },
   oras_municipiu: { the: "primăriile de oraș și municipiu", bare: "primării de oraș și municipiu" },
   consiliu_judetean: { the: "consiliile județene", bare: "consilii județene" },
@@ -306,6 +309,7 @@ export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
 
 /** One institution of a kind, after "Care" (kit §4 Tipurile, §5.41). */
 export const KIND_ONE: Record<string, string> = {
+  primarie: "primărie",
   comuna: "primărie de comună",
   oras_municipiu: "primărie de oraș sau municipiu",
   consiliu_judetean: "consiliu județean",

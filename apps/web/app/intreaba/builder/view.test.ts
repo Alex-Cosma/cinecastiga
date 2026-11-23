@@ -239,7 +239,7 @@ describe("the windows (component 9 and the composed pickers)", () => {
   it("start the buyer's window with «Toate instituțiile publice» and show a one-row ranking disabled with its reason (R1)", () => {
     const kinds = listOptions(win(SEVEN.stat!, "Cine a cumpărat"), SEVEN.stat!, "authorityKind");
     expect(kinds.options[0]).toMatchObject({ label: "Toate instituțiile publice", detail: "inclusiv companii de stat și utilități" });
-    expect(kinds.options.map((o) => o.label).slice(1)).toEqual(["Primării de comună", "Primării de oraș și municipiu", "Consilii județene", "Spitale", "Școli"]);
+    expect(kinds.options.map((o) => o.label).slice(1)).toEqual(["Primării", "Primării de comună", "Primării de oraș și municipiu", "Consilii județene", "Spitale", "Școli"]);
     expect(kinds.value).toBe('"spital"');
     // Choosing the first row clears the whole window: the institutions, whatever the kind.
     const cleared = chooseValue(SEVEN.stat!, win(SEVEN.stat!, "Cine a cumpărat").slot, kinds.options[0]!.choice);

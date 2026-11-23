@@ -1,4 +1,4 @@
-import type { AuthorityKind, Block } from "../ask/spec";
+import { TOWN_HALL_KIND, type AuthorityKind, type Block } from "../ask/spec";
 import { valueWords, type Procedure } from "../ask/purchase";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
@@ -118,16 +118,30 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
 
+/** Who a superlative ranks (rules.holders): institutions, by their noun or their kind's, or firms. */
+const HOLDER_BUYERS = "institutia|institutiile|institutii|autoritatea|autoritatile|autoritati|cumparatorul|cumparatorii|primari(?:i|ile) de (?:comuna|comune|oras|orase|municipiu|municipii)|primaria|primariile|primarii|spitalul|spitalele|spitale|scoala|scolile|scoli|liceul|liceele|licee|comuna|comunele|comune|orasul|orasele|orase|municipiul|municipiile|municipii|consiliul judetean|consiliile judetene|consilii judetene|consiliu judetean";
+const HOLDER_SUPPLIERS = "firma|firmele|firme|compania|companiile|companii|furnizorul|furnizorii|furnizori|societatea|societatile|societati|castigatorul|castigatorii";
+const HOLDER_SUPPLIER = /^(?:firm|compani|furnizor|societat|castigator)/;
+/** Nouns the kinds read themselves (rules.kinds), left free for them. */
+const HOLDER_KIND = /^(?:primari\w* de \w+|spital\w*|scol\w*|scoala|lice\w*|comune|comunele|comunelor|orase|orasele|oraselor|municipii|municipiile|consili\w* judete\w*)$/;
+/** A singular the kinds do not read: „comuna cu cele mai mari cheltuieli” is every commune's town hall. */
+const HOLDER_SINGULAR_KIND: Record<string, AuthorityKind> = { comuna: "comuna", orasul: "oras_municipiu", municipiul: "oras_municipiu" };
+const HOLDER_MOST = new RegExp(`\\b(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}) (?:care (?:are|au|a avut|au avut|a incheiat|au incheiat|a facut|au facut|a dat|au dat|a castigat|au castigat|a cheltuit|au cheltuit|cheltuie|cheltuiesc|a cumparat|au cumparat|cumpara|a achizitionat|au achizitionat|achizitioneaza|a platit|au platit|platesc) |cu )(?:cele mai (?:mari|multe|scumpe|valoroase|costisitoare)|cei mai multi|cel mai mare|cea mai mare|cel mai mult)\\b`);
+const HOLDER_TOP_N = new RegExp(`\\b(?:top|primele|primii|primul) (?:\\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece) (?:de )?(${HOLDER_BUYERS}|${HOLDER_SUPPLIERS})\\b`);
+/** „spitale care cumpără mănuși”: the institutions that buy, as „ce spitale cumpără” asks. */
+const HOLDER_WHO = new RegExp(`\\b(${HOLDER_BUYERS}) care (?:cumpara|achizitioneaza|au cumparat|a cumparat|au achizitionat|a achizitionat|cheltuie|cheltuiesc|au cheltuit|a cheltuit)\\b`);
+const HOLDER_TOP = new RegExp(`\\b(top|topul|clasament|clasamentul)(?: (?:de|cu|al|pe))?(?: (${HOLDER_BUYERS}|${HOLDER_SUPPLIERS}|primariilor|spitalelor|scolilor|institutiilor|firmelor|comunelor|oraselor))?(?! \\d)\\b`);
+
 /** The retired signal's words (rules.cues): a signals question without a signal, and its note. */
 const RETIRED_RAPID = /\b(?:finalizar\w* rapid\w*|finalizat\w* rapid)\b/;
 export const RETIRED_RAPID_NOTE = "„Finalizare rapidă” nu mai este un semnal: nu intră în risc. Arătăm tot grupul.";
 
 const KIND_CUES: [AuthorityKind, RegExp][] = [
-  ["consiliu_judetean", /\b(?:consili(?:ul|ului|ile|ilor|i) judetean\w*|consiliile judetene|cj)\b/],
+  ["consiliu_judetean", /\b(?:consili(?:ul|ului|ile|ilor|i|u) judete(?:an|n)\w*|cj)\b/],
   ["spital", /\b(?:spital(?:e|ele|elor|ul|ului)?)\b/],
   ["scoala", /\b(?:scol(?:i|ile|ilor)|scoala|scolii|licee(?:le|lor)?|liceu(?:l|lui)?|gradinit(?:e|ele|elor|a)|colegii(?:le)?|unitati(?:le)? de invatamant|invatamant\w*)\b/],
   ["comuna", /\b(?:comun(?:e|ele|elor)|primari(?:i|ile|ilor) de comun\w*)\b/],
-  ["oras_municipiu", /\b(?:orase(?:le|lor)?|municipii(?:le|lor)?|primari(?:i|ile|ilor) de oras\w*)\b/],
+  ["oras_municipiu", /\b(?:orase(?:le|lor)?|municipii(?:le|lor)?|primari(?:i|ile|ilor) de (?:oras|municipi)\w*)\b/],
 ];
 
 /** Abbreviations that open an institution's name („ISJ Cluj”, „SUUB”); „caș” is cheese, not a health insurance house. */
@@ -412,6 +426,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const cues = this.cues(c, out, townHalls);
     this.lenses(c, out);
     await this.kinds(c, out);
+    this.townHallKind(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
     await this.institutions(c, out, compareCue !== null);
     await this.compare(c, out, compareCue);
@@ -624,15 +639,13 @@ export class RulesInterpreter implements QuestionInterpreter {
       else if (/^(institutie|autoritate|primarie|client|clientul)$/.test(noun)) {
         out.dimHint = "authority";
         c.take(from, h.j, "cue");
-        if (noun === "primarie") {
-          out.askedTownHalls = true;
-          out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); clasamentul cuprinde toate instituțiile.");
-        }
+        // Every town hall: the kind is set once the other kinds are read (townHallKind).
+        if (noun === "primarie") { out.askedTownHalls = true; c.take(from, h.j, "kind"); }
       }
       // The noun of a kind (a hospital, a school) stays free: it is the kind, which the rules read next.
       else { out.dimHint = "authority"; if (!adjective) c.take(from, from + 1, "cue"); }
     };
-    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate)\b/)) superlative(h, false);
+    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|consiliu(?= judetean))\b/)) superlative(h, false);
     for (const h of c.all(/\b(?:cel|cea)\s+mai\s+(?:riscant\w*|mare|bogat\w*|important\w*)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|client|clientul)\b/)) superlative(h, true);
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
   }
@@ -646,6 +659,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       found.push({ intent: "signals", at: h.i });
       if (!out.notes.includes(RETIRED_RAPID_NOTE)) out.notes.push(RETIRED_RAPID_NOTE);
     }
+    this.holders(c, out, found, townHalls);
     for (const [intent, re] of INTENT_CUES) {
       for (const h of c.all(re)) {
         c.take(h.i, h.j, "cue");
@@ -660,25 +674,80 @@ export class RulesInterpreter implements QuestionInterpreter {
     // "care firmă …" / "care instituție …" is itself a (one-row) ranking
     if (out.superlative && out.dimHint && !found.some((x) => x.intent.startsWith("ranking")))
       found.push({ intent: out.dimHint === "supplier" ? "ranking_suppliers" : "ranking_authorities", at: 0 });
-    // "primării" alone has no kind in the engine: what the ranking covers is said once the reading is final (townHallsNote)
-    for (const h of c.all(/\bprimari(?:i|ile|ilor)\b/)) {
+    // "primării": every town hall, a kind set once the other kinds are read (townHallKind)
+    for (const h of c.all(/\bprimari(?:i|ile|ilor)\b(?! de (?:comun|oras|municipi))/)) {
+      // „dar nu de la primării”, „fără primării”: a kind cannot be left out, so it is not applied, and said
+      const a = c.f(h.i - 1), b = c.f(h.i - 2), d = c.f(h.i - 3);
+      const not = ["fara", "exceptand"].includes(a) ? h.i - 1 : a === "de" && ["afara", "fara"].includes(b) ? h.i - 2
+        : a === "la" && b === "de" && d === "nu" ? h.i - 3 : a === "la" && b === "nu" ? h.i - 2 : null;
+      if (not !== null) {
+        for (let k = not; k < h.j; k++) if (!c.used[k]) c.used[k] = "modifier";
+        out.notes.push(`„${c.span(not, h.j).text}”: nu putem scoate un tip de instituții din căutare, așa că arătăm toate instituțiile.`);
+        continue;
+      }
       c.take(h.i, h.j, "kind");
-      if (!out.authorityKind) out.askedTownHalls = true;
+      out.askedTownHalls = true;
       townHalls.said = true;
     }
     return found;
   }
 
   /**
-   * „primăriile” said (UX audit Z2-11): the note is written after the final reading, with what it kept. No kind read:
-   * every institution is ranked. Another kind read („consiliul județean și primăriile”): only that kind is kept, said
-   * first, with the town halls left out. A town hall kind („primăriile de comună”) needs no note.
+   * „primăria cu cele mai mari contracte pe iluminat”, „spitalele care au cele mai multe achiziții directe”, „top
+   * primării” (owner, 23 November 2026: these read as a ranking of firms, or as a town hall whose name was missing): the
+   * noun before the superlative is who the ranking lists. An institution's noun ranks institutions (of that kind), a
+   * firm's noun ranks firms. A named institution („Spitalul Județean Buzău cu…”) is not this: the phrase follows the noun.
+   */
+  private holders(c: Cursor, out: Interpretation, found: { intent: IntentKind; at: number }[], townHalls: { said: boolean }) {
+    const rank = (i: number, j: number, noun: string, from: number, to: number) => {
+      const buyer = !HOLDER_SUPPLIER.test(noun);
+      // The phrase's own words are understood; a kind's noun stays free for the kinds („spitalul”, „școlile”).
+      for (let k = from; k < to; k++) if (!c.used[k]) c.used[k] = "cue";
+      found.push({ intent: buyer ? "ranking_authorities" : "ranking_suppliers", at: i });
+      out.holder = true;
+      out.dimHint = out.dimHint ?? (buyer ? "authority" : "supplier");
+      if (HOLDER_KIND.test(noun)) return;
+      if (/^primari/.test(noun)) { c.take(i, j, "kind"); out.askedTownHalls = true; townHalls.said = true; }
+      else if (HOLDER_SINGULAR_KIND[noun]) { c.take(i, j, "kind"); out.authorityKind = out.authorityKind ?? { kind: HOLDER_SINGULAR_KIND[noun]!, matched: c.span(i, j) }; }
+      else c.take(i, j, "cue");
+    };
+    for (const h of c.over(HOLDER_MOST, ["modifier"])) {
+      const j = h.i + h.m[1]!.split(" ").length;
+      if (c.isFree(h.i, j)) rank(h.i, j, h.m[1]!, j, h.j);
+    }
+    for (const h of c.all(HOLDER_WHO)) {
+      const j = h.i + h.m[1]!.split(" ").length;
+      rank(h.i, j, h.m[1]!, j, h.j);
+    }
+    // „top 10 primării după valoare”: the number is already read (modifiers)
+    for (const h of c.over(HOLDER_TOP_N, ["modifier"])) {
+      const j = h.j - h.m[1]!.split(" ").length;
+      if (c.isFree(j, h.j)) rank(j, h.j, h.m[1]!, j, j);
+    }
+    for (const h of c.all(HOLDER_TOP)) {
+      const first = h.i + h.m[1]!.split(" ").length;
+      if (h.m[2]) rank(first, h.j, h.m[2], h.i, first);
+      // „top iluminat 2026”: the word asks a ranking the default reading already gives.
+      else c.take(h.i, h.j, "cue");
+    }
+  }
+
+  /** Every town hall asked („primăriile”, „care primărie”) and no other kind read: the communes' and the towns' together. */
+  private townHallKind(c: Cursor, out: Interpretation) {
+    if (!out.askedTownHalls || out.authorityKind || out.measure === "value_per_capita") return;
+    const k = c.tokens.findIndex((t, at) => c.used[at] === "kind" && /^primari/.test(t.f));
+    if (k >= 0) out.authorityKind = { kind: TOWN_HALL_KIND, matched: c.span(k, k + 1) };
+  }
+
+  /**
+   * „primăriile” said (UX audit Z2-11): the note is written after the final reading, with what it kept. No other kind
+   * read: every town hall (townHallKind), no note. Another kind read („consiliul județean și primăriile”): only that
+   * kind is kept, said first, with the town halls left out. A town hall kind („primăriile de comună”) needs no note.
    */
   private townHallsNote(out: Interpretation, said: boolean) {
     if (!said || out.measure === "value_per_capita") return;
     const kind = out.authorityKind?.kind;
-    if (!kind) out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile.");
-    else if (kind !== "comuna" && kind !== "oras_municipiu" && KIND_PLURALS[kind])
+    if (kind && kind !== TOWN_HALL_KIND && kind !== "comuna" && kind !== "oras_municipiu" && KIND_PLURALS[kind])
       out.notes.unshift(`Doar ${KIND_PLURALS[kind]!.the}, fără primării.`);
   }
 

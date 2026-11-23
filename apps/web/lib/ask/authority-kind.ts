@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { countyFold, countylessLegacyCode, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
 import { readPerCapitaPopulations } from "./per-capita";
-import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, type AuthorityKind, type ParsedAuthorityKind } from "./spec";
+import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND, type AuthorityKind, type ParsedAuthorityKind } from "./spec";
 
 /*
  * The kind of a buying institution (plan §2.5, D1): one classification for
@@ -33,6 +33,7 @@ import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, type AuthorityKind, type ParsedAutho
 /** The kind in the "avansat" SQL text and in its comments. */
 export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
   local_admin: "primării și consilii județene (lista strictă a valorii pe locuitor)",
+  primarie: "primării (de comună, oraș și municipiu)",
   comuna: "primării de comună",
   oras_municipiu: "primării de oraș și municipiu",
   consiliu_judetean: "consilii județene / județe",
@@ -43,6 +44,7 @@ export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
 /** Where each kind comes from, for the "avansat" SQL text. */
 export const KIND_SOURCE: Record<ParsedAuthorityKind, string> = {
   local_admin: "nume, județ și cod SIRUTA concordante, cu populația INS RPL 2021",
+  primarie: "registrul localităților, apoi numele",
   comuna: "registrul localităților, apoi numele",
   oras_municipiu: "registrul localităților, apoi numele",
   consiliu_judetean: "lista strictă a valorii pe locuitor, apoi numele",
@@ -199,7 +201,16 @@ export function forgetAuthorityKinds(): void { cached = null; }
  */
 export async function authorityKindIds(q: DbSql, kind: ParsedAuthorityKind | null | undefined): Promise<readonly string[] | null> {
   if (kind === LOCAL_ADMIN_KIND) return (await readPerCapitaPopulations(q)).ids;
+  if (kind === TOWN_HALL_KIND) return townHallIds(await readAuthorityKinds(q));
   return kind ? (await readAuthorityKinds(q)).ids[kind] : null;
+}
+
+/** Every town hall (TOWN_HALL_KIND): the communes' and the towns' lists together, ascending; one array per read of the kinds. */
+const townHalls = new WeakMap<AuthorityKinds, readonly string[]>();
+function townHallIds(kinds: AuthorityKinds): readonly string[] {
+  let ids = townHalls.get(kinds);
+  if (!ids) townHalls.set(kinds, ids = [...kinds.ids.comuna, ...kinds.ids.oras_municipiu].sort((a, b) => Number(a) - Number(b)));
+  return ids;
 }
 
 /** The kind of one institution id, as every SQL condition of this module reads it. */

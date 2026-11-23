@@ -67,10 +67,15 @@ export type AuthorityKind = (typeof AUTHORITY_KINDS)[number];
  */
 /** The strict list of local administrations (F5), not a name pattern. */
 export const LOCAL_ADMIN_KIND = "local_admin";
-export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND;
-/** The kind matched by name patterns. local_admin has none; the engine refuses it before it reads a kind. */
+/** Every town hall (owner, 23 November 2026: „primăria cu cele mai mari contracte”): the communes' and the towns' together. */
+export const TOWN_HALL_KIND = "primarie";
+export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND | typeof TOWN_HALL_KIND;
+const PARSED_KINDS: readonly string[] = [...AUTHORITY_KINDS, LOCAL_ADMIN_KIND, TOWN_HALL_KIND];
+export const isParsedKind = (value: unknown): value is ParsedAuthorityKind => typeof value === "string" && PARSED_KINDS.includes(value);
+/** The kind matched by name patterns. local_admin has none (the engine refuses it before it reads a kind); the town
+ * halls are two of them, so they have no peer group or classification of their own. */
 export const namedKind = (kind: ParsedAuthorityKind | undefined): AuthorityKind | undefined =>
-  kind === LOCAL_ADMIN_KIND ? undefined : kind;
+  kind === LOCAL_ADMIN_KIND || kind === TOWN_HALL_KIND ? undefined : kind;
 export const PURCHASE_KINDS = ["produse", "servicii", "lucrari"] as const;
 export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare", "altele"] as const;
 /** The firm's seat against the buyer's county on each row (same, other) or abroad. */
@@ -563,7 +568,7 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
     if (stringFields.includes(key) && (typeof value !== "string" || value.length > (key === "adminPersonKey" ? 300 : 200))) return { error:`Valoare invalidă pentru ${key}.` };
     const bounds = numberBounds[key];
     if (bounds && (!Number.isSafeInteger(Number(value)) || Number(value) < bounds[0] || Number(value) > bounds[1])) return { error:`Limită sau identificator invalid: ${key}.` };
-    if (key === "authorityKind" && !AUTHORITY_KINDS.includes(value as AuthorityKind) && value !== LOCAL_ADMIN_KIND) return { error:"Tip de instituție necunoscut." };
+    if (key === "authorityKind" && !isParsedKind(value)) return { error:"Tip de instituție necunoscut." };
     if (key === "singleBidder" && typeof value !== "boolean") return { error:"Filtrul de competiție trebuie să fie adevărat sau fals." };
     if (enumFields[key] && !enumFields[key].includes(value as string) || trueFields.includes(key) && value !== true) return { error:`Valoare invalidă pentru ${key}.` };
   }
@@ -618,7 +623,7 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   if (
     fRaw["authorityKind"] !== undefined &&
     fRaw["authorityKind"] !== null &&
-    (AUTHORITY_KINDS.includes(fRaw["authorityKind"] as AuthorityKind) || fRaw["authorityKind"] === LOCAL_ADMIN_KIND)
+    isParsedKind(fRaw["authorityKind"])
   ) {
     filters.authorityKind = fRaw["authorityKind"] as ParsedAuthorityKind;
   }

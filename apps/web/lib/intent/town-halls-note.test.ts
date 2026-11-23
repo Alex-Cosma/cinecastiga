@@ -18,13 +18,15 @@ describe("the town halls' note", () => {
     expect(i.notes[0]).toBe("Doar consiliile județene, fără primării.");
     expect(i.notes.join(" ")).not.toMatch(/arătăm toate instituțiile|pe locuitor/);
   });
-  it("says every institution is ranked when no kind is read, once, without the per-inhabitant aside", async () => {
+  it("reads every town hall as a kind when no other kind is read, without a note (owner, 23 November 2026)", async () => {
     const i = await read("ce firme câștigă la primăriile din județul Buzău");
-    expect(i.notes.filter((x) => /primării/.test(x))).toEqual(["Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile."]);
+    expect(i.authorityKind?.kind).toBe("primarie");
+    expect(i.notes.filter((x) => /primării/.test(x))).toEqual([]);
   });
-  it("says it once when the town halls are named twice", async () => {
+  it("reads the kind once when the town halls are named twice", async () => {
     const i = await read("ce firme câștigă la primăriile din Buzău și la primăriile din Brăila");
-    expect(i.notes.filter((x) => /Nu putem restrânge/.test(x))).toHaveLength(1);
+    expect(i.authorityKind?.kind).toBe("primarie");
+    expect(i.notes.filter((x) => /Nu putem restrânge/.test(x))).toHaveLength(0);
   });
 });
 

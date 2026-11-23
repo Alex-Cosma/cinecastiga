@@ -5,7 +5,7 @@ import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
 import { joinCpvTerms } from '../ask/cpv-terms';
 import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
-import type { AuthorityKind } from '../ask/spec';
+import type { AuthorityKind, TOWN_HALL_KIND } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
 import type { PlaceAround } from './around';
@@ -126,8 +126,8 @@ function chip(p: PlaceMatch): ChipPlace | null {
   return id ? { id, label: p.kind === 'county' ? p.name : p.label, kind: p.kind } : null;
 }
 
-const KIND_LABEL: Record<AuthorityKind, string> = {
-  comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
+const KIND_LABEL: Record<AuthorityKind | typeof TOWN_HALL_KIND, string> = {
+  primarie: 'primăriile', comuna: 'primăriile de comună', oras_municipiu: 'primăriile de oraș și municipiu', consiliu_judetean: 'consiliile județene', spital: 'spitalele', scoala: 'școlile',
 };
 const wholeCounty = (county: string) => (county === 'București' ? 'Tot Bucureștiul' : `Tot județul ${county}`);
 /** The year in Bucharest, for open periods ("după 2020"). */
@@ -169,7 +169,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const typedHref = () => `/intreaba?q=${encodeURIComponent(scope.q)}`;
   // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the largest records (owner probe, 10 November 2026)
   const largest = !scope.order && /\b(?:cel|cea|cele|cei)\s+mai\s+(?:mare|mari|scump\w*|valoros\w*)\s+(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)\b/.test(foldText(i.text));
-  const then = thenFor(i, largest);
+  // „primăria cu cele mai mari contracte” ranks the town halls (owner, 23 November 2026): the short answer is the
+  // ranking, and the titles under it are still the largest first.
+  const then = thenFor(i, largest && !i.holder);
   const out: TopicInterpretation = {
     ...base,
     subject: subjectOk ? { term: s0!.term, label: s0!.label, cpvName: s0!.cpvName, source: s0!.source, notes: [] } : null,
