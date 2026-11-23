@@ -92,6 +92,16 @@ export const largestSentence = (total: string): string =>
   total.replace(/^Cât valorează (achizițiile|contractele)\b/, (_, w: string) => `Care sunt cele mai mari ${w === "contractele" ? "contracte" : "achiziții"}`);
 
 /**
+ * How many firms or institutions, from their ranking's question (owner, 23 November 2026): „Ce firme câștigă
+ * achizițiile…” → „Câte firme câștigă achizițiile…”, „Ce spitale … cumpără cel mai mult pentru „X”, …” → „Câte spitale
+ * … cumpără „X”, …”. Null when the sentence is not a ranking's.
+ */
+export const countSentence = (ranking: string): string | null =>
+  /^Ce \p{L}/u.test(ranking) && !/^Ce cumpără\b/.test(ranking)
+    ? ranking.replace(/^Ce /, "Câte ").replace(/ cumpără cel mai mult pentru /, " cumpără ").replace(/ cumpără cel mai mult,/, " cumpără,").replace(/, după numărul de înregistrări\?$/, "?")
+    : null;
+
+/**
  * Inflected Romanian noun → base forms worth trying against a vocabulary
  * ("iluminatul" → "iluminat", "medicamentele" → "medicamente",
  * "deszăpezirea" → "deszapezire"). Bounded, never shorter than 4 letters.

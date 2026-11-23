@@ -26,7 +26,8 @@ import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords, localityName } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
-import { largestSentence } from "@/lib/intent/text";
+import { countSentence, largestSentence } from "@/lib/intent/text";
+import { KIND_ONE, KIND_WORDS } from "@/lib/ask/question-ui";
 import { copyShortLink, prepareShortLink, shortLink } from "@/lib/short-link-client";
 import { namedThread, rememberThreadNames } from "./thread-names";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
@@ -258,6 +259,9 @@ export default function AskPanel({
   // its sources list by value, and its title and the drawer's say the question asked, as „Am înțeles” does (owner,
   // 23 November 2026). Any other run of the answer drops it.
   const [largestAsked, setLargestAsked] = useState(false);
+  // How many firms or institutions was asked („câte firme au lucrat cu…”): the answer is their ranking, led by their
+  // number, and its title asks „Câte…” (owner, 23 November 2026). Any other run of the answer drops it.
+  const [countAsked, setCountAsked] = useState(false);
   const [error, setError] = useState<string | null>(link?.kind === "error" ? link.error : null);
   /** Technical text behind a failed answer, shown only under "Detalii tehnice". */
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
@@ -391,6 +395,8 @@ export default function AskPanel({
         memo?: string;
         /** The sources list a drill opens starts ordered by value: the largest records were asked (IntentResult.sources). */
         sort?: "value";
+        /** How many firms or institutions was asked (IntentResult.count): their number leads the ranking. */
+        count?: true;
       } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
@@ -440,7 +446,7 @@ export default function AskPanel({
         }
         setResp(answer);
         const largest = drill && opts.sort === "value" && answer.spec.block === "stat";
-        if (!("tablePage" in body)) setLargestAsked(largest);
+        if (!("tablePage" in body)) { setLargestAsked(largest); setCountAsked(Boolean(opts.count) && answer.spec.block === "table"); }
         // An answer reloaded for a 409 is not reloaded again for one (reloadOutdated); a new page of it stays that answer.
         if (!("tablePage" in body)) reloadedFor409.current = Boolean(opts.reloaded);
         // The executed identities, plus an explicit data stream the link asked for.
@@ -558,7 +564,7 @@ export default function AskPanel({
    * (owner, 1 November 2026): the builder folded under "Schimbă întrebarea",
    * the interpretation one line under the answer's title, one scroll.
    */
-  const adopt = useCallback((choice: IntentChoice, scroll = true, largest = false) => {
+  const adopt = useCallback((choice: IntentChoice, scroll = true, largest = false, count = false) => {
     setChosen(choice);
     setBuilderInit(choice.spec);
     setLinkRuns(true);
@@ -571,7 +577,7 @@ export default function AskPanel({
     setDirty(false);
     setMode("build");
     // „cel mai mare contract de…”: the answer is the selection's total, opened on its sources list, the largest first.
-    void execute({ spec: choice.spec }, largest, undefined, undefined, scroll, largest ? { sort: "value" } : {}).then((ran) => {
+    void execute({ spec: choice.spec }, largest, undefined, undefined, scroll, largest ? { sort: "value" } : count ? { count: true } : {}).then((ran) => {
       const link = ran ? new URLSearchParams(window.location.search).get("spec") : null;
       if (link) setUnderstood((readings) => ({ ...readings, [link]: choice }));
     });
@@ -601,7 +607,7 @@ export default function AskPanel({
       setEvidence(null);
       // A firm or institution picked from the box's suggestions is the person's pick among its namesakes (Z2-08).
       const pinned = shouldAutoRun(body) ? null : pinnedChoice(body, pin, text);
-      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll, body.sources === "largest");
+      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll, body.sources === "largest", body.count === "entities");
       else if (pinned) adopt(pinned, scroll);
       else {
         setChosen(null);
@@ -763,7 +769,9 @@ export default function AskPanel({
       : "Răspunsul tău");
   // What the answer's heading and its sources drawer say: the largest records' question where that was asked. The
   // saved question, the export and the empty hints keep the title of what the spec computes (the total).
-  const heading = largestAsked && titled?.block === "stat" && !resp?.question ? largestSentence(title) : title;
+  const heading = resp?.question ? title
+    : largestAsked && titled?.block === "stat" ? largestSentence(title)
+    : countAsked && titled?.block === "table" ? countSentence(title) ?? title : title;
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
   const shown = resp && applied ? shownWords(resp, applied) : { pills: [] as string[] };
@@ -1348,7 +1356,8 @@ export default function AskPanel({
                 host: liveHost, expanded: !builderCollapsed, applied: applied as unknown as QuestionSpec,
                 entities: titleEntities(applied, resp.townHall),
                 // The map's title follows its lens (map final §3.7): the heading says it, the sentence stays the question's.
-                title: applied.block === "map" && mapLens && mapLens !== "value" ? title : null,
+                // The largest records' and the count's question likewise (owner, 23 November 2026).
+                title: applied.block === "map" && mapLens && mapLens !== "value" ? title : heading !== title ? heading : null,
                 pills: shown.pills, labels: pillLabels, caveats: resp.caveats, cpvName,
                 afterTitle: line ? <IntentLine line={line} onAdopt={adopt} /> : null,
                 onNotes: liveNotes,
@@ -1601,6 +1610,13 @@ export default function AskPanel({
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
                 <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
+              {/* „câte firme…”: their number, in the total's own form, leads the ranking (owner, 23 November 2026). */}
+              {data.block === "table" && countAsked && data.totals && (data.page ?? 0) === 0 && (applied.dim === "supplier" || applied.dim === "authority") &&
+                <div className="ask-bigstat">
+                  <div className="v">{applied.dim === "supplier" ? countWords(data.totals.entities, "firmă", "firme")
+                    : countWords(data.totals.entities, KIND_ONE[String(applied.filters.authorityKind)] ?? "instituție", KIND_WORDS[String(applied.filters.authorityKind)]?.bare ?? "instituții")}</div>
+                  <div className="d">{formatRonFull(data.totals.value)} · {countWords(data.totals.count, "înregistrare", "înregistrări")} · {RECORDED_VALUE.text}</div>
+                </div>}
               {/* Z3-33: a ranking of one has nothing to find and one view: no search, no „Vizual | Tabel”. */}
               {data.block === "table" && data.rows.length === 1 && (data.page ?? 0) === 0 && (data.totals?.entities ?? data.total ?? 1) <= 1 ? null
                 : data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0

@@ -1,9 +1,10 @@
 import type { AskSpec } from '../ask/spec';
+import { KIND_ONE, KIND_WORDS } from '../ask/question-ui';
 import { fold, periodBounds } from './shared';
 
 /*
  * What „Pe scurt” on /cauta computes from an Ask answer beyond drawing it (app/cauta/Understood.tsx SubjectAnswer; owner,
- * 23 November 2026): the counties compared. Pure, so it is tested.
+ * 23 November 2026): the counties compared, and how many firms or institutions a ranking holds. Pure, so it is tested.
  */
 
 export type County = { county: string; value: number; count: number };
@@ -36,3 +37,7 @@ export function countyHref(spec: AskSpec, name: string): string | null {
   }
   return `/cauta?${p}`;
 }
+
+/** „286 de firme”, „1.339 de primării”: the nouns of the entities counted, by the buyers' kind where the question names one. */
+export const entityNouns = (role: 'authority' | 'supplier', kind: string | undefined): [string, string] =>
+  role === 'supplier' ? ['firmă', 'firme'] : kind && KIND_ONE[kind] && KIND_WORDS[kind] ? [KIND_ONE[kind]!, KIND_WORDS[kind]!.bare] : ['instituție', 'instituții'];

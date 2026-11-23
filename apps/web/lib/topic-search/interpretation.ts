@@ -127,6 +127,9 @@ export interface AnswerTop {
   spec: AskSpec; sentence: string;
   /** `counties`: the first three counties of a question that compares them (the map's spec; owner, 23 November 2026). */
   kind: 'suppliers' | 'authorities' | 'years' | 'records' | 'counties';
+  /** How many firms or institutions was asked („câte firme…”): their number is the figure, the first three under it
+   * (IntentResult.count; owner, 23 November 2026). */
+  counted?: true;
 }
 
 function chip(p: PlaceMatch): ChipPlace | null {
@@ -423,6 +426,10 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (exactNote) out.notes.push(exactNote);
   // a total is shown after all (a question, or one within the page's place and period): the note says what it counts
   if (out.answer) out.notes = out.notes.map((n) => n.replace(/ un domeniu: fără total, /, ' un domeniu: totalul numără tot domeniul; '));
+  // „câte firme…”, „câte primării…”: the ranking's number of them is the answer's figure.
+  const top = out.answer?.top;
+  if (out.answer && top && result.count === 'entities' && (top.kind === 'suppliers' ? 'supplier' : top.kind === 'authorities' ? 'authority' : null) === i.countEntities?.role)
+    out.answer = { ...out.answer, top: { ...top, counted: true } };
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;

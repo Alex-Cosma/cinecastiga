@@ -11,7 +11,7 @@ import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import {titleName} from '../../lib/tidy-name';
 import {countWords} from '@/lib/ask/answer-text';
 import {countyName} from '@/lib/counties';
-import {countyHref,countyRows,mapTotal,type MapData} from '@/lib/topic-search/short-answer';
+import {countyHref,countyRows,entityNouns,mapTotal,type MapData} from '@/lib/topic-search/short-answer';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
@@ -294,7 +294,7 @@ const listLabel=(kind:ListKind,measure?:string)=>kind==='counties'&&measure==='c
  * the largest purchases, and a question that asked who or which years, whose sentence is the rows' own. A subject and a
  * „cât” question lead with the total. The rows come first in the page's order too, so a phone reads them first.
  */
-const rowsLead=(answer:Answer,question:string|undefined,who=false)=>Boolean(answer.top&&(answer.top.kind==='records'||answer.top.kind==='counties'||(who&&(answer.top.kind==='suppliers'||answer.top.kind==='authorities'))||(question!==undefined&&answer.top.sentence===question)));
+const rowsLead=(answer:Answer,question:string|undefined,who=false)=>Boolean(answer.top&&!answer.top.counted&&(answer.top.kind==='records'||answer.top.kind==='counties'||(who&&(answer.top.kind==='suppliers'||answer.top.kind==='authorities'))||(question!==undefined&&answer.top.sentence===question)));
 /** The first year of the archive: an evolution over all the years has one row per year from it (its ghost too). */
 const FIRST_YEAR=2018;
 const yearRows=(answer:Answer)=>{const f=answer.top?.spec.filters;return Math.max(2,Math.min(12,(f?.yearTo??new Date().getFullYear())-(f?.yearFrom??FIRST_YEAR)+1));};
@@ -373,6 +373,8 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  const years=topData?.block==='timeseries'?topData.series.filter(y=>y.count>0):null;
  const records=kind==='records'&&ready?.top?.ok&&ready.top.rows?largestRecords(ready.top.rows):null;
  const counties=kind==='counties'&&mapData?countyRows(mapData,measure):null;
+ // „câte firme…”, „câte primării…” (owner, 23 November 2026): the number of them is the figure, the first three under it.
+ const entities=answer.top?.counted&&topData?.block==='table'?topData.totals?.entities??null:null;
  const shape=sides?(sides.some(x=>x.count>0)?'value':'empty'):answerShape(total);
  // Reported once answered (null count: no total), so the page knows when to stop waiting for it.
  useEffect(()=>{onCount?.(ready?{key,count:total?.count??null}:null);
@@ -433,8 +435,9 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{listLabel(kind,measure)}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
  const rail=total&&<div className="topic-answer-rail">
   {led&&list&&<p className="topic-answer-label">Total</p>}
-  <p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><InfoMark title="Valoare înregistrată" text="Valoarea înregistrată a contractelor și achizițiilor directe, nu plăți."/></>:<strong>{recordsWord(total.count)}</strong>}</p>
-  <p className="topic-answer-count">{shape==='value'&&'în '}<Link prefetch={false} href={answer.evidenceHref}>{shape==='value'?recordsWord(total.count):total.count===1?'Vezi înregistrarea':'Vezi înregistrările'} <DiscoveryIcon name="arrow"/></Link></p>
+  {entities!=null&&<p className="topic-answer-value"><strong>{countWords(entities,...entityNouns(role,filters.authorityKind))}</strong></p>}
+  {entities==null&&<p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><InfoMark title="Valoare înregistrată" text="Valoarea înregistrată a contractelor și achizițiilor directe, nu plăți."/></>:<strong>{recordsWord(total.count)}</strong>}</p>}
+  <p className="topic-answer-count">{shape==='value'&&(entities!=null?`${formatRon(total.value)} în `:'în ')}<Link prefetch={false} href={answer.evidenceHref}>{shape==='value'?recordsWord(total.count):total.count===1?'Vezi înregistrarea':'Vezi înregistrările'} <DiscoveryIcon name="arrow"/></Link></p>
   {shape!=='value'&&<p className="topic-answer-sub">fără valoare înregistrată</p>}
  </div>;
  const failed=ready.failed||(!total&&!sides);

@@ -158,9 +158,9 @@ const HOLDER_TOP = new RegExp(`\\b(top|topul|clasament|clasamentul)(?: (?:de|cu|
 /** „câte contracte”, „numărul de achiziții”, „de câte ori”: the number of records of the selection (the modifiers read the words). */
 const COUNT_ASKED = /\b(?:cate|numarul(?: de)?|cat de multe) (?:achizitii|contracte|cumparari|licitatii)\b|\bde cate ori\b/;
 /** „câte firme lucrează cu…”, „câți clienți are…”: how many they are is the total line of their ranking. */
-const COUNT_ENTITIES = /\b(?:cate|cati|numarul de|numarul) (firme|furnizori|companii|societati|castigatori|institutii|autoritati|cumparatori|clienti)\b/;
-export const COUNT_FIRMS_NOTE = "Câte firme sunt: numărul lor e pe linia „Total” a clasamentului din Întreabă.";
-export const COUNT_BUYERS_NOTE = "Câte instituții sunt: numărul lor e pe linia „Total” a clasamentului din Întreabă.";
+const COUNT_ENTITIES = /\b(?:cate|cati|numarul de|numarul) (firme|furnizori|companii|societati|castigatori|institutii|autoritati|cumparatori|clienti|primarii|spitale|scoli|licee|comune|orase|municipii|ministere|universitati|consilii judetene)\b/;
+/** The nouns of COUNT_ENTITIES the kinds read themselves („câte spitale”): left free for them. */
+const COUNT_KIND = /^(?:spitale|scoli|licee|comune|orase|municipii|ministere|universitati|consilii judetene)$/;
 const SHARE_ASKED = /\b(?:ce procent|procentul|procentajul|ce pondere|ponderea|cat la suta|ce parte|ce proportie|proportia)(?: din(?:tre)?)?\b/;
 /** „prețul unui laptop”, „cât costă o…”, „pe litru”, „preț unitar”: a price per unit, which the answers never are. */
 const UNIT_PRICE = /\b(?:pret(?:ul|uri|urile|ului|urilor)?(?: (?:unitar\w*|medi[ui]|pe unitate))?|cat costa (?:o|un)|pe (?:o |un )?(?:litru|kilogram|kg|bucata|buc|pereche|portie|metru|mp|unitate|tona)(?: de)?)\b/;
@@ -963,12 +963,18 @@ export class RulesInterpreter implements QuestionInterpreter {
   private measureAsked(c: Cursor, out: Interpretation, found: { intent: IntentKind; at: number }[]) {
     // A question asked in other words keeps its own shape, by count („de câte ori au câștigat firmele…” ranks the firms).
     for (const _ of c.over(COUNT_ASKED, ["modifier"])) found.push({ intent: "total", at: WEAK_CUE });
+    // „câte firme au lucrat cu primăria X”, „câte primării au cumpărat Y” (owner, 23 November 2026): the number itself
+    // is the answer, shown over their ranking (to-spec resultFor: IntentResult.count); the note that pointed to the
+    // ranking's „Total” line is gone.
     for (const h of c.all(COUNT_ENTITIES)) {
-      const supplier = /^(?:firme|furnizori|companii|societati|castigatori)$/.test(h.m[1]!);
-      c.take(h.i, h.j, "cue");
+      const noun = h.m[1]!, supplier = /^(?:firme|furnizori|companii|societati|castigatori)$/.test(noun);
+      const at = h.j - noun.split(" ").length;
+      c.take(h.i, at, "cue");
+      if (noun === "primarii") { c.take(at, h.j, "kind"); out.askedTownHalls = true; }
+      else if (!COUNT_KIND.test(noun)) c.take(at, h.j, "cue");
       found.push({ intent: supplier ? "ranking_suppliers" : "ranking_authorities", at: h.i });
       out.dimHint = out.dimHint ?? (supplier ? "supplier" : "authority");
-      out.notes.push(supplier ? COUNT_FIRMS_NOTE : COUNT_BUYERS_NOTE);
+      out.countEntities = out.countEntities ?? { role: supplier ? "supplier" : "authority", matched: c.span(h.i, h.j) };
     }
     for (const h of c.all(SHARE_ASKED)) {
       c.take(h.i, h.j, "cue");

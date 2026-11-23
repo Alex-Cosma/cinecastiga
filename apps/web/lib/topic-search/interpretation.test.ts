@@ -158,6 +158,19 @@ describe('interpretation → /cauta selection', () => {
     expect(capita.answer?.top).toMatchObject({ kind: 'counties', spec: { block: 'map', measure: 'value_per_capita', filters: { authorityKind: 'local_admin' } } });
   });
 
+  it('marks the ranking of «câte firme…» as counted: their number is the figure of „Pe scurt” (owner, 23 November 2026)', async () => {
+    const { scope, result } = await read('cate firme au lucrat cu primaria din buzau');
+    const t = applyInterpretation(scope, result);
+    expect(t.sentence).toBe('Câte firme câștigă achizițiile făcute de primăria Buzău, în toți anii?');
+    expect(t.answer?.top).toMatchObject({ kind: 'suppliers', counted: true, spec: { block: 'table', dim: 'supplier', topN: 3 } });
+    expect(t.notes.join(' ')).not.toMatch(/linia „Total”/);
+    const halls = applyInterpretation(...Object.values(await read('cate primarii au cumparat iluminat in 2025')) as [typeof scope, typeof result]);
+    expect(halls.answer?.top).toMatchObject({ kind: 'authorities', counted: true, spec: { filters: { authorityKind: 'primarie' } } });
+    // a ranking asked in its own words is not counted
+    const ranking = applyInterpretation(...Object.values(await read('ce firme castiga la primaria buzau')) as [typeof scope, typeof result]);
+    expect(ranking.answer?.top?.counted).toBeUndefined();
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

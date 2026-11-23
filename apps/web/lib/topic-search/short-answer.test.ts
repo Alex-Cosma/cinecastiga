@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { countyHref, countyRows, mapTotal, type MapData } from './short-answer';
+import { countWords } from '../ask/answer-text';
+import { countyHref, countyRows, entityNouns, mapTotal, type MapData } from './short-answer';
 
-/* Owner, 23 November 2026: „Pe scurt” for the counties compared. */
+/* Owner, 23 November 2026: „Pe scurt” for the counties compared, and the number of firms or institutions asked. */
 const MAP: MapData = {
   block: 'map',
   counties: [{ county: 'Bucuresti', value: 900, count: 30 }, { county: 'Cluj', value: 600, count: 50 }, { county: 'Sibiu', value: 500, count: 10 },
@@ -32,5 +33,16 @@ describe('the counties compared, in „Pe scurt”', () => {
       .toBe('/cauta?q=iluminat&place=county%3Asatu+mare&from=2024-12&to=2024-12');
     expect(countyHref({ block: 'map', measure: 'count', filters: {} }, 'Cluj')).toBeNull();
     expect(countyHref({ block: 'map', measure: 'value', filters: { cpvTerm: '45233000' } }, 'Cluj')).toBeNull();
+  });
+});
+
+describe('how many firms or institutions, in „Pe scurt”', () => {
+  it('names them by the buyers\' kind where the question names one', () => {
+    expect(countWords(1019, ...entityNouns('supplier', undefined))).toBe('1.019 firme');
+    expect(countWords(286, ...entityNouns('supplier', 'primarie'))).toBe('286 de firme');
+    expect(countWords(1339, ...entityNouns('authority', 'primarie'))).toBe('1.339 de primării');
+    expect(countWords(1, ...entityNouns('authority', 'spital'))).toBe('1 spital');
+    expect(countWords(52, ...entityNouns('authority', undefined))).toBe('52 de instituții');
+    expect(countWords(3, ...entityNouns('authority', 'local_admin'))).toBe('3 instituții');
   });
 });

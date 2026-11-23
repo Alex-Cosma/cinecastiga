@@ -148,6 +148,9 @@ export interface Interpretation {
   largest?: { n?: number; matched: Span; /** The reading the other words had („ce firme…”), kept when the total cannot carry a condition (to-spec resultFor). */ instead?: IntentKind };
   /** The words that asked for the counties compared („care județ”, „pe județe”; rules.cues). */
   byCounty?: Span;
+  /** How many firms or institutions was asked („câte firme au lucrat cu…”, „câte primării cumpără…”; rules.measureAsked):
+   * their ranking answers, with their number as its figure (IntentResult.count). */
+  countEntities?: { role: "supplier" | "authority"; matched: Span };
   /** A share was asked („ce procent”, „ponderea”; search probe, 23 November 2026): to-spec reads it into the answer that
    * shows it, or says it cannot be computed. */
   share?: Span;
@@ -284,4 +287,7 @@ export interface IntentResult {
   problem: string | null;
   /** The answer opens on its sources list, the largest first: the largest records were asked (Interpretation.largest). */
   sources?: "largest";
+  /** How many firms or institutions was asked and the answer is their ranking: its number of them is the figure to show
+   * (Interpretation.countEntities; the table's `totals.entities`). */
+  count?: "entities";
 }

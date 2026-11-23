@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyInterpretation } from "../topic-search/interpretation";
 import { parseTopicScope } from "../topic-search/shared";
 import { memoryVocabulary } from "./memory-vocabulary";
-import { COUNT_FIRMS_NOTE, RulesInterpreter, unitPriceNote } from "./rules";
+import { RulesInterpreter, unitPriceNote } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { COUNT_UNUSED_NOTE, PER_CAPITA_UNUSED_NOTE, SHARE_IN_RANKING_NOTE, SHARE_UNKNOWN_NOTE, resultFor, shareOfStreamNote } from "./to-spec";
 
@@ -31,10 +31,24 @@ describe("a count asked", () => {
     expect((await read("de câte ori au câștigat firmele contracte în județul Cluj în 2025")).spec).toMatchObject({ block: "table", dim: "supplier", measure: "count" });
     expect((await read("a crescut numarul de achizitii directe la scoli dupa 2022")).spec).toMatchObject({ block: "timeseries", measure: "count" });
   });
-  it("answers «câte firme» with their ranking, whose total line counts them", async () => {
-    const { i, spec, notes } = await read("cate firme au lucrat cu primaria din buzau");
-    expect([i.intent, spec.block, spec.dim, spec.measure]).toEqual(["ranking_suppliers", "table", "supplier", "value"]);
-    expect(notes).toContain(COUNT_FIRMS_NOTE);
+  it("answers «câte firme», «câte instituții», «câte primării» with their number over their ranking (owner, 23 November 2026)", async () => {
+    const firms = await read("cate firme au lucrat cu primaria din buzau");
+    expect([firms.i.intent, firms.spec.block, firms.spec.dim, firms.spec.measure, firms.r.count]).toEqual(["ranking_suppliers", "table", "supplier", "value", "entities"]);
+    expect(firms.r.sentence).toBe("Câte firme câștigă achizițiile făcute de primăria Buzău, în toți anii?");
+    expect(firms.notes.join(" ")).not.toMatch(/linia „Total”/);
+    const subject = await read("cate firme au castigat contracte de iluminat in 2025");
+    expect([subject.spec.dim, subject.spec.filters.cpvTerm, subject.r.count, subject.i.leftover]).toEqual(["supplier", "iluminat", "entities", []]);
+    expect(subject.r.sentence).toMatch(/^Câte firme câștigă /);
+    const buyers = await read("cate institutii cumpara iluminat in judetul buzau");
+    expect([buyers.spec.block, buyers.spec.dim, buyers.r.count]).toEqual(["table", "authority", "entities"]);
+    expect(buyers.r.sentence).toBe("Câte instituții publice din județul Buzău cumpără „iluminat”, prin toate achizițiile, în toți anii?");
+    const halls = await read("cate primarii au cumparat iluminat in 2025");
+    expect([halls.spec.dim, halls.spec.filters.authorityKind, halls.r.count, halls.i.leftover]).toEqual(["authority", "primarie", "entities", []]);
+    expect(halls.r.sentence).toMatch(/^Câte primării din toată țara cumpără „iluminat”/);
+    const hospitals = await read("cate spitale cumpara medicamente");
+    expect([hospitals.spec.filters.authorityKind, hospitals.r.count]).toEqual(["spital", "entities"]);
+    // a count of records is not this
+    expect((await read("cate contracte a dat primaria buzau in 2025")).r.count).toBeUndefined();
   });
   it("says a count the breakdown does not show", async () => {
     const { spec, notes } = await read("pe ce domenii sunt cele mai multe contracte la primaria buzau");

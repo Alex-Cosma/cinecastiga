@@ -12,7 +12,7 @@ import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
 import { COUNTIES_SINGLE_OFFER_NOTE, GUILT_NOTE, genitive, hasNamedScope } from "./rules";
-import { fold, largestSentence } from "./text";
+import { countSentence, fold, largestSentence } from "./text";
 import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PeriodMatch, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
@@ -675,14 +675,18 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
   const largest = Boolean(i.largest && spec?.block === "stat");
   const listed = largest && narrowedSelection(spec!.filters);
   if (largest && !listed) notes.push(LARGEST_IN_SOURCES);
+  // How many firms or institutions (rules.measureAsked): their ranking, the question saying „Câte…”, its figure their
+  // number (the table's totals). A ranking of the other side, or another shape, answers as it is.
+  const counted = i.countEntities && spec?.block === "table" && spec.dim === i.countEntities.role ? countSentence(sentenceFor(spec, labels)) : null;
   return {
     q: i.text,
     interpretation: { ...i, notes: [...new Set(notes)] },
     spec,
-    sentence: spec ? (largest ? largestSentence(sentenceFor(spec, labels)) : sentenceFor(spec, labels)) : null,
+    sentence: spec ? (largest ? largestSentence(sentenceFor(spec, labels)) : counted ?? sentenceFor(spec, labels)) : null,
     alternatives,
     problem,
     ...(listed ? { sources: "largest" as const } : {}),
+    ...(counted ? { count: "entities" as const } : {}),
   };
 }
 
