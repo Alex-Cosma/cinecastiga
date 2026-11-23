@@ -194,7 +194,10 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // The kind of buyer ("școala") becomes a chip, not a word the titles must contain.
   const kindSpan: Span[] = i.authorityKind ? [i.authorityKind.matched] : [];
   // An inflected curated subject ("medicamentele") is searched in its base form.
-  const subjectBase = subjectOk && s0!.source === 'synonym' && !s0!.label.includes(' ') && foldText(s0!.label) !== foldText(s0!.matched.text) ? { ...s0!.matched, text: s0!.label } : undefined;
+  // A subject read from English („road works” → „drumuri”, said in its note) is searched by its Romanian word too:
+  // the titles are Romanian (search probe, 23 November 2026).
+  const fromEnglish = Boolean(s0 && i.notes.includes(`Am citit „${s0.matched.text}” ca „${s0.label}”.`));
+  const subjectBase = subjectOk && s0!.source === 'synonym' && !s0!.label.includes(' ') && foldText(s0!.label) !== foldText(s0!.matched.text) ? { ...s0!.matched, text: s0!.label, whole: fromEnglish } : undefined;
 
   const interpretedPlace = i.place && !i.placeAmbiguous && i.place.matched ? i.place : null;
   const interpretedChip = interpretedPlace ? chip(interpretedPlace) : null;

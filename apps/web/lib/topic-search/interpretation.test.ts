@@ -137,6 +137,13 @@ describe('interpretation → /cauta selection', () => {
     expect(result.interpretation.leftover).toEqual(['facultate']);
   });
 
+  it('searches the Romanian word of a subject read from English, in a question and in plain words', async () => {
+    for (const q of ['who wins road works in bacau', 'road works bacau']) {
+      const { scope, result } = await read(q);
+      expect([q, applyInterpretation(scope, result).applied.q]).toEqual([q, 'drumuri']);
+    }
+  });
+
   it('builds the short answer from the same reading, through Ask specs', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);

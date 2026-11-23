@@ -47,15 +47,18 @@ const QUESTION_WORDS = new Set(['cine', 'cat', 'cata', 'cate', 'cati', 'cel', 'c
  */
 export function subjectWords(
   text: string,
-  { remove, keep, base }: { remove: Pick<Span, 'from' | 'to'>[]; keep: Pick<Span, 'from' | 'to'>[]; base?: Pick<Span, 'from' | 'to' | 'text'> | undefined },
+  { remove, keep, base }: { remove: Pick<Span, 'from' | 'to'>[]; keep: Pick<Span, 'from' | 'to'>[]; base?: (Pick<Span, 'from' | 'to' | 'text'> & { whole?: boolean }) | undefined },
 ): { words: string; clean: boolean } {
   const tokens = tokenize(text);
   const removed = new Array<boolean>(tokens.length).fill(false);
   for (const s of remove) for (let k = s.from; k < s.to && k < tokens.length; k++) removed[k] = true;
   const covered = new Array<boolean>(tokens.length).fill(false);
   for (const s of keep) for (let k = s.from; k < s.to && k < tokens.length; k++) covered[k] = true;
-  if (base && base.to - base.from === 1 && base.from < tokens.length && /^\p{L}+$/u.test(base.text))
+  if (base && (base.to - base.from === 1 || base.whole) && base.from < tokens.length && /^\p{L}+$/u.test(base.text)) {
     tokens[base.from] = { ...tokens[base.from]!, raw: base.text };
+    // A subject read from English words („road works” → „drumuri”): the Romanian word stands for the whole phrase.
+    for (let k = base.from + 1; k < base.to && k < tokens.length; k++) removed[k] = true;
+  }
   let clean = true;
   const words: string[] = [];
   tokens.forEach((t, k) => {
