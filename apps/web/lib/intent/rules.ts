@@ -110,7 +110,7 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["flow", /\bsi de la cine\b/],
   // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
   ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
-  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
+  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mita|aranjat\w*|trucat\w*|vinovat\w*|condamnat\w*|ilegal\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
   ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|an dupa an|(?:in|pe|pentru|din) fiecare an|de la un an la altul|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor)|clienti(?:i|lor)?)\\b`)],
@@ -159,8 +159,26 @@ export const unitPriceNote = (product: string | null) => product
   ? `Prețurile pe unitate pentru „${product}”, comparate între instituții, sunt în pagina Prețuri; aici e valoarea achizițiilor, nu prețul.`
   : "Prețuri pe unitate avem doar pentru produsele din pagina Prețuri; aici e valoarea achizițiilor, nu prețul.";
 
+// What the data does not hold (search probe, 23 November 2026: these were answered as something else, in silence). The
+// words are understood (never a subject, a name or a leftover); the closest reading stays, with one note.
+export const PAYMENTS_NOTE = "Avem valorile contractelor și ale achizițiilor directe, nu plățile făcute.";
+export const GUILT_NOTE = "Nu putem spune cine e vinovat de ceva: semnalele sunt piste de verificat, nu dovezi.";
+export const OFFICIALS_NOTE = "Știm cine administrează firmele (din ONRC), dar nu cine deține o funcție publică și nici legăturile de rudenie.";
+export const EXECUTION_NOTE = "Știm ce s-a contractat, nu cum și când s-a executat.";
+export const OPEN_TENDERS_NOTE = "Avem achizițiile atribuite, nu licitațiile în curs; pe acelea le găsești în SEAP (e-licitatie.ro).";
+/** The notes of what the data does not hold: said wherever the words lead, on /cauta too (lib/topic-search). */
+export const OUTSIDE_DATA_NOTES: readonly string[] = [PAYMENTS_NOTE, GUILT_NOTE, OFFICIALS_NOTE, EXECUTION_NOTE, OPEN_TENDERS_NOTE];
 /** The unit prices' note, either form (unitPriceNote): /cauta puts the link to /preturi beside it. */
 export const UNIT_PRICE_NOTE = /pagina Prețuri/;
+const OFFICE = "primar\\w*|viceprimar\\w*|consilier\\w*|director\\w*|ministr\\w*|parlamentar\\w*|deputat\\w*|senator\\w*|politician\\w*|sefului|sefilor";
+const OUTSIDE_DATA: [RegExp, string][] = [
+  [/\b(?:platit\w* efectiv|efectiv platit\w*|plati(?:le|lor)? (?:efective|facute|reale)|plata efectiva|platile|platilor|plata|plati|incasat\w*|incasari\w*|decontat\w*|facturat\w*|facturi(?:le|lor)?|efectiv)\b/, PAYMENTS_NOTE],
+  [new RegExp(`\\b(?:(?:apartin\\w*|detinut\\w*|controlat\\w*) (?:de )?(?:catre )?(?:lui |unui |unei )?(?:${OFFICE})|(?:firma|firmele|firmei|firmelor) (?:lui |unui )?(?:primarului|primarilor|viceprimarului|directorului|ministrului|consilierilor)|(?:rud[ae]\\w*|sotia|sotul|sotiei|sotului|fratele|fratelui|fiul|fiului|fiica|cumnat\\w*)(?: (?:lui |unui )?(?:${OFFICE}))?|nepotism\\w*)\\b`), OFFICIALS_NOTE],
+  [/\b(?:s a terminat|s au terminat|a fost terminat\w*|au fost terminat\w*|(?:e|este|sunt) gata|cand (?:e|este|va fi|vor fi) gata|lucrar\w* (?:terminat\w*|finalizat\w*|neterminat\w*|nefinalizat\w*)|in ce stadiu|stadiul(?: lucrar\w*)?|intarzier\w*|intarziat\w*|receptionat\w*|proasta calitate|prost facut\w*|calitatea(?: lucrar\w*)?)\b/, EXECUTION_NOTE],
+  [/\b(?:(?:licitati\w* |proceduri\w* |anunturi\w* )?(?:sunt )?(?:deschise|active|in curs|in desfasurare|in derulare) (?:acum|azi|astazi|in prezent|momentan)|la care (?:pot|putem|se poate) (?:participa|depune)(?: ofert\w*)?|unde pot (?:licita|participa|depune ofert\w*)|pot depune ofert\w*|licitatii(?:le)? viitoare|urmatoarele licitatii|licitatii(?:le)? in curs)\b/, OPEN_TENDERS_NOTE],
+];
+/** Words of guilt beside the signals' cue: the signals answer, and the note says what they are. */
+const GUILT = /\b(?:corupt\w*|coruptie|furt\w*|fura|hoti\w*|hotie\w*|spag\w*|mita|aranjat\w*|trucat\w*|fraud\w*|vinovat\w*|condamnat\w*|ilegal\w*)\b/;
 
 /** The retired signal's words (rules.cues): a signals question without a signal, and its note. */
 const RETIRED_RAPID = /\b(?:finalizar\w* rapid\w*|finalizat\w* rapid)\b/;
@@ -457,6 +475,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // „jud. CJ”: a county by its plate code, before „CJ” is read as the county councils
     const coded = this.countyCodes(c, byKey);
     this.regions(c, out);
+    this.outside(c, out);
     this.modifiers(c, out);
     await this.fiscalCodes(c, out);
     await this.people(c, out);
@@ -531,6 +550,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     this.settlePlaces(kept, out);
     // „la noi în Târgu Jiu”: the place is named after all
     if (out.place || out.placeAmbiguous) out.notes = out.notes.filter((n) => !OWN_PLACE_SAID.test(n));
+    // „firmele care lucrează cu primăria și aparțin primarului din Târgoviște”: the town is named after all
+    if (out.place?.kind === "locality") out.notes = out.notes.filter((n) => n !== TOWN_HALL_UNKNOWN);
     await this.choicesInPlace(out);
     // A town hall in the centre of a profile, a network or a flow is its institution (the place alone is its records).
     if (cues.some((x) => x.intent === "signals" || x.intent === "network" || x.intent === "flow")) await this.townHall(out);
@@ -795,6 +816,8 @@ export class RulesInterpreter implements QuestionInterpreter {
         if (intent === "total" && /^cate$/.test(h.m[0]) && out.measure === null) out.measure = "count";
       }
     }
+    // Words of guilt („corupt”, „aranjate”, „furt”): the signals answer them, and what a signal is, is said.
+    if (GUILT.test(c.s) && !out.notes.includes(GUILT_NOTE)) out.notes.push(GUILT_NOTE);
     // a lone "cine" still asks for a ranking
     for (const h of c.all(/\bcine\b/)) { c.take(h.i, h.j, "cue"); found.push({ intent: "ranking_suppliers", at: h.i }); }
     // "care firmă …" / "care instituție …" is itself a (one-row) ranking
@@ -816,6 +839,21 @@ export class RulesInterpreter implements QuestionInterpreter {
       townHalls.said = true;
     }
     return found;
+  }
+
+  /**
+   * What the data does not hold (OUTSIDE_DATA; search probe, 23 November 2026): payments, who holds a public office or
+   * is related to whom, how a work was carried out, the tenders still open. Read before everything that could take the
+   * words („licitații deschise” is a procedure type, „plăți” no subject): they are understood, and the note says it once.
+   */
+  private outside(c: Cursor, out: Interpretation) {
+    for (const [re, note] of OUTSIDE_DATA)
+      for (const h of c.all(re)) {
+        c.take(h.i, h.j, "modifier");
+        // „…aparțin primarului din Târgoviște”: the mayor's town still names the town hall (markedPlaces).
+        if (note === OFFICIALS_NOTE) for (let k = h.i; k < h.j; k++) if (/^primar(?:ul|ului)$/.test(c.f(k))) c.used[k] = null;
+        if (!out.notes.includes(note)) out.notes.push(note);
+      }
   }
 
   /**
@@ -1156,7 +1194,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     const found: PlaceFound[] = [];
     const markers: [RegExp, PlaceFound["constraint"]][] = [
       [/\bjud(?:etul|etului|et)?\b/, "county"],
-      [/\b(?:primari(?:a|ei)|consiliul local)(?:\s+(?:din|de la|al|a|lui|municipiului|orasului|comunei))?\b/, "locality"],
+      // „primarul din Buzău e corupt?”: the mayor's institution is the town hall (search probe, 23 November 2026)
+      [/\b(?:primari(?:a|ei)|primarul(?:ui)?|consiliul local)(?:\s+(?:din|de la|al|a|lui|municipiului|orasului|comunei))?\b/, "locality"],
       [/\b(?:municipiul|municipiului)\b/, "municipiu"],
       [/\b(?:orasul|orasului|oras)\b/, "oras"],
       [/\b(?:comuna|comunei)\b/, "comuna"],
@@ -1225,6 +1264,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       c.take(h.i, h.j, "filler");
       out.notes.push(TOWN_HALL_UNKNOWN);
     }
+    // „care primar e corupt”: a mayor without a town is a word the answer cannot use, and no purchase or name
+    for (const h of c.all(/\bprimar(?:ul|ului)?\b/)) c.take(h.i, h.j, "filler");
     return found;
   }
 

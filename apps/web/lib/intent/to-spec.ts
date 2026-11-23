@@ -11,7 +11,7 @@ import { choiceState } from "../ask/filters/pickers";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
-import { COUNTIES_SINGLE_OFFER_NOTE, genitive, hasNamedScope } from "./rules";
+import { COUNTIES_SINGLE_OFFER_NOTE, GUILT_NOTE, genitive, hasNamedScope } from "./rules";
 import { fold, largestSentence } from "./text";
 import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PeriodMatch, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
@@ -245,7 +245,7 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
         dropped.some((k) => k.startsWith("admin")) ? "persoana" : null,
         dropped.includes("procedure") ? "procedura" : null,
       ].filter(Boolean);
-      notes.push(`Riscul și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}. Semnalele sunt piste de verificat, nu dovezi.`);
+      notes.push(`Riscul și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}.${i.notes.includes(GUILT_NOTE) ? "" : " Semnalele sunt piste de verificat, nu dovezi."}`);
     }
   };
   const place = choice.place === undefined ? i.place : choice.place;
