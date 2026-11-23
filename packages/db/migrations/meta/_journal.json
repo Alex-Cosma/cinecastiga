@@ -806,6 +806,13 @@
       "when": 1795435200000,
       "tag": "0114_cpv_synonym_it_christmas_tree",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1795438800000,
+      "tag": "0115_public_enterprise",
+      "breakpoints": true
     }
   ]
 }
