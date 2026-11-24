@@ -23,9 +23,9 @@ import "../preturi.css";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ produs: string }> }): Promise<Metadata> {
-  // Open to every reader, out of the search engines for now (owner, 20 November 2026; see /preturi).
+  // Open to every reader (owner, 20 November 2026) and to the search engines (owner, 24 November 2026; see /preturi).
   const family = priceFamilyBySlug((await params).produs);
-  return { title: family ? `${family.label}: prețul pe unitate, pe instituții` : "Prețuri pe unitate", robots: { index: false, follow: true } };
+  return { title: family ? `${family.label}: prețul pe unitate, pe instituții` : "Prețuri pe unitate" };
 }
 
 /** A sortable header: a button-like link that orders the rows by its column, the order's state on the header. */

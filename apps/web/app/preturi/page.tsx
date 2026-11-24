@@ -13,12 +13,11 @@ import "./preturi.css";
 export const dynamic = "force-dynamic";
 /**
  * Open to every reader since 20 November 2026 (owner: the direct awards' item lines are complete; „Prețuri” has its own
- * place in the header). Out of the search engines for now (owner, the same day): he decides when it is indexed.
+ * place in the header). Open to the search engines since 24 November 2026 (owner), the products' pages too.
  */
 export const metadata: Metadata = {
   title: "Același produs, alt preț",
   description: "Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs.",
-  robots: { index: false, follow: true },
 };
 
 /** Unit prices, the lead-finder (owner, 10–11 November 2026): every product and pack as a strip of its buyers. */
