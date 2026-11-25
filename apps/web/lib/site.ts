@@ -15,3 +15,6 @@ export const CONTACT_EMAIL = "contact@cinecastiga.ro";
 export function mailHref(subject?: string): string {
   return `mailto:${CONTACT_EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
 }
+
+/** The site's public origin, for the addresses given to search engines (app/sitemap.ts, app/robots.ts). */
+export const SITE_ORIGIN = "https://cinecastiga.ro";
