@@ -16,7 +16,7 @@ import { GLOSSARY } from "@/lib/glossary";
 import { TOUR_COUNTY_EVENT, TOUR_COUNTY_KEY } from "@/lib/tour";
 import DiscoveryIcon from "./DiscoveryIcon";
 
-// A county opens on /harta, the map of lei per inhabitant, on that county (owner, 18 November 2026; before: the
+// A county opens on /harta, on that county, with the total as here (owner, 18 and 26 November 2026; before: the
 // breakdown by subject in Întreabă). The way there is drawn (lib/map-arrival.ts): this map travels into /harta's and
 // its camera glides into the county. Client navigation (next/link inside the SVG); 42 links in view are not prefetched.
 const countyHref = (label: string) => mapCountyHref(countyKey(label));
@@ -64,7 +64,7 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
   const focusKey = hovered || selected, current = countyMap.shapes.find((shape) => shape.key === focusKey), total = values.get(focusKey);
   const present = countyMap.shapes.filter((shape) => values.has(shape.key)).length;
   return <section className="d-map-card" aria-labelledby="d-map-title">
-    <div className="d-map-head"><div>{/* The title asks what both maps answer: this one the total by county, /harta lei per inhabitant (owner, 18 November 2026). */}<h2 id="d-map-title">Cât s-a contractat <br />în județul tău?</h2></div></div>
+    <div className="d-map-head"><div>{/* The title asks what both maps answer: this one the total by county, /harta the total or lei per inhabitant (owner, 18 and 26 November 2026). */}<h2 id="d-map-title">Cât s-a contractat <br />în județul tău?</h2></div></div>
     {/* The map fills in, all counties together (never in the order of their values), when it first comes into view
         (DESIGN.md "Charts in motion"; the kit's cm-fade, gated by Reveal through data-chart). Hover stays instant. */}
     {/* One Tab stop for the map (UX audit Z1-20): the counties are left out of the Tab order, since the selector under it
@@ -86,7 +86,7 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
       {present && <Term tip title={GLOSSARY["sediul-institutiei"].title} text={MAP_TIP} />}
       {/* The map of lei per inhabitant (UX audit Z1-24, Z4-20): the chosen county opens there, on the map's own default year.
           Only in Complet (owner, 18 November 2026): a second reading of this map; Hartă is in the menu. */}
-      <Link className="d-map-per-capita" data-only="complet" prefetch={false} href={selected ? `/harta?ani=${new Date().getFullYear() - 1}&judet=${countyKey(countyMap.shapes.find((shape) => shape.key === selected)!.label)}` : "/harta"}>Pe locuitor <DiscoveryIcon name="arrow" /></Link>
+      <Link className="d-map-per-capita" data-only="complet" prefetch={false} href={selected ? `/harta?ani=${new Date().getFullYear() - 1}&judet=${countyKey(countyMap.shapes.find((shape) => shape.key === selected)!.label)}&pe=locuitor` : "/harta?pe=locuitor"}>Pe locuitor <DiscoveryIcon name="arrow" /></Link>
     </div>
   </section>;
 }

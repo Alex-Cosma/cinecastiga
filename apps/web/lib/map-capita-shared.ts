@@ -1,5 +1,5 @@
 /**
- * /harta (owner, 6 November 2026): the value contracted per inhabitant, by county and, inside one county, by UAT. The
+ * /harta (owner, 6 November 2026): the value contracted, in total or per inhabitant, by county and, inside one county, by UAT. The
  * shapes the API answers with and the pure arithmetic behind them, without the database (map-capita.ts reads it), so
  * the page can import the types and the tests can check the sums.
  *
@@ -44,6 +44,15 @@ export function mapMetric(s: Pick<MapSelection, "kind" | "years">): MapMetric {
   if (s.kind === "schools") return alone === PUPILS_YEAR ? "perPupil" : "value";
   return alone === BEDS_YEAR ? "perBed" : "value";
 }
+/**
+ * The reader's choice of figure (owner, 26 November 2026): the total contracted, which the page opens on, or the figure
+ * per inhabitant, bed or pupil. The address says the second with `?pe=locuitor`, `?pe=pat` or `?pe=elev`.
+ */
+export const PER_URL: Record<Exclude<MapMetric, "value">, string> = { perCapita: "locuitor", perBed: "pat", perPupil: "elev" };
+/** Whether an address asks for the figure per inhabitant, bed or pupil. */
+export const perFromUrl = (raw: string | undefined): boolean => raw !== undefined && Object.values(PER_URL).includes(raw);
+/** What the page shows: the total, unless the reader asked for the per-unit figure and the selection has one (`natural`). */
+export const shownMetric = (natural: MapMetric, per: boolean): MapMetric => (per ? natural : "value");
 /** An area's figure in a metric: what the map's tint, the ranking's bars and its order read. */
 export function figure(a: MapArea, metric: MapMetric): number | null {
   return metric === "perCapita" ? a.perCapita : metric === "perBed" ? a.perBed ?? null : metric === "perPupil" ? a.perPupil ?? null : a.value;

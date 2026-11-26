@@ -11,6 +11,29 @@
 .mx-lede b{color:var(--ink);font-weight:600}
 
 .mx-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+/* The header and the filters on the page's two columns (owner, 26 November 2026: „aliniezi mai frumos filtrele cu
+   contentul și noul filtru”). Wide screens: the title over the map; the filters in two groups with the same edges and
+   the same gutter as .mx-body. The figure's switch (Total, or lei per inhabitant, bed or pupil) sits at the right edge,
+   exactly as wide as the channel's switch under it (owner, the same day): both take --mx-seg-w. Narrower: the switch
+   beside the title, the filters one flowing row; phones: a row of its own. */
+.mx{--mx-seg-w:232px}
+.mx-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 28px}
+.mx-head-t{flex:1 1 320px;min-width:0}
+.mx-seg.mx-seg--metric{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:var(--mx-seg-w);justify-self:end}
+.mx-seg.mx-seg--metric button{padding:5px 6px;font-weight:600;white-space:nowrap}
+.mx-filters-a,.mx-filters-b{display:contents}
+@media (min-width:981px){
+  .mx-head{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);column-gap:28px;align-items:end}
+}
+@media (min-width:1200px){
+  .mx-filters{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);column-gap:28px}
+  .mx-filters-a,.mx-filters-b{display:flex;align-items:center;gap:8px;min-width:0}
+  .mx-filters-a .mx-find{flex:1 1 200px}
+  .mx-filters-b>.mx-pick--cpv{flex:1 1 auto}
+  .mx-filters-b>.mx-seg{flex:none;width:var(--mx-seg-w)}
+  .mx-filters-b>.mx-seg button{flex:1 1 auto;padding-inline:6px}
+  .mx-filters-b>.mx-pick--cpv svg{margin-left:auto}
+}
 .mx-pick{display:inline-flex;align-items:center;gap:7px;min-height:36px;max-width:100%;padding:6px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--muted);font-size:13px}
 .mx-pick b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:28ch;font-weight:600;color:var(--ink);font-size:13.5px}
 .mx-pick svg{flex:none}
@@ -143,8 +166,9 @@
   .mx{margin-top:14px}
   .mx-head h1{font-size:28px}
   .mx-lede{font-size:15px}
+  .mx-seg.mx-seg--metric{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
   .mx-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .mx-filters>*{min-width:0}
+  .mx-filters-a>*,.mx-filters-b>*{min-width:0}
   .mx-filters .mx-seg,.mx-filters .mx-pick--kind{grid-column:1/-1}
   .mx-filters .mx-seg{display:grid;grid-template-columns:repeat(3,1fr)}
   .mx-pick{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:6px;justify-items:start;text-align:left;padding:5px 10px}
@@ -282,8 +306,8 @@ span.mx-p-yr{cursor:default}
 .mx-seg.mx-seg--sheet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;margin:0 0 14px}
 .mx-seg--sheet button{min-height:44px}
 @media (max-width:640px){
-  .mx-filters>.mx-pick--cpv,.mx-filters>.mx-seg{display:none}
-  .mx-filters>.mx-pick--more{display:grid}
+  .mx-filters-b>.mx-pick--cpv,.mx-filters-b>.mx-seg{display:none}
+  .mx-filters-b>.mx-pick--more{display:grid}
   .mx-stage{padding:8px 4px}
   .mx-foot{padding:0 4px}
 }
@@ -303,7 +327,7 @@ span.mx-p-yr{cursor:default}
 .mx-find-o small{display:block;font-size:12.5px;color:var(--muted)}
 .mx-find-status{margin:0;padding:8px 10px;font-size:13px;color:var(--muted)}
 @media (max-width:640px){
-  .mx-filters>.mx-find{grid-column:1/-1}
+  .mx-filters-a>.mx-find{grid-column:1/-1}
   .mx-find input{min-height:44px;font-size:16px}
   .mx-find-drop{width:100%}
 }
@@ -333,10 +357,6 @@ span.mx-p-yr{cursor:default}
 @media (prefers-reduced-motion:reduce){.mx-panel{transition:none}}
 /* Z4-14: the open UAT's row stays marked in the ranking, in the panel's orange. */
 .mx-row[aria-pressed="true"]{background:color-mix(in srgb,var(--orange) 9%,var(--surface));border-radius:6px;border-bottom-color:transparent}
-/* Z4-07: on the hospitals' and schools' total, the comparable figure (lei per bed or per pupil, 2025 alone) one click away. */
-.mx-lede-go{display:inline-flex;align-items:center;min-height:30px;margin-left:2px;padding:2px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent);font:600 13.5px/1.3 var(--body);vertical-align:1px}
-.mx-lede-go:hover{border-color:var(--accent);color:var(--accent-ink)}
-@media (max-width:640px){.mx-lede-go{display:flex;min-height:44px;margin:8px 0 0;padding:0 16px}}
 /* Z4-10: the panel leads to the town hall's records (its table, the map's period and channel) and to its comparison;
    the name, a link to the town hall, looks like one. */
 .mx-panel h2 a{text-decoration:underline;text-decoration-color:var(--accent-line);text-decoration-thickness:2px;text-underline-offset:6px}

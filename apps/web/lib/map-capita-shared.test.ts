@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { COUNTIES } from "./counties";
-import { areaOf, countyKey, MapError, mapSelectionQuery, parseMapSelection, sumByInstitution, type MapRow } from "./map-capita-shared";
+import { areaOf, countyKey, MapError, mapMetric, mapSelectionQuery, parseMapSelection, PER_URL, perFromUrl, shownMetric, sumByInstitution, type MapRow } from "./map-capita-shared";
 import catalog from "./reference/population-rpl2021.json";
 import geo from "./reference/uat-geo.json";
 import romania from "../public/geo/romania.json";
@@ -22,6 +22,30 @@ describe("/harta selection", () => {
     for (const q of ["level=uat", "level=uat&county=../x", "years=25", "cpv=4", "cpv=45,abc", "dataset=x", "kind=spital", "level=judet"]) {
       expect(() => parseMapSelection(params(q)), q).toThrow(MapError);
     }
+  });
+});
+
+describe("/harta figure (owner, 26 November 2026)", () => {
+  it("shows the total unless the reader asks for the per-unit figure", () => {
+    const town = mapMetric({ kind: "local_admin", years: ["2025"] });
+    expect(shownMetric(town, false)).toBe("value");
+    expect(shownMetric(town, true)).toBe("perCapita");
+  });
+
+  it("has lei per bed and per pupil for 2025 alone: any other period stays on the total even when asked", () => {
+    expect(shownMetric(mapMetric({ kind: "hospitals", years: ["2025"] }), true)).toBe("perBed");
+    expect(shownMetric(mapMetric({ kind: "schools", years: ["2025"] }), true)).toBe("perPupil");
+    const others: ("all" | string[])[] = ["all", ["2024"], ["2024", "2025"]];
+    for (const years of others) {
+      expect(shownMetric(mapMetric({ kind: "hospitals", years }), true)).toBe("value");
+      expect(shownMetric(mapMetric({ kind: "schools", years }), true)).toBe("value");
+    }
+  });
+
+  it("reads the choice from the address word of any kind and nothing else", () => {
+    expect(Object.values(PER_URL).sort()).toEqual(["elev", "locuitor", "pat"]);
+    for (const word of Object.values(PER_URL)) expect(perFromUrl(word)).toBe(true);
+    for (const word of [undefined, "", "total", "1", "Locuitor"]) expect(perFromUrl(word)).toBe(false);
   });
 });
 

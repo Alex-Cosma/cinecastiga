@@ -586,7 +586,7 @@ export default function PeersExplorer({ entityId, entityName, titleName = entity
   // The town hall's place on the map (UX audit Z4-26, Z4-39): from its population's SIRUTA, else from its name.
   const fromPopulation = focal?.population && focal.population.level !== "county" && focal.population.siruta ? { county: countyKey(focal.population.county), siruta: focal.population.siruta } : null;
   const onMap = role === "authority" ? fromPopulation ?? place : null;
-  const mapHref = onMap ? `/harta?ani=${yearValue === null || yearValue === "all" ? "toti" : yearValue}&judet=${onMap.county}${onMap.siruta && onMap.siruta !== 179132 ? `&uat=${onMap.siruta}` : ""}` : null;
+  const mapHref = onMap ? `/harta?ani=${yearValue === null || yearValue === "all" ? "toti" : yearValue}&judet=${onMap.county}${onMap.siruta && onMap.siruta !== 179132 ? `&uat=${onMap.siruta}` : ""}&pe=locuitor` : null;
   const widen = (yearValue !== null && yearValue !== "all") || (cpvCode !== null && cpvCode !== "all");
   const widenButtons = (className: string) => <>
     {cpvCode !== null && cpvCode !== "all" && <button type="button" className={className} disabled={busy} onClick={() => change({ cpv: "all" })}>Toate domeniile</button>}
