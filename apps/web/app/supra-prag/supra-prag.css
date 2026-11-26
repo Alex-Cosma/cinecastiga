@@ -118,3 +118,8 @@ table.rank tr.tp-sep-row td{padding:14px 14px 8px;background:var(--sunk);font-si
   .ted-stats .stat:nth-child(2n){border-right:0}
   .tp-stack .tp-value .tp-amount.tp-amount-words{font-size:14px;font-weight:500}
 }
+/* Between the phone layout and a wide window the six columns are tight: less air between the letters of the headings and at the sides of a cell. */
+@media (min-width:721px) and (max-width:1100px){
+  .tp-stack table.rank th{letter-spacing:.04em}
+  .tp-stack table.rank th,.tp-stack table.rank td{padding-left:11px;padding-right:11px}
+}

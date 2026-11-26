@@ -33,7 +33,7 @@ html:not([data-mode="complet"]) .mode-switch [data-word="complet"] { display: no
 /* The first visit's box under the switch, for a reader who did not take the tour's last step. */
 .mode-pop { position: absolute; z-index: 60; top: calc(100% + 14px); right: var(--mode-pop-right, 0px); width: min(318px, calc(100vw - 24px)); border: 1px solid var(--line2); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 16px 16px 14px; box-shadow: var(--shadow2); font: 14px/1.5 var(--body); text-align: left; white-space: normal; animation: mode-pop-in var(--med, 240ms) var(--ease, ease) both; }
 .mode-pop::before { content: ""; position: absolute; top: -7px; right: var(--mode-pop-arrow, 20px); width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--line2); border-top: 1px solid var(--line2); transform: rotate(45deg); }
-.mode-pop b { display: block; font: 700 18px/1.2 var(--display); letter-spacing: -.01em; margin-bottom: 5px; }
+.mode-pop b { display: block; font: 700 18px/1.2 var(--display); letter-spacing: -.005em; margin-bottom: 5px; }
 .mode-pop p { margin: 0 0 13px; color: var(--ink2); }
 .mode-pop div { display: flex; gap: 8px; }
 .mode-pop button { flex: 1; min-height: 38px; border: 1px solid var(--line2); background: var(--surface); color: var(--ink); border-radius: 9px; padding: 9px 10px; font: 600 13px/1.2 var(--body); cursor: pointer; }

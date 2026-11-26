@@ -82,7 +82,7 @@
 .qb-editor{background:var(--fk-editor);border:1px solid var(--fk-editor-line);border-radius:17px;padding:28px 30px 22px;box-shadow:var(--fk-editor-shadow);min-width:0}
 
 /* ---------- 1. The sentence and its phrases; 1b. the fixed phrase; P5 presentation ---------- */
-.qb-sentence{margin:0 0 18px;font-family:var(--display);font-weight:500;font-size:clamp(24px,2.5vw,34px);line-height:1.75;letter-spacing:-.9px;color:var(--ink);text-wrap:pretty;overflow-wrap:anywhere}
+.qb-sentence{margin:0 0 18px;font-family:var(--display);font-weight:500;font-size:clamp(24px,2.5vw,34px);line-height:1.75;letter-spacing:-.45px;color:var(--ink);text-wrap:pretty;overflow-wrap:anywhere}
 .qb-phrase{position:relative;display:inline-flex;align-items:baseline;max-width:100%;border:0;border-bottom:1px dashed var(--fk-phrase-line);border-radius:4px 4px 0 0;background:var(--fk-phrase-bg);color:var(--fk-green);font:inherit;letter-spacing:inherit;line-height:1.35;padding:.06em .15em .04em;transition:background-color var(--fast) var(--ease)}
 .qb-phrase>span{min-width:0;overflow-wrap:anywhere}
 /* A phrase glued to the punctuation after it (Sentence.tsx, .qb-nowrap) still wraps inside: a long name
@@ -219,7 +219,7 @@ dialog.qb-pop:not([open]){display:none}
 dialog.qb-pop::backdrop{background:var(--fk-scrim)}
 .qb-pop-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
 .qb-pop-title{display:flex;align-items:center;gap:4px;min-width:0}
-.qb-pop-head h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font:500 19px/1.3 var(--display);letter-spacing:-.3px;color:var(--ink);text-wrap:pretty}
+.qb-pop-head h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font:500 19px/1.3 var(--display);letter-spacing:-.15px;color:var(--ink);text-wrap:pretty}
 .qb-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--fk-muted-strong);font-size:16px;line-height:1;flex:none}
 .qb-pop-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
 .qb-pop-foot b{color:var(--ink);font-weight:600}
@@ -414,7 +414,7 @@ a.qb-menu-item{text-decoration:none}
 /* Green = picked (kit §5.37): the card takes the picked row's mint with a soft green border, no side stripe (owner, 1 November 2026). */
 .qb-card{position:relative;min-width:0;padding:14px 16px;border:1px solid color-mix(in srgb,var(--fk-green) 35%,var(--line2));border-radius:12px;background:color-mix(in srgb,var(--fk-green) 7%,var(--surface))}
 .qb-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.qb-card h3,.qb-card h4{margin:0;font:600 16px/1.35 var(--body);color:var(--ink);overflow-wrap:anywhere}
+.qb-card h3,.qb-card h4{margin:0;font:600 16px/1.35 var(--body);color:var(--ink);overflow-wrap:anywhere}.qb-card h3{letter-spacing:-.015em}
 .qb-card-meta{margin:2px 0 10px;color:var(--fk-muted-strong);font-size:12.5px}
 .qb-card-facts{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 10px;font-size:13px;color:var(--ink2)}
 .qb-card-facts .qb-num{color:var(--ink);font-weight:500;font-size:13px}
@@ -515,7 +515,7 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 /* ---------- Phone (≤ 600 px): 44 px targets, bottom sheets, nothing wider than the screen ---------- */
 @media (max-width:600px){
   .qb-editor{padding:20px 16px 18px;border-radius:12px}
-  .qb-sentence{font-size:26px;line-height:1.85;letter-spacing:-.6px}
+  .qb-sentence{font-size:26px;line-height:1.85;letter-spacing:-.3px}
   .qb-phrase{padding-block:.18em}
   .qb-invite,.qb-chip-main,.qb-toggle,.qb-seg-opt,.qb-pill,.qb-suggest,.qb-relax button,.qb-relax-link,.qb-chip--parked,.qb-more-btn{min-height:44px}
   .qb-empty h3 a{display:inline-flex;align-items:center;min-height:44px}

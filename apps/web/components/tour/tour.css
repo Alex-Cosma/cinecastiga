@@ -7,7 +7,7 @@
 .tr b{font-weight:600}
 .tr-nw{white-space:nowrap}
 .tr-top{display:flex;align-items:center;gap:18px;padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
-.tr-wm{font:700 20px/1 var(--display);letter-spacing:-.02em}
+.tr-wm{font:700 20px/1 var(--display);letter-spacing:-.01em}
 .tr-wm i{font-style:normal;color:var(--orange)}
 .tr-prog{flex:1;display:flex;gap:5px;list-style:none;margin:0 auto;padding:0;max-width:340px}
 .tr-prog li{flex:1;height:3px;border-radius:2px;background:var(--line2);overflow:hidden}
@@ -18,7 +18,7 @@
 .tr-main{display:grid;grid-template-columns:minmax(0,1fr);gap:26px;align-content:start;width:100%;max-width:1120px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right,0px)) 26px max(16px,env(safe-area-inset-left,0px))}
 @media (min-width:860px){.tr-main{grid-template-columns:minmax(0,10fr) minmax(0,11fr);gap:64px;align-items:center;align-content:center;padding-block:30px}}
 .tr-text,.tr-vis,.tr-fig{min-width:0}
-.tr-copy h1{font:700 clamp(31px,4.4vw,54px)/1.04 var(--display);letter-spacing:-.028em;margin:0 0 16px;text-wrap:balance}
+.tr-copy h1{font:700 clamp(31px,4.4vw,54px)/1.04 var(--display);letter-spacing:-.014em;margin:0 0 16px;text-wrap:balance}@media(min-width:910px){.tr-copy h1{letter-spacing:-.007em}}
 .tr-copy p{margin:0 0 12px;max-width:44ch;font-size:17px;color:var(--ink2);text-wrap:pretty}
 .tr-copy em{font-style:normal;-webkit-box-decoration-break:clone;box-decoration-break:clone;background:linear-gradient(var(--tr-hl),var(--tr-hl)) no-repeat 0 88%/100% 38%}
 .tr-copy>*{animation:tr-rise .8s var(--tr-out) backwards}
@@ -40,7 +40,7 @@
 .tr-map path{fill:var(--accent-soft);stroke:var(--paper);stroke-width:1.6;cursor:pointer;transition:fill .35s,opacity .6s}
 .tr-map path:hover{fill:var(--accent-line)}
 .tr-map path.on{fill:var(--accent)}
-.tr-where{font:700 18px/1.2 var(--display);letter-spacing:-.01em}
+.tr-where{font:700 18px/1.2 var(--display);letter-spacing:-.005em}
 .tr-where small{display:block;font:400 13px/1.4 var(--body);color:var(--muted);letter-spacing:0}
 .tr[data-step="0"] .tr-head{flex-direction:column;align-items:stretch}
 .tr[data-step="0"] .tr-dots,.tr[data-step="0"] .tr-fig{display:none}
@@ -69,7 +69,7 @@
 .tr-fig{display:grid;gap:12px}
 .tr-fig>*{animation:tr-rise .9s var(--tr-out) .12s backwards}
 .tr-stat{margin:0;font-size:15px;color:var(--ink2);text-wrap:pretty}
-.tr-stat b{font:700 22px/1 var(--display);color:var(--ink);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.tr-stat b{font:700 22px/1 var(--display);color:var(--ink);letter-spacing:-.005em;font-variant-numeric:tabular-nums}
 .tr-cap{margin:0;font-size:13px;color:var(--muted)}
 .tr-toggle{display:inline-flex;width:fit-content;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--surface)}
 .tr-toggle button{border:0;background:none;padding:7px 14px;font:500 14px/1.3 var(--body);color:var(--ink2);cursor:pointer}
@@ -83,14 +83,14 @@
 .tr-guess{display:grid;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
 .tr-guess label{font-size:15px;font-weight:600;color:var(--ink)}
 .tr-guess-row{display:flex;align-items:center;gap:14px}
-.tr-guess output{flex:none;min-width:5.6em;font:700 24px/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tr-guess output{flex:none;min-width:5.6em;font:700 24px/1 var(--display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .tr-guess input[type=range]{flex:1;min-width:0;height:28px;margin:0;accent-color:var(--accent);cursor:pointer}
 .tr-guess-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
 .tr-paid{display:grid;gap:10px}
 .tr-paid div{border-radius:12px;padding:16px 18px}
 .tr-paid-yes{background:var(--accent);color:var(--on-accent)}
 .tr-paid-no{border:1.5px dashed var(--line2);color:var(--muted)}
-.tr-paid strong{display:block;font:700 clamp(28px,5vw,40px)/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tr-paid strong{display:block;font:700 clamp(28px,5vw,40px)/1 var(--display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .tr-paid span{font-size:14px}
 .tr-score{position:relative;padding-top:30px}
 .tr-score-track{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--accent-soft),var(--accent-line) 45%,var(--orange))}
@@ -159,7 +159,7 @@
 .tr-modes{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .tr-mode{position:relative;display:grid;gap:9px;align-content:start;text-align:left;border:1px solid var(--line2);background:var(--surface);color:var(--ink);border-radius:14px;padding:14px 14px 16px;cursor:pointer;font-family:var(--body);transition:border-color .2s,box-shadow .2s,transform .25s var(--tr-out)}
 .tr-mode svg{display:block;width:100%;height:auto;border-radius:9px;background:var(--paper);border:1px solid var(--line)}
-.tr-mode b{font:700 21px/1.1 var(--display);letter-spacing:-.015em;margin-top:5px}
+.tr-mode b{font:700 21px/1.1 var(--display);letter-spacing:-.0075em;margin-top:5px}
 .tr-mode span{font-size:14px;line-height:1.45;color:var(--ink2);text-wrap:balance}
 .tr-mode::after{content:"";position:absolute;top:24px;right:24px;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line2);background:var(--surface)}
 .tr-mode[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}

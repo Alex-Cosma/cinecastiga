@@ -10,7 +10,7 @@ const CSS = `
 :root{color-scheme:light;--paper:#f7f8f2;--surface:#fffefa;--ink:#243a30;--ink2:#3f5043;--muted:#6c746b;--line2:#cbd4c3;--accent:#204c3c;--on-accent:#fffefa;--orange:#c7522d}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--paper:#111d18;--surface:#18271f;--ink:#e7eddf;--ink2:#ccd8c4;--muted:#a5b39e;--line2:#456047;--accent:#c0d8ad;--on-accent:#18271f;--orange:#ec9672}}
 :root[data-theme=dark]{color-scheme:dark;--paper:#111d18;--surface:#18271f;--ink:#e7eddf;--ink2:#ccd8c4;--muted:#a5b39e;--line2:#456047;--accent:#c0d8ad;--on-accent:#18271f;--orange:#ec9672}
-body{margin:0;font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink)}
+body{margin:0;font-family:"Red Hat Text",system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink)}
 .ge{max-width:560px;margin:64px auto;padding:0 16px;text-align:center}
 .ge h1{font-size:30px;line-height:1.2;letter-spacing:-.02em;margin:0 0 12px}
 .ge-lead{font-size:16px;line-height:1.6;margin:0 0 22px;color:var(--ink2)}

@@ -7,8 +7,9 @@
 .lg-head { max-width: 46rem; margin-bottom: clamp(28px, 5vw, 46px); }
 .lg h1 {
   font-family: var(--display); font-weight: 700; font-size: clamp(34px, 5.4vw, 52px); line-height: 1.04;
-  letter-spacing: -.03em; margin: 0 0 14px; color: var(--ink); text-wrap: balance;
+  letter-spacing: -.015em; margin: 0 0 14px; color: var(--ink); text-wrap: balance;
 }
+@media(min-width:741px){.lg h1{letter-spacing:-.0075em}}
 .lg-lede { font-size: clamp(17px, 2vw, 20px); line-height: 1.5; color: var(--ink2); margin: 0; max-width: 36em; text-wrap: pretty; }
 
 .lg-cols { display: grid; grid-template-columns: minmax(0, 42rem) minmax(0, 19rem); justify-content: space-between; gap: clamp(32px, 6vw, 88px); align-items: start; }
@@ -16,7 +17,7 @@
 .lg-text { font-size: 16.5px; line-height: 1.65; color: var(--ink2); }
 .lg-text section + section { margin-top: 46px; }
 .lg-text h2 {
-  font-family: var(--display); font-weight: 650; font-size: 25px; line-height: 1.15; letter-spacing: -.02em;
+  font-family: var(--display); font-weight: 650; font-size: 25px; line-height: 1.15; letter-spacing: -.01em;
   margin: 0 0 12px; color: var(--ink); text-wrap: balance; scroll-margin-top: 84px;
 }
 .lg-text p { margin: 0 0 12px; max-width: 68ch; text-wrap: pretty; }
@@ -44,7 +45,7 @@
   padding: 22px 22px 20px; font-size: 14.5px; line-height: 1.5; color: var(--ink2);
 }
 .lg-side h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
-.lg-mail { display: block; font-family: var(--display); font-weight: 650; font-size: 21px; line-height: 1.2; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.lg-mail { display: block; font-family: var(--display); font-weight: 650; font-size: 21px; line-height: 1.2; letter-spacing: -.005em; overflow-wrap: anywhere; }
 .lg-side p { margin: 8px 0 0; }
 .lg-points { list-style: none; margin: 0; padding: 0; }
 .lg-points li { padding: 9px 0; border-top: 1px solid var(--line); }

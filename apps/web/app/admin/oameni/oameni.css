@@ -3,7 +3,7 @@
    th:first-child, td:nth-child(2) and (4)) would otherwise size and colour these cells. */
 
 .collection-admin .admin-people .people-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
-.collection-admin .admin-people .people-heading h2 { font: 600 23px/1.25 var(--heading); letter-spacing: -.02em; }
+.collection-admin .admin-people .people-heading h2 { font: 600 23px/1.25 var(--heading); letter-spacing: -.01em; }
 .collection-admin .admin-people .people-heading h2:focus { outline: none; }
 .collection-admin .admin-people .people-heading .subtle { font-size: 13px; }
 .collection-admin .admin-people .people-reload { margin-left: auto; font-size: 13px; }

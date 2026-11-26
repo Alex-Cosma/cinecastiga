@@ -4,11 +4,11 @@
 .kd-head{margin:0 0 26px}
 .kd-eyebrow{display:flex;align-items:center;gap:10px;margin:0 0 10px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase}
 .kd-eyebrow::before{content:"";width:22px;height:2px;background:var(--orange)}
-.kd-head h1{margin:0 0 8px;font:600 34px/1.15 var(--display);letter-spacing:-1px;color:var(--ink)}
+.kd-head h1{margin:0 0 8px;font:600 34px/1.15 var(--display);letter-spacing:-.5px;color:var(--ink)}
 .kd-head p{margin:0;max-width:78ch;color:var(--ink2);font-size:14px;line-height:1.6}
 .kd-sec{margin:0 0 34px;min-width:0}
 .kd-sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,38%);gap:4px 20px;align-items:baseline;margin:0 0 12px}
-.kd-sec-head h2{margin:0;font:600 21px/1.3 var(--display);letter-spacing:-.4px;color:var(--ink)}
+.kd-sec-head h2{margin:0;font:600 21px/1.3 var(--display);letter-spacing:-.2px;color:var(--ink)}
 .kd-sec-head code{font:400 11.5px/1.5 var(--mono);color:var(--muted);text-align:right;overflow-wrap:anywhere}
 .kd-sec-head p{grid-column:1/-1;margin:0;max-width:96ch;color:var(--ink2);font-size:13px;line-height:1.55}
 .kd-panel{min-width:0;padding:22px 24px;border:1px solid var(--fk-editor-line);border-radius:17px;background:var(--fk-editor)}

@@ -38,27 +38,27 @@ colors:
   dark-amber-soft: "#382a10"
 typography:
   display:
-    fontFamily: "Bricolage Grotesque, IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "Bitter, Red Hat Text, system-ui, sans-serif"
     fontSize: "clamp(48px, 5vw, 70px)"
     fontWeight: 700
     lineHeight: 1.04
-    letterSpacing: "-3.1px"
+    letterSpacing: "-.78px"
   headline:
-    fontFamily: "Bricolage Grotesque, IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "Bitter, Red Hat Text, system-ui, sans-serif"
     fontSize: "36px"
     lineHeight: 1.15
-    letterSpacing: "-.025em"
+    letterSpacing: "-.0125em"
   title:
-    fontFamily: "Bricolage Grotesque, IBM Plex Sans, system-ui, sans-serif"
+    fontFamily: "Bitter, Red Hat Text, system-ui, sans-serif"
     fontSize: "24px"
     lineHeight: 1.15
-    letterSpacing: "-.02em"
+    letterSpacing: "-.01em"
   body:
-    fontFamily: "IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Red Hat Text, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "15px"
     lineHeight: 1.6
   label:
-    fontFamily: "IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Red Hat Text, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "13px"
     fontWeight: 600
   technical:
@@ -111,7 +111,7 @@ components:
 
 ## Overview
 
-The incumbent interface uses forest-green text and actions on ivory paper, with Bricolage headings and IBM Plex reading text. Open sections, thin separators, direct source links, and preserved-evidence panels give procurement records a clear reading order.
+The incumbent interface uses forest-green text and actions on ivory paper, with Bitter headings and Red Hat Text reading text. Open sections, thin separators, direct source links, and preserved-evidence panels give procurement records a clear reading order.
 
 This records the built system rather than a new brand proposal. Color and font values come from the cascade of `globals.css` followed by `approved.css`; the latter supplies the approved forest/ivory overrides. Component examples come from the investigation workspace and monitoring extension. No creative metaphor or new palette was introduced.
 
@@ -127,7 +127,7 @@ Dark-prefixed frontmatter values are the existing dark-theme overrides of the co
 
 ## Typography
 
-Display and section headings use Bricolage Grotesque; body copy and actions use IBM Plex Sans; optional technical records use IBM Plex Mono. Latin and Latin Extended subsets support Romanian content. The font declarations and fallbacks remain shared.
+Display and section headings use Bitter; body copy and actions use Red Hat Text; optional technical records use IBM Plex Mono (owner, 26 November 2026). Latin and Latin Extended subsets support Romanian content. The font declarations and fallbacks remain shared. Each face carries its size correction inside its own declaration (Bitter 97 %, Red Hat Text 101 %), so text keeps the widths the layouts were built for; headings carry light negative tracking (about -.01em below 40 px, about half of that from 40 px up).
 
 The display role describes the discovery headline; it is not a required size for tool pages. Investigation headings use the recorded headline role. The private space's list pages share a 36px headline (30px on phones); watch titles and sections use the recorded headline and title roles. Body text retains a comfortable reading line height. Metadata may be smaller but cannot replace the readable source values or main explanation. On phones (≤700px) no text goes below 12px, except all-caps labels at 11px; figure captions and the map readout are 13px and search fields 16px (owner, 1 November 2026). Numeric comparisons use tabular numerals and preserve exact values.
 

@@ -3,9 +3,10 @@
 }
 .cq-page-intro h1 {
   font: 700 clamp(28px, 3.2vw, 42px) / 1.14 var(--display);
-  letter-spacing: -0.045em;
+  letter-spacing: -.0225em;
   margin: 28px 0 12px;
 }
+@media(min-width:1250px){.cq-page-intro h1{letter-spacing:-.01125em}}
 .cq-page-intro > p:last-child {
   color: var(--muted);
   font-size: 14px;
@@ -92,7 +93,7 @@
 }
 .cq-natural h2 {
   font: 700 30px var(--display);
-  letter-spacing: -0.03em;
+  letter-spacing: -.015em;
 }
 .cq-natural p:not(.cq-eyebrow) {
   font-size: 13px;
@@ -139,7 +140,7 @@
 .cq-answer-head > .cq-answer-actions{grid-column:2;grid-row:1}
 .cq-answer-head h2 {
   font: 700 clamp(25px, 2.6vw, 36px) / 1.18 var(--display);
-  letter-spacing: -0.035em;
+  letter-spacing: -.0175em;
   max-width: 780px;
   margin: 12px 0 16px;
   overflow-wrap: anywhere;
@@ -487,8 +488,9 @@
 .cq-result .ask-bigstat > .v {
   font: 700 clamp(38px, 6vw, 76px) / 1.1 var(--display);
   color: var(--accent);
-  letter-spacing: -0.045em;
+  letter-spacing: -.0225em;
 }
+@media(min-width:667px){.cq-result .ask-bigstat > .v{letter-spacing:-.01125em}}
 .cq-result .ask-ts {
   padding: 20px 16px 0;
   gap: 16px;
@@ -687,7 +689,7 @@
 }
 .cq-result .ask-cmp h4 {
   font: 700 24px/1.2 var(--display);
-  letter-spacing: -0.03em;
+  letter-spacing: -.015em;
 }
 .cq-result .ask-cmp .row {
   padding: 12px 0;
@@ -1496,7 +1498,7 @@ a.cq-source-main { justify-content: center; text-decoration: none; }
 .cq-answer-head h2.qb-live-sentence .qb-phrase { line-height: 1.22; padding: .02em .12em .03em; color: var(--accent); }
 .cq-answer-head h2.qb-live-sentence .qb-chev { width: .3em; height: .3em; margin-left: .26em; }
 /* The map's lens title: the heading says the lens, the sentence follows as a line of the builder's size. */
-.cq-live-host .qb-live-sentence--line { margin: -4px 0 12px; font-size: 17px; line-height: 1.9; letter-spacing: -.2px; }
+.cq-live-host .qb-live-sentence--line { margin: -4px 0 12px; font-size: 17px; line-height: 1.9; letter-spacing: -.1px; }
 .cq-live-host .qb-live-present { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin: 0 0 12px; color: var(--muted); font: 400 13px/1.5 var(--body); }
 .cq-live-host .qb-live-present .qb-present, .cq-live-host .qb-live-present .qb-scopeline { margin: 0; }
 .cq-live-host .qb-live-present .qb-advanced-link { margin-left: 0; padding-left: 0; }

@@ -4,7 +4,7 @@
 
 .record-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); grid-template-areas: "title value" "meta meta" "actions actions"; gap: 18px 48px; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
 .record-title { grid-area: title; min-width: 0; }
-.record-head h1 { font-size: clamp(26px, 3vw, 38px); line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; text-wrap: balance; }
+.record-head h1 { font-size: clamp(26px, 3vw, 38px); line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; text-wrap: balance; }
 .record-head h1 .term-tip { font-size: 16px; vertical-align: .35em; }
 .record-lot { margin-top: 12px; font-size: 15px; line-height: 1.5; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .record-lot > span { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 6px; }
@@ -14,7 +14,7 @@
 .record-parties .record-quiet { color: var(--muted); }
 
 .record-value { grid-area: value; align-self: start; padding: 16px 18px; border-radius: 10px; background: var(--sunk); }
-.record-amount { font: 650 30px/1.15 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.record-amount { font: 650 30px/1.15 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .record-amount-label { margin-top: 4px; font-size: 13px; color: var(--ink2); }
 .record-value-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--ink2); }
 .record-value-note:first-of-type { margin-top: 12px; }

@@ -250,7 +250,7 @@ let labelCanvas: CanvasRenderingContext2D | null | undefined;
 const measureLabel: MeasureText = (text) => {
   if (labelCanvas === undefined) labelCanvas = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   if (!labelCanvas) return text.length * 6.6;
-  const face = getComputedStyle(document.body).getPropertyValue("--body").trim() || "IBM Plex Sans, system-ui, sans-serif";
+  const face = getComputedStyle(document.body).getPropertyValue("--body").trim() || "Red Hat Text, system-ui, sans-serif";
   labelCanvas.font = `600 11.5px ${face}`;
   return Math.ceil(labelCanvas.measureText(text).width) + 2;
 };

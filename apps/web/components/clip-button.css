@@ -18,7 +18,7 @@
 .save-dialog{position:fixed;z-index:70;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:16px 18px 18px;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow2);font:14px/1.5 var(--body);text-align:left;white-space:normal}
 .save-dialog:focus{outline:none}.save-dialog a:focus-visible,.save-dialog .save-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.save-dialog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .save-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px -6px 0 0}
-.save-head h2{margin:0;font:600 17px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
+.save-head h2{margin:0;font:600 17px/1.3 var(--display);letter-spacing:-.005em;color:var(--ink)}
 .save-dialog .save-close{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer}
 .save-dialog .save-close:hover{background:var(--sunk);color:var(--ink)}
 .save-subject{display:grid;gap:2px;margin:0;padding:10px 12px;border-radius:8px;background:var(--sunk);font-size:14px;line-height:1.45;overflow-wrap:anywhere}

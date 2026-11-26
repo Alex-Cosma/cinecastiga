@@ -22,7 +22,7 @@
 .ia-help { margin: 10px 0 0 !important; color: var(--muted); font-size: 13px !important; line-height: 1.55; max-width: none !important; }
 
 .ia-examples { margin: 0 0 32px; }
-.ia-examples h2 { margin: 0 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); }
+.ia-examples h2 { margin: 0 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); letter-spacing: -.015em; }
 .ia-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .ia-group { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .ia-group h3 { margin: 0 0 8px; font: 700 13px/1.4 var(--body); letter-spacing: .02em; color: var(--accent-ink, var(--accent)); text-transform: uppercase; }
@@ -77,7 +77,7 @@
 
 /* The header's real height (SiteNav sets --site-header-h) and a small gap: nothing lands under it, at any width. */
 .ia-builder { scroll-margin-top: calc(var(--site-header-h, 91px) + 12px); }
-.ia-builder-title { margin: 8px 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); }
+.ia-builder-title { margin: 8px 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); letter-spacing: -.015em; }
 /* The builder's door, on the line under the box (owner, 16 November 2026). */
 .ia-build-link { display: inline-flex; align-items: center; min-height: 24px; padding: 0; border: 0; background: none; color: var(--accent); font: 600 13px/1.55 var(--body); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .ia-build-link:hover { text-decoration-thickness: 2px; }

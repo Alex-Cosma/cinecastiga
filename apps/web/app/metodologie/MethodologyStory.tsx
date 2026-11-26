@@ -182,7 +182,7 @@ export default function MethodologyStory({ figures, corrections = null }: { figu
                       <rect x="112" y="56" width="22" height="20" rx="2" fill="var(--c0)" />
                       <path d="M75 6V-22" stroke="var(--ink2)" strokeWidth="2" />
                       <path d="M75-22h22v10H75z" fill="var(--orange)" />
-                      <text x="75" y="34" textAnchor="middle" fontFamily="IBM Plex Sans, sans-serif" fontSize="11" fill="var(--surface)" fontWeight="600">PRIMĂRIA</text>
+                      <text x="75" y="34" textAnchor="middle" style={{ fontFamily: "var(--body)" }} fontSize="11" fill="var(--surface)" fontWeight="600">PRIMĂRIA</text>
                     </g>
                     <g transform="translate(470 116)">
                       <circle cx="40" cy="0" r="30" fill="var(--c2)" />
@@ -1418,7 +1418,7 @@ export default function MethodologyStory({ figures, corrections = null }: { figu
               <g transform="translate(318 30)">
                 <rect x="0" y="12" width="128" height="34" rx="4" fill="var(--c0)" stroke="var(--line2)" strokeWidth="2" />
                 <rect x="6" y="4" width="128" height="38" rx="4" fill="var(--surface)" stroke="var(--line2)" strokeWidth="2" />
-                <text x="70" y="28" textAnchor="middle" fontFamily="IBM Plex Sans, sans-serif" fontSize="13" fontWeight="600" fill="var(--ink)">31 de pagini</text>
+                <text x="70" y="28" textAnchor="middle" style={{ fontFamily: "var(--body)" }} fontSize="13" fontWeight="600" fill="var(--ink)">31 de pagini</text>
               </g>
               <g transform="translate(462 42)">
                 <rect width="58" height="32" rx="3" fill="var(--surface)" stroke="var(--line2)" strokeWidth="2" />

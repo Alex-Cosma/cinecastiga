@@ -157,7 +157,7 @@
 .d-path-card:hover h3{color:var(--orange)}
 .discovery-page .d-path-art{height:78px;margin:0 0 14px}
 .d-path-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.d-path-head h3{font-size:19px;letter-spacing:-.3px;line-height:1.25}
+.d-path-head h3{font-size:19px;letter-spacing:-.15px;line-height:1.25}
 .d-path-head>span{flex:none;width:27px;height:27px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--accent)}
 .d-path-head .d-icon{width:14px;height:14px}
 .d-path-card>p{font-size:13px;line-height:1.7;color:var(--muted);margin-top:8px}
@@ -185,7 +185,7 @@
   .d-question-top,.d-question-bottom,.d-path-head>span,.d-art-wide{display:none}
   .discovery-page .d-art-narrow{display:block;grid-area:art;width:104px;height:70px;margin:0;align-self:center}
   .d-question-card h3,.d-path-head{grid-area:title;align-self:center;margin:0;max-width:none}
-  .d-question-card h3,.d-path-head h3{font-size:19px;line-height:1.2;letter-spacing:-.3px}
+  .d-question-card h3,.d-path-head h3{font-size:19px;line-height:1.2;letter-spacing:-.15px}
   .d-card-go{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:6px;vertical-align:-3px;color:var(--accent)}
   .d-card-go .d-icon{width:16px;height:16px}
   .d-paths{gap:10px}
@@ -220,7 +220,7 @@
 }
 /* The dialog's title names the tool (Z1-09) on one line. */
 .d-search-dialog:not(.d-townhall-dialog) .d-dialog-head>div{flex:1;min-width:0}
-.d-search-dialog:not(.d-townhall-dialog) .d-dialog-head h2{font-size:27px;letter-spacing:-.7px}
+.d-search-dialog:not(.d-townhall-dialog) .d-dialog-head h2{font-size:27px;letter-spacing:-.35px}
 /* Home map (UX audit Z1-24): the per-inhabitant map, one link away beside the readout's (?). */
 .d-map-per-capita{display:inline-flex;align-items:center;gap:6px;margin-left:auto;min-height:32px;font-size:13px;font-weight:600;white-space:nowrap}
 .d-map-per-capita .d-icon{width:14px;height:14px}

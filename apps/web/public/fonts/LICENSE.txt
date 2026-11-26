@@ -1,7 +1,8 @@
 Self-hosted web fonts (latin and latin-ext subsets, woff2), as served by Google Fonts.
 
-- Bricolage Grotesque: Copyright 2022 The Bricolage Grotesque Project Authors.
-- IBM Plex Sans, IBM Plex Mono: Copyright © 2017 IBM Corp. with Reserved Font Name "Plex".
+- Bitter: Copyright 2011 The Bitter Project Authors (https://github.com/solmatas/BitterPro).
+- Red Hat Text: Copyright 2021 The Red Hat Project Authors (https://github.com/RedHatOfficial/RedHatFont).
+- IBM Plex Mono: Copyright © 2017 IBM Corp. with Reserved Font Name "Plex".
 
 All are licensed under the SIL Open Font License, Version 1.1:
 https://openfontlicense.org/open-font-license-official-text/

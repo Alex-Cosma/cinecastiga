@@ -44,7 +44,7 @@
 .pr-submit { align-self: flex-end; min-height: 44px; padding: 0 18px; border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: var(--on-accent); font: 600 15px/1 var(--body); cursor: pointer; }
 /* Three lines always, so the list under the bar starts at the same place for every answer. */
 .pr-total { margin: 0 0 0 auto; text-align: right; min-height: 68px; }
-.pr-total strong { display: block; font: 700 24px/1.1 var(--display); letter-spacing: -.02em; color: var(--ink); }
+.pr-total strong { display: block; font: 700 24px/1.1 var(--display); letter-spacing: -.01em; color: var(--ink); }
 .pr-total span { display: block; font-size: 13px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .pr-empty, .pr-none { color: var(--ink2); padding: 18px 0; }
 
@@ -74,7 +74,7 @@
    20 November 2026). */
 .pr-sum { margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
 .pr-label { min-width: 0; }
-.pr-label b { display: block; font: 700 20px/1.15 var(--display); letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
+.pr-label b { display: block; font: 700 20px/1.15 var(--display); letter-spacing: -.0075em; color: var(--ink); text-wrap: balance; }
 /* The median's range and unit stay on one line (polish, 20 November 2026). */
 .pr-label .pr-nowrap { white-space: nowrap; }
 .pr-pack { display: block; font-size: 13px; color: var(--ink2); margin-top: 2px; }
@@ -158,7 +158,7 @@
 .pr-tabs a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .pr-tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pr-hero { margin-top: 22px; }
-.pr-hero-line { margin: 0 0 12px; max-width: 46ch; font: 500 22px/1.3 var(--display); letter-spacing: -.012em; color: var(--ink); }
+.pr-hero-line { margin: 0 0 12px; max-width: 46ch; font: 500 22px/1.3 var(--display); letter-spacing: -.006em; color: var(--ink); }
 .pr-hero-line b { font-weight: 700; }
 .pr-hero-tags { margin: -4px 0 12px; }
 .pr-hero-tags .pr-mixed { margin: 0 6px 0 0; }
@@ -181,7 +181,7 @@
 
 .pr-buyers { margin-top: 34px; }
 .pr-buyers-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.pr-buyers-head h2 { margin: 0; font: 700 24px/1.15 var(--display); letter-spacing: -.02em; }
+.pr-buyers-head h2 { margin: 0; font: 700 24px/1.15 var(--display); letter-spacing: -.01em; }
 .pr-buyers-head h2 small { display: block; margin-top: 2px; font: 400 13px/1.4 var(--body); letter-spacing: 0; color: var(--ink2); }
 .pr-buyers-head a { font-size: 13px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .pr-lines-wrap { padding: 4px 10px 16px; }

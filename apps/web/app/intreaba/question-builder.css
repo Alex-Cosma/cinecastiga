@@ -40,7 +40,7 @@
 .question-builder .qb-dialog-search { height: min(640px, calc(100dvh - 48px)); }
 .question-builder .qb-dialog-catalogue { width: 1000px; height: min(760px, calc(100dvh - 48px)); }
 .qb-picker-head { display: flex; align-items: center; gap: 15px; justify-content: space-between; margin-bottom: 8px; flex-shrink: 0; }
-.qb-picker-head>h2 { font-family: var(--display, inherit); color: var(--qb-ink); font-size: 26px; font-weight: 500; line-height: 1.35; letter-spacing: -.65px; margin: 0; }
+.qb-picker-head>h2 { font-family: var(--display, inherit); color: var(--qb-ink); font-size: 26px; font-weight: 500; line-height: 1.35; letter-spacing: -.33px; margin: 0; }
 .qb-dialog-close { display: grid; place-items: center; border: 1px solid #dce3d0; border-radius: 50%; background: #f2f6e8; color: #77866b; width: 33px; height: 33px; padding: 7px; flex-shrink: 0; }
 .qb-dialog-close>.qb-icon { width: 15px; height: 15px; }
 .qb-dialog-close:hover { background: #e4ecd7; }

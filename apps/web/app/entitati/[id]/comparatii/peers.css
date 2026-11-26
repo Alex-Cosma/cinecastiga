@@ -8,7 +8,7 @@
 /* Zero specificity: every button below sets its own type. */
 :where(.pxs) button{font:inherit;cursor:pointer}
 :where(.pxs) button:disabled{cursor:default;opacity:.55}
-.pxs-head h1{margin:8px 0 0;font:700 36px/1.1 var(--display);letter-spacing:-.025em;text-wrap:balance}
+.pxs-head h1{margin:8px 0 0;font:700 36px/1.1 var(--display);letter-spacing:-.0125em;text-wrap:balance}
 .pxs-lede{margin:6px 0 0;max-width:none;font-size:15.5px;color:var(--ink2)}
 .pxs-lede b{color:var(--ink);font-weight:600}
 .pxs-note{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
@@ -68,7 +68,7 @@
 /* Under the stage: the neighbours and who the group is */
 /* One column (owner, 19 November 2026): the ranking takes the width; „Cine e în grup” is a (?) beside its title. */
 .pxs-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;margin-top:22px}
-.pxs h2{margin:0 0 8px;font:600 15px/1.3 var(--body)}
+.pxs h2{margin:0 0 8px;font:600 15px/1.3 var(--body);letter-spacing:-.015em}
 .pxs-rows{margin:0;padding:0;list-style:none}
 /* The ranking takes the page's width (owner, 19 November 2026): the name, then a track wide enough to read places on. */
 .pxs-row{display:grid;grid-template-columns:40px minmax(200px,1fr) minmax(60px,1.5fr) 104px auto;align-items:center;gap:10px;min-height:48px;padding:4px 0;border-bottom:1px solid var(--line)}
@@ -110,7 +110,7 @@
 /* The whole group, behind "Toată lista" */
 .pxs-list{margin-top:34px;scroll-margin-top:84px}
 .pxs-list-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid var(--line2)}
-.pxs-list-h h2{margin:0;font:700 22px/1.2 var(--display);letter-spacing:-.015em}
+.pxs-list-h h2{margin:0;font:700 22px/1.2 var(--display);letter-spacing:-.0075em}
 .pxs-list-h span{font-size:13px;color:var(--muted)}
 .pxs-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
 .pxs-pager span .pxs-link{font-size:13px}

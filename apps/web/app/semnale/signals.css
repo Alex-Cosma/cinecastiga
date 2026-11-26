@@ -5,7 +5,7 @@
 .sg-explorer button:disabled,.sg-dialog button:disabled{cursor:default;opacity:.45}
 .sg-explorer a,.sg-dialog a{text-underline-offset:4px}
 .sg-explorer :focus-visible,.sg-dialog :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.sg-explorer h1,.sg-explorer h2,.sg-explorer h3,.sg-dialog h2,.sg-dialog h3{font-family:var(--display);letter-spacing:-.025em;line-height:1.18}
+.sg-explorer h1,.sg-explorer h2,.sg-explorer h3,.sg-dialog h2,.sg-dialog h3{font-family:var(--display);letter-spacing:-.0125em;line-height:1.18}
 .sg-explorer p,.sg-dialog p{max-width:none}
 .sg-heading{display:flex;justify-content:space-between;gap:20px;align-items:center}
 .sg-title{display:flex;align-items:center;gap:6px;position:relative;margin-bottom:7px}.sg-heading h1{font-size:38px;margin:0}
@@ -134,7 +134,7 @@
 
 /* The pattern's name once (UX audit Z6-15): the field „Tip de semnal” is written as the section's title, the h2 under it
    is for the outline only, the methodology is one link beside the description. */
-.sg-explorer .sg-type-button>span:first-child{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.02em;line-height:1.15}
+.sg-explorer .sg-type-button>span:first-child{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.01em;line-height:1.15}
 .sg-context:has(h2.sr-only){padding-top:14px}
 @media(max-width:700px){.sg-explorer .sg-type-button>span:first-child{font-size:18px}}
 

@@ -7,9 +7,9 @@
 .fc p{margin:0}
 .fc-verdict-row{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
 .fc-verdict{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:86px;height:60px;padding:0 16px;border-radius:12px;
-  font-family:var(--display);font-weight:700;font-size:33px;letter-spacing:-1px;background:var(--accent-soft);color:var(--accent);flex:none}
+  font-family:var(--display);font-weight:700;font-size:33px;letter-spacing:-.5px;background:var(--accent-soft);color:var(--accent);flex:none}
 .fc-verdict.is-no{background:var(--sunk);color:var(--ink2)}
-.fc-verdict.is-framework{background:var(--sunk);color:var(--ink);font-size:24px;letter-spacing:-.5px}
+.fc-verdict.is-framework{background:var(--sunk);color:var(--ink);font-size:24px;letter-spacing:-.25px}
 /* The verdict's (?) sits in the box but opens over the whole row (.fc-verdict-row is its .qb-tipwrap). */
 .fc-verdict .term-tip{font-family:var(--body, inherit);letter-spacing:0;font-size:13px;font-weight:400}
 .fc-verdict-text{flex:1 1 220px;min-width:0;display:grid;gap:2px;font-size:14px;color:var(--ink)}

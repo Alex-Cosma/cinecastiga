@@ -1,7 +1,7 @@
 /* /cont, the private space's third tab (owner, 7 November 2026): the anchete page's vocabulary (display headings, open
    sections split by a line, a label column beside its form), fields with resting borders at 3:1 or more. */
 .cont-page{--field-line:color-mix(in srgb,var(--muted) 85%,var(--surface))}
-.cont-title{font-family:var(--display);font-size:36px;line-height:1.15;letter-spacing:-.025em;margin:0 0 22px}
+.cont-title{font-family:var(--display);font-size:36px;line-height:1.15;letter-spacing:-.0125em;margin:0 0 22px}
 .cont-identity{display:flex;align-items:flex-start;justify-content:space-between;gap:16px 32px;padding:0 0 30px}
 .cont-facts{display:grid;gap:8px;margin:0;min-width:0}
 .cont-facts>div{display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:16px;align-items:baseline}
@@ -9,7 +9,7 @@
 .cont-facts dd{margin:0;font-size:15px;color:var(--ink);min-width:0}
 .cont-facts a{text-underline-offset:4px}
 .cont-section{display:grid;grid-template-columns:1fr 1.5fr;gap:40px;padding:34px 0;border-top:1px solid var(--line2)}
-.cont-section h2{font-family:var(--display);font-size:26px;line-height:1.25;letter-spacing:-.015em;margin:0}
+.cont-section h2{font-family:var(--display);font-size:26px;line-height:1.25;letter-spacing:-.0075em;margin:0}
 .cont-form{display:grid;gap:18px;max-width:440px}
 .cont-field{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--ink2)}
 .cont-field input{font:inherit;font-size:15px;font-weight:400;color:var(--ink);background:var(--surface);border:1px solid var(--field-line);border-radius:8px;padding:10px 12px;min-height:44px;width:100%;min-width:0;box-sizing:border-box;caret-color:var(--accent);transition:border-color var(--fast)}
