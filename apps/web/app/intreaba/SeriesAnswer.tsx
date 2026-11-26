@@ -39,7 +39,8 @@ export type Sources = (spec: AskSpec, scope?: EvidenceScope, title?: string, opt
 const DA_CAP_YEAR = 2022;
 const DA_CAP_TIP = { title: "Plafonul achizițiilor directe", text: "Din 10.09.2022 plafonul legal e mai mare (270.120 lei produse și servicii, 900.400 lei lucrări); o mutare între directe și proceduri poate veni din lege." };
 const YEAR_TIP = { title: "Lei ai fiecărui an", text: "Neajustați la inflație. Un contract pe mai mulți ani intră întreg în anul atribuirii." };
-const ABOVE_TIP = { title: "Contracte peste 1 mld. lei, ținute afară", text: "Anunțul lor le contrazice valoarea sau au fost semnalate ca greșite. Le listăm separat; valoarea lor nu intră în bare." };
+// Owner, 26 November 2026: a contract of any size can be held as a probable error of its value, not only one above 1 mld. lei.
+const ABOVE_TIP = { title: "Contracte ținute în afara totalurilor", text: "Valoarea lor din SEAP e contrazisă de propriul anunț sau e, cel mai probabil, o greșeală de redactare. Le listăm separat; valoarea lor nu intră în bare." };
 
 export default function SeriesAnswer({ data, spec, partial, onSources }: { data: SeriesData; spec: AskSpec; partial: readonly PartialYear[]; onSources: Sources }) {
   const t = useTip();
@@ -159,7 +160,7 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
             <TotalMark more={YEAR_TIP} />
           </p>;
         })()}
-        {above.n > 0 && <p className="ask-fine qb-tipwrap">{countWords(above.n, "contract", "contracte")} peste 1 mld. lei nu intră în bare <HelpTip tip={ABOVE_TIP} />{" "}
+        {above.n > 0 && <p className="ask-fine qb-tipwrap">{countWords(above.n, "contract", "contracte")} cu valoare probabil greșită nu intră în bare <HelpTip tip={ABOVE_TIP} />{" "}
           <KitLink className="qb-rec" link={{ label: "Vezi-le", glyph: "›", onClick: () => setPicked(above.first) }} /></p>}
         {daMark && <p className="ask-fine qb-tipwrap">▴ 10.09.2022: plafon DA mai mare <HelpTip tip={DA_CAP_TIP} /></p>}
         {(f.adminPersonKey || f.adminName) && <p className="ask-fine">Administratorul e cel de azi; în anii trecuți putea fi altul.</p>}
@@ -201,7 +202,7 @@ function BarCard({ data, spec, point, partial, facts, onSources, onClose }: {
         text: largestWords(point, largest),
         records: { label: "vezi", glyph: "›" as const, onClick: () => onSources(records.spec, records.scope, `${name} · după valoare`, { sort: "value" }) },
       }] : []),
-      ...(above?.n ? [{ text: aboveWords(above.n), tag: { text: "peste plafon", tone: "caveat" as const, tip: ABOVE_TIP } }] : []),
+      ...(above?.n ? [{ text: aboveWords(above.n), tag: { text: "în afara totalului", tone: "caveat" as const, tip: ABOVE_TIP } }] : []),
     ]}
     actions={[
       { label: recordsWords(point.count), glyph: "→", onClick: () => onSources(records.spec, records.scope, `${name} · înregistrările ${unit}`) },

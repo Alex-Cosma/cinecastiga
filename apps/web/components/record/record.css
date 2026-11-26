@@ -15,6 +15,8 @@
 
 .record-value { grid-area: value; align-self: start; padding: 16px 18px; border-radius: 10px; background: var(--sunk); }
 .record-amount { font: 650 30px/1.15 var(--display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* An amount held out of the totals as a probable error (owner, 26 November 2026): the source's figure, dimmed. */
+.record-amount.is-doubted { color: var(--muted); }
 .record-amount-label { margin-top: 4px; font-size: 13px; color: var(--ink2); }
 .record-value-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--ink2); }
 .record-value-note:first-of-type { margin-top: 12px; }

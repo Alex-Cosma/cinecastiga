@@ -73,7 +73,10 @@ function coreContracts(s: DbSql, authorityId: string, supplierId: string): Fragm
         -- A ceiling without a value in lei (a legacy amount in another currency) is still a framework: "plafon necunoscut".
         when x.kind = 'framework' and x.canonical then 'framework'
         when x.identity_excluded and x.kind in ('contract', 'calloff') and not x.in_sums then 'identity'
-        when x.canonical and x.kind in ('contract', 'calloff') and x.full_value > ${CONTRACT_VALUE_CAP_RON} and not x.in_sums then 'above_cap'
+        -- Held by the value review: above the cap and not admitted, or of any size and excluded by an administrator as a
+        -- probable error of the value (26 November 2026; marts.contract_transactions_held). The category kept its name.
+        when x.canonical and x.kind in ('contract', 'calloff') and not x.in_sums
+          and (x.full_value > ${CONTRACT_VALUE_CAP_RON} or exists (select 1 from marts.contract_transactions_held h where h.contract_id = x.contract_id)) then 'above_cap'
         -- The contract mart keeps only a positive value in lei: a contract without one (a legacy EUR amount, 0) is listed, never a false "Nu".
         when x.canonical and x.kind in ('contract', 'calloff') and coalesce(x.full_value, 0) <= 0 and not x.in_sums then 'no_ron_value'
         when x.canonical and x.kind = 'review' and not x.in_sums then 'kind'

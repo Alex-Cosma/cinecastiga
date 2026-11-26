@@ -29,14 +29,14 @@ export interface SummaryInput {
   /** First page of the partner list, largest first. */
   partners: readonly SummaryPartner[];
   /**
-   * Contracts above the 1 mld. lei plausibility cap, kept out of the total and
-   * listed separately on the page (`#peste-plafon`), largest first.
+   * Contracts the value review holds out of the total (above 1 mld. lei and not admitted, or excluded by an
+   * administrator as a probable error: owner, 26 November 2026), largest first. The page's table lists them, marked.
    */
   aboveCap?: { count: number; totalExact: string; rows: readonly { natId: string; title: string | null; contractNo: string | null; valueRonExact: string }[] } | undefined;
 }
 
-/** Where the page lists the contracts above the cap. */
-export const ABOVE_CAP_ANCHOR = "#peste-plafon";
+/** Where the page lists the contracts held out of the total: its table of records, where each one is marked. */
+export const ABOVE_CAP_ANCHOR = "#achizitii";
 
 /** A long official title cut at a word, for a sentence: "Proiectare și execuție Magistrala I…". */
 export function shortTitle(title: string, max = 70): string {
@@ -49,17 +49,17 @@ export function shortTitle(title: string, max = 70): string {
 }
 
 /**
- * One short line under the top (UX audit Z5-04, 16 November 2026): „2 contracte peste 1 mld. lei (13,8 mld.) sunt în
- * afara totalului · Vezi lista ↓”. The titles stay in the list under the table, the one place that lists them. Null
- * without such contracts.
+ * One short line under the top (UX audit Z5-04, 16 November 2026; reworded 26 November 2026, when a contract of any
+ * size can be held): „2 contracte cu valoare probabil greșită (13,8 mld.) sunt în afara totalului · Vezi în tabel ↓”.
+ * The table of records lists them, marked. Null without such contracts.
  */
 export function aboveCapSentence(aboveCap: SummaryInput["aboveCap"]): Segment[] | null {
   if (!aboveCap || aboveCap.count <= 0) return null;
   const n = aboveCap.count;
   const value = formatRon(aboveCap.totalExact).replace(/ lei$/, "");
   return [
-    n === 1 ? `Un contract peste 1 mld. lei (${value}) e în afara totalului · ` : `${roCount(n, "un contract", "contracte")} peste 1 mld. lei (${value}) sunt în afara totalului · `,
-    { text: "Vezi lista ↓", href: ABOVE_CAP_ANCHOR },
+    n === 1 ? `Un contract cu valoare probabil greșită (${value}) e în afara totalului · ` : `${roCount(n, "un contract", "contracte")} cu valoare probabil greșită (${value}) sunt în afara totalului · `,
+    { text: "Vezi în tabel ↓", href: ABOVE_CAP_ANCHOR },
   ];
 }
 

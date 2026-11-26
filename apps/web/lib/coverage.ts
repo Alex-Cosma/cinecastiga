@@ -26,6 +26,9 @@ export interface Observation {
   /** Otherwise-included contracts above the value cap, kept out of totals. */
   above_value_cap?: string;
   above_value_cap_value?: string;
+  /** Contracts at or under the cap held out of totals as a probable error of the value (26 November 2026). */
+  value_held_under_cap?: string;
+  value_held_under_cap_value?: string;
   /** Contracts above the cap that the last processing run counts (19 November 2026). */
   above_value_cap_counted?: string;
   above_value_cap_counted_value?: string;

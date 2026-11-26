@@ -14,12 +14,17 @@ describe("the entity table's CSV", () => {
     const csv = entityTxCsv([row({}), row({ src: "contract", sicapDaId: "9", natId: "107767548", caNoticeId: "215", title: null, daFlags: [], singleBidder: true, nWinners: 3, contractValueFull: 7290.3 })], "https://cinecastiga.ro");
     const [header, da, contract] = csv.replace("﻿", "").trim().split("\r\n");
     expect(csv.startsWith("﻿")).toBe(true);
-    expect(header).toBe("data,tip,partener,id_partener,cod_cpv,domeniu_cpv,titlu,valoare_ron,numar_castigatori,valoare_contract_integral,semnale,numar,link_seap,link_site");
+    expect(header).toBe("data,tip,partener,id_partener,cod_cpv,domeniu_cpv,titlu,valoare_ron,numar_castigatori,valoare_contract_integral,semnale,numar,link_seap,link_site,in_afara_totalurilor");
+    expect(da!.endsWith(",")).toBe(true);
     expect(da).toContain('"2021-06-04",achizitie_directa,"\'=FIRMA","10"');
     expect(da).toContain(',"Comprese sterile",2430.10,,,"da_round","DA123"');
     expect(da).toContain('"https://cinecastiga.ro/achizitii/114737259"');
     expect(contract).toContain(',3,7290.3,"un_ofertant"');
     expect(contract).toContain('"https://cinecastiga.ro/contracte/107767548"');
+  });
+  it("marks a contract held out of the totals, so a sum over the file can leave it out (owner, 26 November 2026)", () => {
+    const csv = entityTxCsv([row({ src: "contract", sicapDaId: "9", natId: "1638720", caNoticeId: "441920", valueHeld: true })], "https://cinecastiga.ro");
+    expect(csv.trim().split("\r\n")[1]!.endsWith(',"https://cinecastiga.ro/contracte/1638720",eroare_probabila')).toBe(true);
   });
   it("names the file, and says when it was cut", () => {
     expect(entityCsvName("2146445", 120, 120)).toBe("inregistrari-2146445.csv");

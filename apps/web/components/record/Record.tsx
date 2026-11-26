@@ -38,6 +38,8 @@ export interface RecordValue {
   label: ReactNode;
   /** What qualifies this value (separate from totals, unverified currency, …): said right under it. */
   notes?: (ReactNode | ModePart)[];
+  /** A label above the amount whose value is in doubt („Eroare probabilă”, owner, 26 November 2026): the amount dims. */
+  flag?: ReactNode;
 }
 
 /** The head: title, lot, who from whom, the value and its notes, the record's identity line and its actions. */
@@ -64,7 +66,8 @@ export function RecordHead({ title, heading, context, lot, lotLabel = "Lot", lot
       {parties && <p className="record-parties">{parties}</p>}
     </div>
     {value && <div className="record-value">
-      <p className="record-amount">{value.amount}</p>
+      {value.flag}
+      <p className={value.flag ? "record-amount is-doubted" : "record-amount"}>{value.amount}</p>
       <p className="record-amount-label">{value.label}</p>
       {value.notes?.filter(Boolean).map((note, i) => isModePart(note)
         ? <p className="record-value-note" key={i} data-only={note.only}>{note.node}</p>

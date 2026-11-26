@@ -11,7 +11,9 @@ import type { DaTx } from "./marts";
 /** The most rows one export carries; the file name says when there were more. */
 export const ENTITY_CSV_MAX = 20_000;
 
-const HEADER = "data,tip,partener,id_partener,cod_cpv,domeniu_cpv,titlu,valoare_ron,numar_castigatori,valoare_contract_integral,semnale,numar,link_seap,link_site";
+// The last column (owner, 26 November 2026): „eroare_probabila” on a contract held out of the totals by the value
+// review, so that a sum over the file can leave it out as the site's totals do; empty on every other row.
+const HEADER = "data,tip,partener,id_partener,cod_cpv,domeniu_cpv,titlu,valoare_ron,numar_castigatori,valoare_contract_integral,semnale,numar,link_seap,link_site,in_afara_totalurilor";
 
 /** `origin`: the site's address as the request reached it, for the rows' own pages. */
 export function entityTxCsv(rows: readonly DaTx[], origin: string): string {
@@ -23,7 +25,7 @@ export function entityTxCsv(rows: readonly DaTx[], origin: string): string {
       evidenceCsvText(t.partnerName), evidenceCsvText(t.partnerId), evidenceCsvText(t.cpvCode), evidenceCsvText(t.cpvName),
       evidenceCsvText(t.title ?? ""), t.closingValueExact ?? (t.closingValue ?? ""), t.nWinners ?? "", t.contractValueFull ?? "",
       evidenceCsvText([...t.daFlags, ...(t.singleBidder ? ["un_ofertant"] : [])].join(" ")), evidenceCsvText(t.daCode?.trim() ?? ""),
-      evidenceCsvText(seap), evidenceCsvText(site ? `${origin}${site}` : ""),
+      evidenceCsvText(seap), evidenceCsvText(site ? `${origin}${site}` : ""), t.valueHeld ? "eroare_probabila" : "",
     ].join(",");
   });
   return "﻿" + [HEADER, ...lines].join("\r\n") + "\r\n";

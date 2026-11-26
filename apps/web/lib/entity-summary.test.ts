@@ -137,16 +137,16 @@ describe("contracts above the 1 mld. lei cap", () => {
   it("says in one short line that they are left out of the total, with their value and the list (UX audit Z5-04)", () => {
     const s = composeEntitySummary({ ...authority, aboveCap })!;
     const sentence = s.sentences[1]!;
-    expect(text(sentence)).toBe(`2 contracte peste 1 mld. lei (${formatRon("13790000000.00").replace(/ lei$/, "")}) sunt în afara totalului · Vezi lista ↓`);
-    expect(sentence).toContainEqual({ text: "Vezi lista ↓", href: "#peste-plafon" });
+    expect(text(sentence)).toBe(`2 contracte cu valoare probabil greșită (${formatRon("13790000000.00").replace(/ lei$/, "")}) sunt în afara totalului · Vezi în tabel ↓`);
+    expect(sentence).toContainEqual({ text: "Vezi în tabel ↓", href: "#achizitii" });
   });
   it("says one contract in the singular and nothing without such contracts", () => {
     const one = aboveCapSentence({ count: 1, totalExact: "1200000000", rows: [{ natId: "9", title: null, contractNo: null, valueRonExact: "1200000000" }] })!;
-    expect(text(one)).toBe(`Un contract peste 1 mld. lei (${formatRon("1200000000").replace(/ lei$/, "")}) e în afara totalului · Vezi lista ↓`);
+    expect(text(one)).toBe(`Un contract cu valoare probabil greșită (${formatRon("1200000000").replace(/ lei$/, "")}) e în afara totalului · Vezi în tabel ↓`);
     expect(aboveCapSentence({ count: 0, totalExact: "0", rows: [] })).toBeNull();
     expect(aboveCapSentence(undefined)).toBeNull();
     // without such contracts the summary is unchanged
-    expect(composeEntitySummary(authority)!.sentences.map(text).join(" ")).not.toContain("peste 1 mld.");
+    expect(composeEntitySummary(authority)!.sentences.map(text).join(" ")).not.toContain("probabil greșită");
   });
   it("cuts long titles at a word", () => {
     expect(shortTitle("Scurt")).toBe("Scurt");

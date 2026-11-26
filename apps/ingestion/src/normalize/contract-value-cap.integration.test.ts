@@ -77,7 +77,7 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     await sql`delete from core.cpv_codes where code=${fixtureCpv}`;
     await sql`delete from core.entities where id in (${authority},${supplier},${partner})`;
     await sql`delete from marts.data_coverage where dataset in ('da','contracts','ted','years')`;
-    await sql`truncate marts.contract_transactions, marts.national_stats, marts.spend_by_type, marts.spend_by_cpv, marts.spend_by_county,
+    await sql`truncate marts.contract_transactions, marts.contract_transactions_held, marts.national_stats, marts.spend_by_type, marts.spend_by_cpv, marts.spend_by_county,
       marts.entity_profile, marts.entity_top_partners, marts.top_entities, marts.authority_concentration`;
     await sql.end();
   });
@@ -168,6 +168,32 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     expect(await validateContractPopulation(sql)).toMatchObject({ eligible_missing: "0", excluded_included: "0", allocation_mismatches: "0" });
     expect(await held()).toEqual([contract(7)]);
   }, 120_000);
+
+  // Owner, 26 November 2026 (migration 0116): nine contracts between 10 and 815 million lei carried a value ten, a
+  // hundred or a thousand times too large and passed under the cap. An administrator's exclusion now holds a contract
+  // of any size: out of the totals, and into the table the lists read to show it, marked.
+  it("holds a contract under the cap that an administrator excluded: out of the totals, in the held list", async () => {
+    await sql`insert into app.contract_value_decisions(contract_nat_id,decision,reason,decided_by) values
+      (${contract(2)},'exclude','Estimarea procedurii: 9.000.000 lei. Valoarea din SEAP e de 100 de ori mai mare.','test')`;
+    // An inclusion means nothing under the cap: the contract is counted anyway and does not enter the review.
+    await sql`insert into app.contract_value_decisions(contract_nat_id,decision,reason,decided_by) values (${contract(3)},'include','fără efect','test')`;
+    expect(await buildContractValueReview(sql)).toEqual({ above: 4, admitted: 3, held: 1, added: 1 });
+    expect(await review()).toContainEqual([contract(2), false, null, "exclude", false]);
+    expect((await review()).map(r => r[0])).not.toContain(contract(3));
+    expect(await held()).toEqual([contract(2)]);
+    await runMarts(sql);
+    const counted = await sql`select contract_id::text id from marts.contract_transactions group by 1 order by 1`;
+    expect(counted.map(r => r.id)).toEqual([1, 3, 7, 9, 12].map(contract));
+    const listed = await sql`select contract_id::text id, sum(closing_value)::text value, max(contract_value_full)::text full_value from marts.contract_transactions_held group by 1 order by 1`;
+    expect(listed.map(r => [r.id, Number(r.value), Number(r.full_value)])).toEqual([[contract(2), 900000000, 900000000]]);
+    expect(await validateContractPopulation(sql)).toMatchObject({ eligible_missing: "0", excluded_included: "0", allocation_mismatches: "0" });
+    // Withdrawn, it is counted again at the next run and leaves the review.
+    await sql`delete from app.contract_value_decisions where contract_nat_id in (${contract(2)},${contract(3)})`;
+    expect(await buildContractValueReview(sql)).toEqual({ above: 3, admitted: 3, held: 0, added: 0 });
+    await runMarts(sql);
+    expect((await sql`select count(*)::int n from marts.contract_transactions_held`)[0]?.n).toBe(0);
+    expect((await sql`select count(*)::int n from marts.contract_transactions where contract_id=${contract(2)}`)[0]?.n).toBe(1);
+  }, 240_000);
 
   // Regression (audit F38): the inventory counted contracts.cpv_code, which the
   // parser never fills, so /metodologie showed CPV missing for every contract.

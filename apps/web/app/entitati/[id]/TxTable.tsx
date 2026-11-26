@@ -24,6 +24,7 @@ import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey 
 import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareParts, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
+import ValueHeldMark from "@/components/ValueHeldMark";
 import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
@@ -318,7 +319,9 @@ export default function TxTable({
                 <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}${t.valueSuspect && !(t.closingValue != null && t.closingValue > 0 && t.closingValue <= 2000000) ? " val-out" : ""}`}>
                   {/* The value and its warning together: on a phone's card they sit at the right of its first line (Z5-24). */}
                   <span className="c-val-main">
-                  <span title={exact}>{formatRonFull(t.closingValue)}</span>
+                  {/* A contract held out of the totals (owner, 26 November 2026): the icon, and the source's value struck through. */}
+                  {t.valueHeld && <ValueHeldMark />}
+                  <span title={exact} className={t.valueHeld ? "value-held-figure" : undefined}>{formatRonFull(t.closingValue)}</span>
                   {t.valueSuspect && (
                     <>{" "}<Term
                       tip

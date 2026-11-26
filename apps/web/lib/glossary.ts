@@ -112,7 +112,7 @@ export const GLOSSARY = {
   },
   "plafoane-totaluri": {
     title: "Ce intră în totaluri",
-    text: "Achizițiile directe acceptate de cel mult 2 milioane lei și contractele din proceduri. Un contract de peste 1 miliard lei intră doar dacă anunțul lui nu-i contrazice valoarea; cele ținute afară sunt listate pe pagina fiecărei instituții.",
+    text: "Achizițiile directe acceptate de cel mult 2 milioane lei și contractele din proceduri. Un contract de peste 1 miliard lei intră doar dacă anunțul lui nu-i contrazice valoarea. Un contract cu valoarea probabil greșită în sursă rămâne afară, oricât de mic; în liste e marcat.",
   },
   "cronologie-redactie": {
     title: "Cronologie",

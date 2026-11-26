@@ -20,6 +20,7 @@ suite('public subject search against PostgreSQL',()=>{
   create table core.contracts(id bigint,ca_notice_contract_id bigint,title text,contract_no text,ca_notice_id bigint);
   create table core.awards(ca_notice_id bigint,raw_id bigint);
   create table marts.contract_transactions(contract_id bigint,authority_id bigint,supplier_id bigint,county text,finalization_date text,contract_value_full numeric);
+  create table marts.contract_transactions_held(contract_id bigint,authority_id bigint,supplier_id bigint,county text,finalization_date text,contract_value_full numeric);
   create table core.notices(c_notice_id bigint,sys_notice_type_id int,authority_entity_id bigint,raw_id bigint);
   create table app.document_notices(key text,notice_id text,notice_type int,notice_no text,title text,url text);
   create table app.procurement_documents(id uuid,filename text,notice_key text,processed_at timestamptz,pdf_hash text,privacy_hold text);

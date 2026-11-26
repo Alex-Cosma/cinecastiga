@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import type { AskSpec } from "@/lib/ask/spec";
 import { askHref } from "@/lib/discovery-links";
 import { AUTHORITY_CLOUD_SPEC, COMMUNES_BREAKDOWN_SPEC, CONTRACT_WINNERS_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_VALUE_SPEC } from "@/lib/ask/site-links";
@@ -99,6 +100,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   });
   const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
   const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
+  const heldUnderCap = Number(contractInventory?.value_held_under_cap ?? 0);
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
   return <div className="discovery-page">
     <section className="d-hero" aria-labelledby="d-hero-title">
@@ -119,7 +121,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             fold that opened a wall of text in the home page became the site's floating card, „Fișă”). */}
         <HowNote title="Ce includ cifrele" className="d-national-how">
           <span className="how-n">Achiziții directe acceptate (până la 2 mil. lei) și contracte din proceduri. Valori înregistrate, nu plăți.</span>
-          <span className="how-n">Peste 1 mld. lei, un contract intră doar dacă anunțul nu-i contrazice valoarea{aboveCap ? `; ${aboveCap === 1 ? "unul a rămas afară" : `${formatInt(aboveCap)} au rămas afară`} (${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))})` : ""}. Consorțiu: un rând pe furnizor, valoarea împărțită.</span>
+          <span className="how-n">Peste 1 mld. lei, un contract intră doar dacă anunțul nu-i contrazice valoarea{aboveCap ? `; ${aboveCap === 1 ? "unul a rămas afară" : `${formatInt(aboveCap)} au rămas afară`} (${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))})` : ""}.{heldUnderCap ? ` Ca eroare probabilă de valoare ${heldUnderCap === 1 ? "mai stă afară un contract" : `mai stau afară ${countWords(heldUnderCap, "contract", "contracte")}`} sub acest prag.` : ""} Consorțiu: un rând pe furnizor, valoarea împărțită.</span>
           {periods.map((row) => <span className="tip-li" key={row.label}>{row.label}: {row.range}{row.note ? <> · {row.note}</> : null}</span>)}
           <span className="how-n">{dataAt ? `Date publicate la ${publicationDay(dataAt)} · ` : ""}<Link href="/metodologie#acoperire">Surse și limite →</Link></span>
         </HowNote>

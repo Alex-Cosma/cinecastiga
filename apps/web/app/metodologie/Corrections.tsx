@@ -38,7 +38,7 @@ export default function Corrections({ data }: { data: CorrectionsData }) {
                 <tr key={g.kind}><td><a href={`#corecturi-${g.kind}`}>{g.title}</a></td><td className="mt-n">{formatInt(g.rows.length)}</td></tr>
               ))}
               {contracts && (
-                <tr><td><a href="#corecturi-contracte">Contracte de peste 1 miliard de lei, hotărâte de mână</a></td><td className="mt-n">{formatInt(contracts.decisions.length)}</td></tr>
+                <tr><td><a href="#corecturi-contracte">Valori de contract hotărâte de mână</a></td><td className="mt-n">{formatInt(contracts.decisions.length)}</td></tr>
               )}
               {ruleMerges.map((m) => (
                 <tr key={m.reason}><td>{m.label} <span className="mt-corr-rule">după regulă, fără listă</span></td><td className="mt-n">{formatInt(m.n)}</td></tr>
@@ -56,16 +56,16 @@ export default function Corrections({ data }: { data: CorrectionsData }) {
         ))}
         {contracts && (
           <details suppressHydrationWarning className="mt-corr-g" id="corecturi-contracte">
-            <summary>Contracte de peste 1 miliard de lei <span className="mt-chip">{formatInt(contracts.decisions.length)}</span></summary>
+            <summary>Valori de contract hotărâte de mână <span className="mt-chip">{formatInt(contracts.decisions.length)}</span></summary>
             <p className="mt-corr-lead">
-              Intră în totaluri, cu excepțiile de mai jos. {contracts.heldByGuard > 0 && <>Alte {formatInt(contracts.heldByGuard)} sunt ținute deoparte automat: propriul anunț le contrazice valoarea. </>}
+              Contractele de peste 1 miliard de lei intră în totaluri, cu excepțiile de mai jos. Un contract mai mic e aici doar dacă valoarea lui din SEAP e, cel mai probabil, o greșeală de redactare. {contracts.heldByGuard > 0 && <>Alte {formatInt(contracts.heldByGuard)} sunt ținute deoparte automat: propriul anunț le contrazice valoarea. </>}
               <a href="#peste-miliard">Regula</a>
             </p>
             <ul className="mt-corr">
               {contracts.decisions.map((d) => (
                 <li key={d.natId} id={`corectura-contract-${d.natId}`} data-q={`${d.natId} ${d.reason}`}>
                   <b><Link href={`/contracte/${d.natId}`} prefetch={false}>Contractul {d.natId}</Link></b>
-                  <span className="mt-corr-x"><span>SEAP: {d.valueRon ? formatRon(d.valueRon) : "valoare peste 1 miliard de lei"}</span><span aria-hidden="true"> → </span><span>la noi: {d.decision === "include" ? "intră în totaluri" : "nu intră în totaluri"}{" "}
+                  <span className="mt-corr-x"><span>SEAP: {d.valueRon ? formatRon(d.valueRon) : "valoarea de pe pagina contractului"}</span><span aria-hidden="true"> → </span><span>la noi: {d.decision === "include" ? "intră în totaluri" : "nu intră în totaluri"}{" "}
                     <InfoMark title="De ce" label={`De ce: contractul ${d.natId}`} text={<>{d.reason} <b>Pe ce ne bazăm:</b> anunțul de atribuire.</>} /></span></span>
                 </li>
               ))}

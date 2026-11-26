@@ -558,3 +558,48 @@ export const contractTransactions = martsSchema.table(
     // Drizzle cannot declare INCLUDE.
   ],
 );
+
+/**
+ * Contracts held out of the totals by the value review (owner, 26 November 2026; migration 0116;
+ * src/contract-value-review.ts): above the cap and not admitted, or of any size and excluded by an administrator. The
+ * shape of contract_transactions, with the declared value (no call-off scaling). Lists show these rows, marked;
+ * nothing that sums reads this table.
+ */
+export const contractTransactionsHeld = martsSchema.table(
+  "contract_transactions_held",
+  {
+    contractId: bigint("contract_id", { mode: "bigint" }).notNull(),
+    supplierId: bigint("supplier_id", { mode: "bigint" }).notNull(),
+    contractNo: text("contract_no"),
+    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
+    noticeNo: text("notice_no"),
+    authorityId: bigint("authority_id", { mode: "bigint" }),
+    authorityName: text("authority_name"),
+    supplierName: text("supplier_name"),
+    /** Authority (buyer) county — same semantics as da_transactions.county. */
+    county: text("county"),
+    cpvCode: text("cpv_code"),
+    cpvName: text("cpv_name"),
+    procedureType: text("procedure_type"),
+    acquisitionType: text("acquisition_type"),
+    /** Winner's share: contract value / n_winners (equal consortium split). */
+    closingValue: numeric("closing_value"),
+    contractValueFull: numeric("contract_value_full"),
+    nWinners: integer("n_winners").notNull().default(1),
+    /** 'YYYY-MM-DD' (text, matches da_transactions.finalization_date shape).
+     * NULL when the source contract date precedes CONTRACT_DATE_FLOOR: the row
+     * counts in totals but is attributed to no year. */
+    finalizationDate: text("finalization_date"),
+    tendersReceived: integer("tenders_received"),
+    isSingleBidder: boolean("is_single_bidder"),
+    /** Confirmed TED twin exists (award_links primary, score ≥ 0.9). */
+    alsoInTed: boolean("also_in_ted").notNull().default(false),
+    /** TED publication number of the confirmed twin — outbound link building. */
+    tedPubnum: text("ted_pubnum"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.contractId, t.supplierId] }),
+    index("ctxh_authority_idx").on(t.authorityId),
+    index("ctxh_supplier_idx").on(t.supplierId),
+  ],
+);

@@ -316,6 +316,8 @@ export interface DaTx {
   natId: string | null;
   /** Recorded value implausible (>2M or ≥100× estimate) — UI warns. */
   valueSuspect: boolean;
+  /** A contract held out of the totals by the value review (owner, 26 November 2026): listed, marked, never summed. */
+  valueHeld?: boolean;
   /** Contract rows: published winners. >1 means closingValue is an equal-split share. */
   nWinners: number | null;
   /** Contract rows: the whole contract amount the share was split from. */
@@ -1097,10 +1099,11 @@ export interface ContractDetail {
   financialKind: string;
   nonAdditive: boolean;
   excludedIdentity: string | null;
-  /** RON value above the 1 mld. lei product cap: kept out of every total. */
-  /** Above 1 mld. lei and held out of the totals by the last processing run. */
-  aboveValueCap: boolean;
-  valueHeld: { guard: string | null; decision: string | null };
+  /** Held out of the totals by the last processing run's value review: above 1 mld. lei and not admitted, or of any
+   * size and excluded by an administrator (26 November 2026). */
+  valueHeldOut: boolean;
+  /** Why: the guard's finding, the decision, and the reason an administrator wrote for an exclusion. */
+  valueHeld: { guard: string | null; decision: string | null; reason: string | null };
   /** The only recorded winner is the contracting authority itself (audit F12):
    * no known supplier, so kept out of every total and partner ranking. */
   winnerIsAuthority: boolean;
@@ -1112,8 +1115,9 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
-           -- Above 1 mld. lei and held out of the totals by the last processing run (19 November 2026).
-           coalesce(not ${contractValueAdmitted(sql)}, false) above_value_cap,
+           -- Held out of the totals by the last processing run's value review (19 and 26 November 2026).
+           coalesce(not ${contractValueAdmitted(sql)}, false) value_held_out,
+           (select d.reason from app.contract_value_decisions d where d.contract_nat_id=c.ca_notice_contract_id and d.decision='exclude') value_reason,
            (select vr.guard from marts.contract_value_review vr where vr.contract_nat_id=c.ca_notice_contract_id) value_guard,
            (select vr.decision from marts.contract_value_review vr where vr.contract_nat_id=c.ca_notice_contract_id) value_decision,
            coalesce(${contractWinnerIsAuthority(sql)}, false) winner_is_authority,
@@ -1235,8 +1239,9 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     countedOnce:publications.length>1&&mart.length>0,
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,
-    aboveValueCap:r["above_value_cap"]===true,
-    valueHeld:{guard:(r["value_guard"] as string|null)??null,decision:(r["value_decision"] as string|null)??null},
+    valueHeldOut:r["value_held_out"]===true,
+    valueHeld:{guard:(r["value_guard"] as string|null)??null,decision:(r["value_decision"] as string|null)??null,
+      reason:r["value_decision"]==="exclude"?((r["value_reason"] as string|null)??null):null},
     winnerIsAuthority:r["winner_is_authority"]===true,
     excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),
@@ -1315,6 +1320,8 @@ export interface NoticeLot {
   contractValue: number | null;
   financialKind: string;
   temporarilyExcluded: boolean;
+  /** Held out of the totals by the value review (marts.contract_transactions_held; owner, 26 November 2026). */
+  valueHeld: boolean;
   winners: { entityId: string; name: string | null }[];
 }
 
@@ -1417,7 +1424,10 @@ export async function getAwardNoticeDetail(
 
   const agg = (await sql`
     select count(*)::int n,
-      sum(${contractRonValue(sql)}) filter(where (${contractReportable(sql)}) and not ${contractTemporarilyExcluded(sql)}) total,
+      -- A contract the value review holds out of the totals stays out of the notice's sum too (26 November 2026); the
+      -- table below lists it, marked.
+      sum(${contractRonValue(sql)}) filter(where (${contractReportable(sql)}) and not ${contractTemporarilyExcluded(sql)}
+        and not exists (select 1 from marts.contract_transactions_held h where h.contract_id = c.id)) total,
       sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks,
       sum(${contractRonValue(sql)}) every_value
     from core.contracts c where ca_notice_id = ${cid}
@@ -1437,7 +1447,8 @@ export async function getAwardNoticeDetail(
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            to_char(c.contract_date at time zone 'Europe/Bucharest','YYYY-MM-DD') contract_date,
            ${contractRonValue(sql)} contract_value, ${contractKind(sql)} financial_kind,
-           ${contractTemporarilyExcluded(sql)} temporarily_excluded
+           ${contractTemporarilyExcluded(sql)} temporarily_excluded,
+           exists (select 1 from marts.contract_transactions_held h where h.contract_id = c.id) value_held
     from core.contracts c
     where ${lotWhere}
     order by ${contractRonValue(sql)} desc nulls last, c.id
@@ -1510,6 +1521,7 @@ export async function getAwardNoticeDetail(
       contractValue: l["contract_value"] != null ? Number(l["contract_value"]) : null,
       financialKind: String(l["financial_kind"]),
       temporarilyExcluded: l["temporarily_excluded"] === true,
+      valueHeld: l["value_held"] === true,
       winners: winnersByLot.get(String(l["id"])) ?? [],
     })),
     page: Math.max(1, page),

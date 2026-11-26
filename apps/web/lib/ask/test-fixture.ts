@@ -25,7 +25,7 @@ export const ENGINE_GLOBAL_TABLES = [
 ] as const;
 /** marts tables of the same paths, including the agg_* fast paths. */
 export const ENGINE_MARTS_TABLES = [
-  "da_transactions", "contract_transactions", "national_stats", "data_coverage", "entity_profile", "entity_flags",
+  "da_transactions", "contract_transactions", "contract_transactions_held", "national_stats", "data_coverage", "entity_profile", "entity_flags",
   "agg_top_entities", "agg_national", "agg_years", "agg_map_county", "spend_by_county", "cui_corroborations",
   // F4: the network's signals on a relation (relations.ts relationSignals).
   "flag_instances",

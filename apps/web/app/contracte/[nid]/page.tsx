@@ -31,7 +31,8 @@ import { consortiumShareLabel } from "@/lib/consortium";
 import RecordTitle from "@/components/record/RecordTitle";
 import "@/components/record/record-pages.css";
 import { ghostHold } from "@/lib/ghost-hold";
-import { heldValueReason } from "@/lib/contract-value-words";
+import { VALUE_HELD_PAGE_TEXT, VALUE_HELD_TITLE, heldValueSentence } from "@/lib/contract-value-words";
+import { ValueHeldIcon } from "@/components/ValueHeldMark";
 
 /**
  * Contract detail: the plain-language twin of SEAP's award notice, keyed by SICAP's own contract id
@@ -91,7 +92,11 @@ function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean):
   const said = (note: ReactNode): ReactNode | ModePart => framework && sumsSayTotals ? (note ? { only: "esential", node: note } : null) : note;
   const totals = said(totalsNote(c));
   const state = contractValueState(c);
-  if (state === "amount") return { amount: <Lei value={c.contractValueExact!} unit={currency} />, label: valueLabel(c, true), notes: [moneyNote(c), totals] };
+  if (state === "amount") return {
+    amount: <Lei value={c.contractValueExact!} unit={currency} />, label: valueLabel(c, true), notes: [moneyNote(c), totals],
+    // Owner, 26 November 2026: the words are written out here, above the source's value, which stays as published.
+    ...(heldByValue(c) ? { flag: <p className="value-held-label"><ValueHeldIcon />{VALUE_HELD_TITLE}</p> } : {}),
+  };
   if (state === "foreign") return {
     amount: <span className="record-amount-words">Valoare în {c.currency}, <span className="record-nowrap">neconvertită <InfoMark title="Neconvertită" text={`SEAP o dă în ${c.currency}, fără curs confirmat; n-o convertim în lei${totalsNote(c) ? "." : " și nu intră în totaluri."}`} /></span></span>,
     label: valueLabel(c, false), notes: [totals],
@@ -131,8 +136,12 @@ const totalsNote = (c: ContractDetail) =>
   : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
   : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`} data-only="complet">Motivul</Link></>
   : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
-  : c.aboveValueCap ? <>Peste 1 mld. lei, în afara totalurilor: {heldValueReason(c.valueHeld)}. <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
+  : c.valueHeldOut ? <>{VALUE_HELD_PAGE_TEXT} {heldValueSentence(c.valueHeld)} <Link href="/metodologie#totaluri" data-only="complet">Cum se formează totalurile</Link></>
   : null;
+
+/** The value's note is the one of a contract held by the value review (and not of an earlier reason in totalsNote). */
+const heldByValue = (c: ContractDetail) => c.valueHeldOut && c.financialKind !== "framework" && c.financialKind !== "amendment"
+  && c.financialKind !== "review" && !c.excludedIdentity && !c.winnerIsAuthority;
 
 export default async function ContractPage({ params, searchParams }: { params: Promise<{ nid: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await ghostHold();

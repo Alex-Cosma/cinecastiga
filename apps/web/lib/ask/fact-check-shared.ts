@@ -194,7 +194,7 @@ export const OUTSIDE_WHY: Record<Exclude<FactOutsideCategory, "framework">, stri
   da_above: "peste filtrul de 2 mil. lei",
   da_nonpositive: "fără valoare pozitivă",
   identity: "identitate nesigură (publicare repetată în verificare)",
-  above_cap: "peste 1 mld. lei, ținut afară",
+  above_cap: "valoare probabil greșită, ținut afară",
   no_ron_value: "fără valoare în lei",
   kind: "tip de contract neclar",
 };

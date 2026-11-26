@@ -39,6 +39,8 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
    left join (select id,payload->>'directAcquisitionName' title from raw.raw_documents offset 0) r on r.id=a.raw_id
    left join ${places} u on u.entity_id=d.authority_id`;
   log('Direct acquisition titles prepared. Preparing contracts…');
+  // The counted contracts and the ones the value review holds out of the totals (owner, 26 November 2026): a held
+  // contract is still found by its title; the page marks it (marts.contract_transactions_held).
   await q`insert into marts.topic_acquisitions
    (id,kind,ref_id,title,search,authority_id,supplier_ids,county,uat_siruta,year,date,value,procedure_id)
    select 'contracts:'||d.contract_id,'contracts',d.contract_id,coalesce(c.title,''),
@@ -46,7 +48,9 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
     lower(unaccent(d.county)),u.uat_siruta,nullif(left(d.date,4),'')::int,d.date,d.value,r.payload->>'procedureId'
    from (select contract_id,max(authority_id) authority_id,array_agg(distinct supplier_id) supplier_ids,
     max(county) county,max(finalization_date) date,max(contract_value_full) value
-    from marts.contract_transactions group by contract_id) d
+    from (select contract_id,authority_id,supplier_id,county,finalization_date,contract_value_full from marts.contract_transactions
+     union all select contract_id,authority_id,supplier_id,county,finalization_date,contract_value_full from marts.contract_transactions_held) x
+    group by contract_id) d
    join core.contracts c on c.id=d.contract_id join core.awards a on a.ca_notice_id=c.ca_notice_id
    left join raw.raw_documents r on r.id=a.raw_id left join ${places} u on u.entity_id=d.authority_id`;
   log('Building lookup indexes…');
@@ -59,7 +63,8 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
   await q`create index topic_procedure_idx on marts.topic_acquisitions(procedure_id,authority_id)`;
   await q`analyze marts.topic_acquisitions`;
   const [count]=await q`select count(*)::text n,count(*) filter(where title<>'')::text titled from marts.topic_acquisitions`;
-  const [expected]=await q`select ((select count(*) from marts.da_transactions)+(select count(distinct contract_id) from marts.contract_transactions))::text n`;
+  const [expected]=await q`select ((select count(*) from marts.da_transactions)+(select count(distinct contract_id) from marts.contract_transactions)
+   +(select count(distinct contract_id) from marts.contract_transactions_held))::text n`;
   if(count!.n!==expected!.n)throw Error('Title search population differs from the transaction marts; keeping the preceding index.');
   await q`insert into marts.topic_search_state(id,built_at,records,titled_records) values(1,clock_timestamp(),${count!.n},${count!.titled})
    on conflict(id) do update set built_at=excluded.built_at,records=excluded.records,titled_records=excluded.titled_records`;

@@ -78,7 +78,7 @@ async function inFixture(label: string, seat: boolean, work: (q: DbSql) => Promi
     await sql.begin(async (tx) => {
       await tx.unsafe(`create schema ${prefix}`);
       // agg_map_county too: the column probe (mart-columns.ts) reads whether its seat split is built.
-      for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county", "flag_instances"])
+      for (const t of ["da_transactions", "contract_transactions", "contract_transactions_held", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county", "flag_instances"])
         await tx.unsafe(`create table ${prefix}.${t} as table marts.${t} with no data`);
       await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
       const q = scoped(tx as unknown as DbSql, prefix);

@@ -1,4 +1,5 @@
 import type { DbSql } from './client.js';
+import { CONTRACT_VALUE_CAP_RON } from './contract-identity.js';
 
 /** Incidents that leave the public site or collection stopped until an operator
  * acts. Detection only records them; delivery is separate and at most once per key. */
@@ -56,12 +57,13 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
   });
   // A contract above 1 mld. lei seen for the first time by the last published processing run (owner, 19 November
   // 2026; contract-value-review.ts): it is counted by default, so an administrator looks at each one. The rows of the
-  // first review are dated at the epoch and are never announced.
+  // first review are dated at the epoch and are never announced; a contract under the cap is in the review only because
+  // an administrator excluded it (26 November 2026), which needs no message.
   const largeValues = await q`select vr.contract_nat_id::text nat, vr.value_ron::text value, vr.admitted, vr.guard,
       left(regexp_replace(coalesce(nullif(c.title,''),a.title,''),'\\s+',' ','g'),160) title, coalesce(e.name_display,'') authority
     from marts.contract_value_review vr join core.contracts c on c.ca_notice_contract_id=vr.contract_nat_id
     join core.awards a on a.ca_notice_id=c.ca_notice_id left join core.entities e on e.id=a.authority_entity_id
-    where vr.first_seen_at>now()-make_interval(hours=>${LOOKBACK_HOURS})`;
+    where vr.first_seen_at>now()-make_interval(hours=>${LOOKBACK_HOURS}) and vr.value_ron>${CONTRACT_VALUE_CAP_RON}`;
   for (const r of largeValues) {
     const value = `${(Number(r.value) / 1e9).toLocaleString('ro-RO', { maximumFractionDigits: 2 })} mld. lei`;
     const held = r.guard === 'lowest_offer' ? 'valoarea e de câteva ori peste oferta din anunț'

@@ -1,3 +1,4 @@
+import ValueHeldMark from "@/components/ValueHeldMark";
 import type { Metadata } from "next";
 import { cache } from "react";
 import Link from "next/link";
@@ -202,7 +203,8 @@ export default async function NoticePage({ params, searchParams }: {
                   ))}
                 </td>
                 <td data-label="Data">{l.contractDate ? formatCalendarDate(l.contractDate.slice(0, 10)) : "—"}{l.contractDate && l.contractDate < CONTRACT_DATE_FLOOR && <small> dată improbabilă</small>}</td>
-                <td data-label="Valoare" className="lot-value">{formatRonFull(l.contractValue)}</td>
+                {/* A contract held out of the totals (owner, 26 November 2026): the icon, and the source's value struck through. */}
+                <td data-label="Valoare" className="lot-value">{l.valueHeld && <ValueHeldMark />}<span className={l.valueHeld ? "value-held-figure" : undefined}>{formatRonFull(l.contractValue)}</span></td>
               </tr>;
             })}
           </tbody>

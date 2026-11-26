@@ -14,6 +14,7 @@ entity_top_partners
 top_entities
 authority_concentration
 contract_transactions
+contract_transactions_held
 da_transactions
 supplier_dependency
 da_slicing

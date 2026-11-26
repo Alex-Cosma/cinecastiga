@@ -1,5 +1,5 @@
 import { calloffCeilingScale, scaledCalloffValue, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, buildContractValueReview, contractValueAdmitted, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, buildContractValueReview, contractValueAdmitted, contractValueHeld, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
 
@@ -108,13 +108,13 @@ export async function runMarts(
     // Contracts above the value cap (owner, 19 November 2026, contract-reporting-6): this run's answer for each one,
     // from the guard and the administrators' decisions, before anything counts contracts.
     const review = await buildContractValueReview(q);
-    log(`marts contract values above the cap: ${review.above} (${review.admitted} counted, ${review.held} held, ${review.added} new)`);
+    log(`marts contract values under review: ${review.above} (${review.admitted} counted, ${review.held} held, ${review.added} new)`);
     await q`
       truncate
         marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
         marts.spend_by_county,
         marts.entity_profile, marts.entity_top_partners, marts.top_entities,
-        marts.authority_concentration, marts.contract_transactions
+        marts.authority_concentration, marts.contract_transactions, marts.contract_transactions_held
     `;
     // Which foreign-marked CUIs ONRC corroborates by name; every ONRC/MF join
     // below and in the risk build reads it through cuiCorroborated (audit F03).
@@ -135,8 +135,11 @@ export async function runMarts(
     await withoutNestedLoops(q, () => q`create temporary table calloff_scale on commit drop as ${countedCalloffScale(q)}`);
     await q`create index on calloff_scale (calloff_id)`;
     log(`marts calloff_scale: ${(await q`select count(*)::int n from calloff_scale`)[0]?.n ?? 0} call-offs scaled to their framework ceiling`);
-    await q`
-      insert into marts.contract_transactions (
+    // The same rows for either table: the counted population, or (owner, 26 November 2026) the contracts the value
+    // review holds, which lists show marked and nothing sums. A held contract is never in calloff_scale, so it keeps
+    // its declared value.
+    const insertContracts = (held: boolean) => q`
+      insert into ${held ? q`marts.contract_transactions_held` : q`marts.contract_transactions`} (
         contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
         authority_id, authority_name, supplier_name, county,
         cpv_code, cpv_name, procedure_type, acquisition_type,
@@ -153,7 +156,7 @@ export async function runMarts(
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
         left join calloff_scale sc on sc.calloff_id = c.id
         where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
-          and ${contractValueAdmitted(q)}
+          and ${held ? contractValueHeld(q, 'aw') : contractValueAdmitted(q)}
           and c.contract_date is not null
           and aw.authority_entity_id is not null
           and ${contractReportable(q)}
@@ -202,6 +205,9 @@ export async function runMarts(
       left join core.ted_lot_results tlr on tlr.id = cc.ted_lot_result_id
       left join core.ted_notices tn on tn.id = tlr.ted_notice_id
     `;
+    await insertContracts(false);
+    const heldRows = (await insertContracts(true)).count;
+    log(`marts contract_transactions_held: ${heldRows} rows of contracts held out of the totals`);
     // Ask's county/CPV answers read these index-only; recreated here if lost.
     const createdIndexes = await ensureTransactionMartIndexes(q, "contract_transactions");
 

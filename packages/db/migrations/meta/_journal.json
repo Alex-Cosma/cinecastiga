@@ -813,6 +813,13 @@
       "when": 1795438800000,
       "tag": "0115_public_enterprise",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795694400000,
+      "tag": "0116_contract_value_held",
+      "breakpoints": true
     }
   ]
 }

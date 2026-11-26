@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import EntityName from "../../components/EntityName";
 import Lei from "../../components/Lei";
+import ValueHeldMark from "@/components/ValueHeldMark";
 import { leiRounded } from "../../lib/lei";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
@@ -311,24 +312,28 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Reîncearcă</button></div>}
       {/* A new page, order or filter of the same list: the old rows stay, dimmed, until the new ones arrive. */}
       <div className={`ev-records${busy && result ? " g-stale" : ""}`} aria-busy={busy} inert={busy}>
-        {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
-        {result && !error && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
+        {!busy && !error && result && result.rows.length === 0 && !result.held && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
+        {result && !error && (result.rows.length > 0 || result.held) && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Sursă</th></tr></thead>
-          <tbody>{result.rows.map((r) => {
+          {/* The selection's contracts held out of the totals come first, marked (owner, 26 November 2026): beside the
+              counted records, never among them; the figures above and the pages count only the rows after them. */}
+          <tbody>{[...(result.held?.rows ?? []), ...result.rows].map((r) => {
             const links = evidenceLinks(r), exact = recordExactValue(r), note = stateNote(r), cpv = r.cpvName ?? "Categorie CPV neprecizată";
             const heading = r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`;
-            return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
+            return <tr key={`${r.valueHeld ? "held:" : ""}${r.src}:${r.refId}:${r.supplierId}`} className={r.valueHeld ? "ev-held" : undefined}>
               {/* Z3-03: the code joins the date line; the domain line goes when it repeats the title. */}
               <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{heading}</Link> : null}<span className="ev-muted ev-record-line">{r.daCode ?? `#${r.refId ?? "?"}`} · {r.src === "contracts" && !r.date ? "Dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span>{!cpvRepeatsTitle(r.refId ? heading : null, cpv) && <span>{r.cpvCode ? <span className="ev-hint" data-hint={`CPV ${r.cpvCode}`}>{cpv}</span> : cpv}</span>}</td>
               {/* Z3-03: the buyer one quiet line, „→” the firm under it; the county only when the question leaves it open. */}
               <td data-label="Instituție și furnizor"><div className="ev-party ev-party-buyer"><EntityName id={r.authorityId} role="authority">{r.authorityId ? r.authority ?? `Instituție #${r.authorityId}` : r.authority ?? "Instituție neprecizată"}</EntityName></div>{r.county && !sameCounty && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<div className="ev-party ev-party-supplier"><span className="ev-party-arrow" aria-hidden="true">→</span><EntityName id={r.supplierId} role="supplier">{r.supplierId ? r.supplier ?? `Furnizor #${r.supplierId}` : r.supplier ?? "Furnizor neprecizat"}</EntityName></div></td>
-              <td data-label="Valoare"><strong className="ev-row-value"><Lei value={r.valueExact} /></strong>{r.valueSuspect && <span className="ev-warning">Valoare de verificat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
+              <td data-label="Valoare"><strong className="ev-row-value">{r.valueHeld ? <><ValueHeldMark /><span className="value-held-figure"><Lei value={r.valueExact} /></span></> : <Lei value={r.valueExact} />}</strong>{r.valueHeld && <span className="ev-muted">În afara totalului</span>}{r.valueSuspect && <span className="ev-warning">Valoare de verificat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
                 <details className="ev-record-details" data-only="complet"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd><Lei value={r.contractValueFull} /></dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd><Lei value={r.estimatedValueRon} /></dd></>}</dl></details>
               </td>
               <td data-label="Sursă">{note && <span className="ev-state">{note}</span>}{links.seap ? <a className="ev-seap" href={links.seap} target="_blank" rel="noopener noreferrer" aria-label={`Deschide ${r.daCode ?? r.refId} în SEAP`}>SEAP ↗</a> : <span className="ev-source-missing">Fără ID SEAP în import</span>}{links.ted && <a className="ev-ted" href={links.ted} target="_blank" rel="noopener noreferrer" aria-label="Același anunț în TED">TED ↗</a>}</td>
             </tr>;
           })}</tbody>
         </table>}
+        {result && !error && result.held && result.held.contracts > new Set(result.held.rows.map((r) => r.refId)).size
+          && <p className="ev-muted ev-held-more">Încă {countWords(result.held.contracts - new Set(result.held.rows.map((r) => r.refId)).size, "contract", "contracte")} din selecție stau în afara totalului, ca eroare probabilă de valoare; sunt marcate pe paginile instituțiilor.</p>}
       </div>
       {result && !error && result.total > result.pageSize && <nav className="ev-pagination" aria-label="Pagini de înregistrări"><button type="button" disabled={busy || result.page === 0} onClick={() => setPage(result.page - 1)}>← Înapoi</button><span>Pagina {count(result.page + 1)} din {count(Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={busy || (result.page + 1) * result.pageSize >= result.total} onClick={() => setPage(result.page + 1)}>Înainte →</button></nav>}
       {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit" data-only="complet">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}

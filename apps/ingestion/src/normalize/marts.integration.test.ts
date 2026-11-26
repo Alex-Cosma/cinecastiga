@@ -42,7 +42,7 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
-  marts: ["cui_corroborations", "contract_value_review", "contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
+  marts: ["cui_corroborations", "contract_value_review", "contract_transactions_held", "contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
   // uat: the December comparison's institution kinds (rf-2026.18, flags/score.ts authorityKindSql).
   reference: ["authority_uat", "uat", "company_financials", "company_reps", "onrc_firm"],
   raw: ["raw_documents"],

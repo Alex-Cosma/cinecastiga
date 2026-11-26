@@ -106,7 +106,9 @@ export function entityTxSource(sql: DbSql, id: string, role: Role): FilterSource
     },
     {
       name: "contracte",
-      from: sql`marts.contract_transactions t left join core.contracts cc on cc.id = t.contract_id`,
+      // The counted contracts and, marked, the ones the value review holds out of the totals (owner, 26 November 2026).
+      from: sql`(select x.*, false value_held from marts.contract_transactions x
+        union all select h.*, true from marts.contract_transactions_held h) t left join core.contracts cc on cc.id = t.contract_id`,
       where: sql`${s.own} = ${id} and t.closing_value > 0`,
       bindings: { ...shared, tip: { kind: "constant", value: "contracte" }, semnale: contractSignals(sql) },
     },
@@ -123,14 +125,14 @@ function projection(sql: DbSql, role: Role, channel: Channel): Fragment {
       t.finalization_date, array[]::text[] da_flags,
       t.procedure_type, t.ca_notice_id, t.is_single_bidder single_bidder,
       cc.ca_notice_contract_id nat_id, false value_suspect,
-      t.n_winners, t.contract_value_full, ${contractKind(sql, "cc")} financial_kind`;
+      t.n_winners, t.contract_value_full, ${contractKind(sql, "cc")} financial_kind, t.value_held`;
   }
   return sql`'da' src, t.sicap_da_id::text rid, t.da_code code, ${s.partnerName} cp_name, ${s.partnerId} cp_id,
     t.county, t.cpv_code, t.cpv_name, t.estimated_value_ron, t.closing_value,
     t.finalization_date, t.da_flags,
     null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
     null::bigint nat_id, t.value_suspect,
-    null::int n_winners, null::numeric contract_value_full, null::text financial_kind`;
+    null::int n_winners, null::numeric contract_value_full, null::text financial_kind, false value_held`;
 }
 
 export interface TxPage {
@@ -201,7 +203,8 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
   if (consortiumIds.length > 0) {
     const memberRows = (await sql`
       select contract_id::text cid, supplier_id::text sid, supplier_name
-      from marts.contract_transactions
+      from (select contract_id, supplier_id, supplier_name from marts.contract_transactions
+        union all select contract_id, supplier_id, supplier_name from marts.contract_transactions_held) m
       where contract_id = any(${sql.array(consortiumIds)}::bigint[])
       order by contract_id, supplier_id
     `) as unknown as { cid: string; sid: string; supplier_name: string | null }[];
@@ -252,6 +255,7 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
       singleBidder: (r["single_bidder"] as boolean | null) ?? null,
       natId: r["nat_id"] != null ? String(r["nat_id"]) : null,
       valueSuspect: Boolean(r["value_suspect"]),
+      valueHeld: r["value_held"] === true,
       nWinners: r["n_winners"] != null ? Number(r["n_winners"]) : null,
       contractValueFull: r["contract_value_full"] != null ? Number(r["contract_value_full"]) : null,
       financialKind: (r["financial_kind"] as string | null) ?? null,

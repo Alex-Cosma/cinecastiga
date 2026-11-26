@@ -37,7 +37,7 @@ describe.runIf(Boolean(connection))("F3: the kind, the procedure and the size (d
     try {
       await sql.begin(async (tx) => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "entity_flags", "agg_top_entities", "agg_national"])
+        for (const t of ["da_transactions", "contract_transactions", "contract_transactions_held", "national_stats", "entity_profile", "entity_flags", "agg_top_entities", "agg_national"])
           await tx.unsafe(`create table ${prefix}.${t} as table marts.${t} with no data`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await q`insert into marts.national_stats (kind,year) values ('da',2024),('da',2025),('award',2024),('award',2025)`;
@@ -134,7 +134,7 @@ describe.runIf(Boolean(connection))("F3: the kind, the procedure and the size (d
     try {
       await sql.begin(async (tx) => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "entity_flags", "agg_top_entities", "agg_national"])
+        for (const t of ["da_transactions", "contract_transactions", "contract_transactions_held", "national_stats", "entity_profile", "entity_flags", "agg_top_entities", "agg_national"])
           await tx.unsafe(`create table ${prefix}.${t} as table marts.${t} with no data`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await q`insert into marts.national_stats (kind,year) values ('da',2024),('da',2025),('award',2024),('award',2025)`;

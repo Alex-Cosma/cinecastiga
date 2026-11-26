@@ -130,7 +130,12 @@ export async function runCoverage(sql: DbSql): Promise<void> {
         || (select jsonb_build_object('above_value_cap',count(*)::text,
               'above_value_cap_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text,
               'value_cap',${String(CONTRACT_VALUE_CAP_RON)}::text)
-            from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueHeld(q)})
+            from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueHeld(q)} and ${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON})
+        -- Contracts at or under the cap that an administrator excluded as a probable error of the value (owner,
+        -- 26 November 2026): held out of every total, still listed, marked.
+        || (select jsonb_build_object('value_held_under_cap',count(*)::text,
+              'value_held_under_cap_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
+            from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueHeld(q)} and ${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON})
         || (select jsonb_build_object('above_value_cap_counted',count(*)::text,
               'above_value_cap_counted_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
             from core.contracts c join core.awards a using(ca_notice_id) where ${contractValueAdmittedAboveCap(q)})

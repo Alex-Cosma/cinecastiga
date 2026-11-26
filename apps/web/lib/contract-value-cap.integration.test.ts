@@ -62,9 +62,9 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
   });
 
   it("marks only the reportable above-cap contract as outside the totals", async () => {
-    expect(await getContractDetail(contract(1))).toMatchObject({ aboveValueCap: true, nonAdditive: false, financialKind: "contract" });
-    expect(await getContractDetail(contract(2))).toMatchObject({ aboveValueCap: false });
-    expect(await getContractDetail(contract(3))).toMatchObject({ aboveValueCap: true, nonAdditive: true, financialKind: "framework" });
+    expect(await getContractDetail(contract(1))).toMatchObject({ valueHeldOut: true, nonAdditive: false, financialKind: "contract" });
+    expect(await getContractDetail(contract(2))).toMatchObject({ valueHeldOut: false });
+    expect(await getContractDetail(contract(3))).toMatchObject({ valueHeldOut: true, nonAdditive: true, financialKind: "framework" });
   });
 
   it("labels a contract whose only winner is its own authority and keeps it out of the above-cap list", async () => {
@@ -83,8 +83,8 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
     const result = await getEntityContractsAboveCap(authority, "authority", sql);
     expect(result).toMatchObject({ count: 1, totalExact: "4729755332.14" });
     expect(result.rows).toMatchObject([{ natId: contract(4), guard: "lowest_offer", decision: null }]);
-    expect(await getContractDetail(contract(1))).toMatchObject({ aboveValueCap: false });
-    expect(await getContractDetail(contract(4))).toMatchObject({ aboveValueCap: true, valueHeld: { guard: "lowest_offer", decision: null } });
+    expect(await getContractDetail(contract(1))).toMatchObject({ valueHeldOut: false });
+    expect(await getContractDetail(contract(4))).toMatchObject({ valueHeldOut: true, valueHeld: { guard: "lowest_offer", decision: null } });
     await sql`update marts.contract_value_review set admitted=false, decision='exclude' where contract_nat_id=${contract(1)}`;
     expect((await getEntityContractsAboveCap(authority, "authority", sql)).rows.map(r => [r.natId, r.guard, r.decision]))
       .toEqual([[contract(1), null, "exclude"], [contract(4), "lowest_offer", null]]);

@@ -84,7 +84,7 @@ export { DA_PLAFOND_RON };
 export const DA_PLAFOND_CAVEAT =
   `Achizițiile directe peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).`;
 export const CONTRACT_CAP_CAVEAT =
-  "Contractele prin proceduri peste 1 miliard lei intră în totaluri doar dacă anunțul lor nu le contrazice valoarea; cele ținute afară apar pe pagina instituției.";
+  "Contractele prin proceduri peste 1 miliard lei intră în totaluri doar dacă anunțul lor nu le contrazice valoarea. Cele ținute afară, la fel ca cele cu valoare probabil greșită în sursă, apar marcate pe pagina instituției.";
 /** Historical profiles drop it with the stream caveats: their own source line replaces them. */
 const DA_ACCEPTED_CAVEAT =
   "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.";
@@ -2427,6 +2427,8 @@ async function runSpecData(
     ...(displaySqlByList ? { displaySqlByList } : {}) };
 }
 
+/** The most rows of contracts held out of the totals a drawer shows above its list. */
+export const HELD_ROWS_MAX = 10;
 export interface DrillRow {
   title?: string | null;
   daCode: string | null;
@@ -2456,6 +2458,8 @@ export interface DrillRow {
   state: string | null;
   nWinners: number | null;
   contractValueFull: string | null;
+  /** A contract the value review holds out of the totals (DrillResult.held): shown marked, never counted. */
+  valueHeld?: boolean;
 }
 export interface DrillResult {
   /** Full applied answer (or selected chart group), before drawer filters. */
@@ -2473,6 +2477,12 @@ export interface DrillResult {
   profileReconciled: boolean | null;
   scopeNotes: string[];
   rows: DrillRow[];
+  /**
+   * The selection's contracts that the value review holds out of the totals (owner, 26 November 2026): the largest
+   * first, at most HELD_ROWS_MAX rows, on the list's first page only. Beside the list, never in it: `total`, `value`,
+   * the pages, the CSV, a capture and a watch are the counted records alone. `contracts` is how many there are.
+   */
+  held?: { rows: DrillRow[]; contracts: number };
   total: number;
   page: number;
   pageSize: number;
@@ -3559,16 +3569,46 @@ export async function runRows(
       const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, score, score_parts, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; score: number | null; score_parts: EvidenceProfile["parts"] | null; flags: string[] | null }[];
       profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, score: Number(r.score ?? 0), parts: r.score_parts ?? {}, flags: r.flags ?? [] }));
     }
+    type PageRow = (typeof rows)[number];
+    const drillRow = (r: PageRow): DrillRow => ({
+      title: r.title, daCode: r.da_code, date: r.finalization_date?.slice(0, 10) ?? null,
+      authorityId: r.authority_id === null ? null : String(r.authority_id), authority: r.authority_name,
+      supplierId: r.supplier_id === null ? null : String(r.supplier_id), supplier: r.supplier_name,
+      county: r.county, cpvCode: r.cpv_code, cpvName: r.cpv_name, value: Number(r.closing_value), valueExact: r.closing_value,
+      src: r.src, refId: r.ref_id === null ? null : String(r.ref_id), caNoticeId: r.ca_notice_id === null ? null : String(r.ca_notice_id), tedPubnum: r.ted_pubnum,
+      estimatedValueRon: r.estimated_value_ron === null ? null : Number(r.estimated_value_ron), valueSuspect: Boolean(r.value_suspect),
+      state: r.state, nWinners: r.n_winners === null ? null : Number(r.n_winners), contractValueFull: r.contract_value_full,
+    });
+    // The selection's contracts held out of the totals (owner, 26 November 2026): the same conditions read on the held
+    // table, which has the contracts' columns. Only for a plain list of contracts on its first page: a cohort's and a
+    // signal's records are direct acquisitions, a capture keeps the counted records, and a search by stored text finds
+    // none (the held contracts are not in it).
+    let held: DrillResult["held"];
+    if (!opts.capture && !profile && !flagKeys && dataset !== "da" && p === 0) {
+      const heldTx = sql`(
+        select contract_id as ref_id, contract_no as da_code, finalization_date, authority_id, authority_name,
+               supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
+               'contracts'::text as src, ca_notice_id, ted_pubnum, null::numeric as estimated_value_ron,
+               false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder, procedure_type
+        from marts.contract_transactions_held
+      )`;
+      const heldRows = (await readEvidenceQuery(s`
+        select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
+               d.supplier_id, d.supplier_name, d.county, d.cpv_code, d.cpv_name, d.closing_value::text,
+               d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron,
+               d.value_suspect, d.state, d.n_winners, d.contract_value_full::text,
+               (select c.title from core.contracts c where c.id=d.ref_id) title,
+               -- how many contracts in all (a consortium has a row per member): the distinct ref_id, as a window
+               dense_rank() over (order by d.ref_id) + dense_rank() over (order by d.ref_id desc) - 1 held_contracts
+        from ${heldTx} d where ${sourceWhere} and ${localWhere}
+        order by d.closing_value desc nulls last, d.ref_id, d.supplier_id nulls first
+        limit ${HELD_ROWS_MAX}
+      `, opts.signal)) as unknown as (PageRow & { held_contracts: string })[];
+      if (heldRows.length > 0) held = { rows: heldRows.map((r) => ({ ...drillRow(r), valueHeld: true })), contracts: Number(heldRows[0]!.held_contracts) };
+    }
     return {
-      rows: rows.map((r) => ({
-        title: r.title, daCode: r.da_code, date: r.finalization_date?.slice(0, 10) ?? null,
-        authorityId: r.authority_id === null ? null : String(r.authority_id), authority: r.authority_name,
-        supplierId: r.supplier_id === null ? null : String(r.supplier_id), supplier: r.supplier_name,
-        county: r.county, cpvCode: r.cpv_code, cpvName: r.cpv_name, value: Number(r.closing_value), valueExact: r.closing_value,
-        src: r.src, refId: r.ref_id === null ? null : String(r.ref_id), caNoticeId: r.ca_notice_id === null ? null : String(r.ca_notice_id), tedPubnum: r.ted_pubnum,
-        estimatedValueRon: r.estimated_value_ron === null ? null : Number(r.estimated_value_ron), valueSuspect: Boolean(r.value_suspect),
-        state: r.state, nWinners: r.n_winners === null ? null : Number(r.n_winners), contractValueFull: r.contract_value_full,
-      })),
+      rows: rows.map(drillRow),
+      ...(held ? { held } : {}),
       total, value, sourceTotal, sourceValue, page: p, pageSize,
       accepted: { count: acceptedRows.reduce((n, r) => n + Number(r.n), 0), value: sumDecimalStrings(acceptedRows.map((r) => r.v)) },
       statuses: totals.map((r) => ({ state: r.state, count: Number(r.n), value: r.v })),

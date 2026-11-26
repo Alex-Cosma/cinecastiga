@@ -14,6 +14,12 @@ type ReviewSql = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * marts stage, and the totals, their validation, the coverage record and the site read `admitted` from that table.
  * A decision made while a run is in progress, or after it, takes effect at the next run.
  *
+ * Owner, 26 November 2026: an administrator can exclude a contract of any size, not only one above the cap. Nine
+ * contracts between 10 and 815 million lei carried a value ten, a hundred or a thousand times too large at the source
+ * (a commune's road works at 814.778.046 lei against an estimate of 9.178.703) and passed under the cap. No rule decides
+ * these: each is an administrator's decision with a written reason. A held contract stays out of every total and
+ * statistic but is still listed, marked, wherever single contracts are listed (marts.contract_transactions_held).
+ *
  * Every fragment uses the contract alias c, like the fragments of contract-money.ts.
  */
 
@@ -55,25 +61,43 @@ function admittedByReview(q: ReviewSql) {
   return q`c.ca_notice_contract_id = any (array(select vr.contract_nat_id from marts.contract_value_review vr where vr.admitted))`;
 }
 
-/** The value condition of the contract population: at most the cap, or above it and admitted by the last review. */
-export function contractValueAdmitted(q: ReviewSql) {
-  return q`(${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON} or ${admittedByReview(q)})`;
+/**
+ * Contract c is in the last review's held list: the guard holds it or an administrator excluded it. Read once, as
+ * above. Never NULL: the counted population is „not held”, and a NULL there would drop a contract without a SEAP number.
+ */
+function heldByReview(q: ReviewSql) {
+  return q`coalesce(c.ca_notice_contract_id = any (array(select vr.contract_nat_id from marts.contract_value_review vr where not vr.admitted)), false)`;
 }
 
-/** Contract c (award alias `award`) meets every other condition of marts.contract_transactions and is above the cap. */
-function aboveCapOtherwiseCounted(q: ReviewSql, award: string) {
-  return q`(${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
+/**
+ * The value condition of the contract population: at most the cap and not held by the last review (an administrator's
+ * exclusion), or above the cap and admitted by it.
+ */
+export function contractValueAdmitted(q: ReviewSql) {
+  return q`((${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON} and not ${heldByReview(q)}) or ${admittedByReview(q)})`;
+}
+
+/** Contract c (award alias `award`) meets every condition of marts.contract_transactions but the one on its value. */
+function otherwiseCounted(q: ReviewSql, award: string) {
+  return q`(c.contract_date is not null
     and ${q(award)}.authority_entity_id is not null and ${contractReportable(q)} and ${canonicalContract(q)}
     and ${contractHasSupplier(q, award)})`;
 }
 
+/** Contract c (award alias `award`) meets every other condition of marts.contract_transactions and is above the cap. */
+function aboveCapOtherwiseCounted(q: ReviewSql, award: string) {
+  return q`(${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and ${otherwiseCounted(q, award)})`;
+}
+
 /**
- * Source contract c (award alias `award`) is above the cap, would otherwise be counted, and the last review did not
- * admit it: the guard holds it, an administrator excluded it, or no run has reviewed it yet. Disclosure only: these
- * rows are counted and listed (the entity's page, the coverage record, an answer's facts), never summed into totals.
+ * Source contract c (award alias `award`) would otherwise be counted and the last review holds it: above the cap and
+ * not admitted (the guard holds it, an administrator excluded it, or no run has reviewed it yet), or of any size and
+ * excluded by an administrator. These rows are listed, marked (marts.contract_transactions_held, the contract's page,
+ * the coverage record, an answer's facts), never summed into totals.
  */
 export function contractValueHeld(q: ReviewSql, award = 'a') {
-  return q`(${aboveCapOtherwiseCounted(q, award)} and not ${admittedByReview(q)})`;
+  return q`(${otherwiseCounted(q, award)}
+    and ((${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and not ${admittedByReview(q)}) or ${heldByReview(q)}))`;
 }
 
 /** Source contract c (award alias `award`) is above the cap and counted: admitted by the last review. */
@@ -84,7 +108,8 @@ export function contractValueAdmittedAboveCap(q: ReviewSql, award = 'a') {
 /**
  * Rewrites marts.contract_value_review from the sources and the administrators' decisions: every canonical, dated,
  * reportable contract with an authority and a supplier whose value is above the cap, with the guard's finding and the
- * decision, if any. Run inside the transaction that builds marts.contract_transactions, before it.
+ * decision, if any; and every such contract at or under the cap that an administrator excluded (no guard looks at
+ * those: `guard` is NULL). Run inside the transaction that builds marts.contract_transactions, before it.
  *
  * `first_seen_at` survives from run to run (the message to the administrators about a new contract goes by it); the
  * rows of the very first review are dated at the epoch, so the contracts already known are not announced as new.
@@ -98,6 +123,13 @@ export async function buildContractValueReview(q: ReviewSql): Promise<{ above: n
       from core.contracts c join core.awards a using (ca_notice_id)
       left join app.contract_value_decisions d on d.contract_nat_id = c.ca_notice_contract_id
       where ${aboveCapOtherwiseCounted(q, 'a')}
+      union all
+      -- At or under the cap: only what an administrator excluded, found from the few decisions and not by a pass over
+      -- every contract.
+      select c.ca_notice_contract_id, ${contractRonValue(q)}, null::text, d.decision
+      from app.contract_value_decisions d join core.contracts c on c.ca_notice_contract_id = d.contract_nat_id
+      join core.awards a using (ca_notice_id)
+      where d.decision = 'exclude' and ${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON} and ${otherwiseCounted(q, 'a')}
     ), gone as (
       delete from marts.contract_value_review r where not exists (select 1 from found f where f.nat = r.contract_nat_id)
     ), kept as (

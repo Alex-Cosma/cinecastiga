@@ -3,7 +3,9 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 /** contract-reporting-5 (8 November 2026): call-offs declared over their framework count scaled to its ceiling (calloff-ceiling.ts). */
 /** contract-reporting-6 (19 November 2026): a contract above CONTRACT_VALUE_CAP_RON is counted unless its notice
  * contradicts the value or an administrator excluded it (contract-value-review.ts); until then the cap kept all out. */
-export const CONTRACT_REPORTING_VERSION = 'contract-reporting-6';
+/** contract-reporting-7 (26 November 2026): an administrator can exclude a contract of any size as a probable error of
+ * its value; it stays listed, marked, and out of every total (contract-value-review.ts, migration 0116). */
+export const CONTRACT_REPORTING_VERSION = 'contract-reporting-7';
 
 /** Source amounts never change. These predicates only select contributions to
  * statistics. SEAP sometimes encodes addenda as type 3: text takes precedence.

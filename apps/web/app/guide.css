@@ -148,6 +148,20 @@
 .info-mark .term-trigger:is(:hover,:focus-visible) .info-mark-dot,.info-mark.term-shown .info-mark-dot{animation:info-hop 560ms var(--ease) both}
 @keyframes info-hop{0%{transform:none}35%{transform:translateY(-4px)}62%{transform:none}80%{transform:translateY(-1.5px)}100%{transform:none}}
 @media(prefers-reduced-motion:reduce){.info-mark-dot{animation:none!important}}
+/* A contract held out of the totals (components/ValueHeldMark.tsx; owner, 26 November 2026): a warning triangle in a
+   24 px square beside the struck-through value, its explanation floating like any (?). The label on the contract's
+   own page (.value-held-label) writes the words out. */
+.term-tip.value-held-mark{vertical-align:middle}
+.term-tip.value-held-mark>.term-trigger{display:inline-grid;place-items:center;width:24px;height:24px;min-height:0;padding:0;border-radius:6px;color:var(--amber);text-decoration:none;transition:background var(--fast) var(--ease)}
+.term-tip.value-held-mark>.term-trigger>.term-mark{display:none}
+.term-tip.value-held-mark>.term-trigger:hover,.term-tip.value-held-mark.term-shown>.term-trigger{background:var(--amber-soft)}
+.value-held-i{display:block;width:18px;height:18px;overflow:visible}
+.value-held-f{fill:var(--amber-soft)}
+.term-tip.value-held-mark>.term-def>.term-def-t{color:var(--amber-pill)}
+.value-held-figure{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.value-held-label{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:3px 10px 3px 7px;border:1px solid var(--amber-line);border-radius:999px;background:var(--amber-soft);color:var(--amber-pill);font:600 12.5px/1.3 var(--body);white-space:nowrap}
+.value-held-label .value-held-i{width:15px;height:15px}
+.value-held-label .value-held-f{fill:none}
 .d-national-item{position:relative}
 
 /* Home: three ways further in, smaller than the question cards */

@@ -106,13 +106,14 @@ async function acquisitions(s:TopicScope,others:Others=null):Promise<TopicResult
  select a.*,e.name_display authority_name,
   array(select x.name_display from core.entities x where x.id=any(a.supplier_ids) order by x.name_display,x.id) suppliers,
   array(select x.id::text from core.entities x where x.id=any(a.supplier_ids) order by x.name_display,x.id) supplier_ids_named,
-  case when a.kind='da' then d.da_code else c.contract_no end code,c.ca_notice_contract_id::text nid,c.ca_notice_id::text notice_id
+  case when a.kind='da' then d.da_code else c.contract_no end code,c.ca_notice_contract_id::text nid,c.ca_notice_id::text notice_id,
+  a.kind='contracts' and exists(select 1 from marts.contract_transactions_held h where h.contract_id=a.ref_id) value_held
  from selected a left join core.entities e on e.id=a.authority_id
  left join core.contracts c on a.kind='contracts' and c.id=a.ref_id
  left join core.direct_acquisitions d on a.kind='da' and d.sicap_da_id=a.ref_id
  order by ${order}`;
  const hits:AcquisitionHit[]=rows.map(r=>{const sourceUrl=r.kind==='da'?daUrl(String(r.ref_id)):awardUrl(String(r.notice_id));
- return {id:r.id,kind:r.kind,title:r.title||'Titlu neprecizat în sursă',date:r.date,value:r.value,authorityId:r.authority_id?.toString()??null,authorityName:r.authority_name,suppliers:r.suppliers,supplierIds:r.supplier_ids_named,county:r.county,code:r.code,href:r.kind==='da'?`/achizitii/${r.ref_id}`:`/contracte/${r.nid}`,sourceUrl};});
+ return {id:r.id,kind:r.kind,title:r.title||'Titlu neprecizat în sursă',date:r.date,value:r.value,authorityId:r.authority_id?.toString()??null,authorityName:r.authority_name,suppliers:r.suppliers,supplierIds:r.supplier_ids_named,county:r.county,code:r.code,href:r.kind==='da'?`/achizitii/${r.ref_id}`:`/contracte/${r.nid}`,sourceUrl,...(r.value_held===true?{valueHeld:true}:{})};});
  return {total:Number(count!.total),hits};
  });}
 // Only public archive tables. Map document procedures by source identity AND buyer,

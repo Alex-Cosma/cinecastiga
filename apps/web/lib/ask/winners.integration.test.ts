@@ -73,7 +73,7 @@ async function inFixture(label: string, work: (q: DbSql) => Promise<void>) {
   try {
     await sql.begin(async (tx) => {
       await tx.unsafe(`create schema ${prefix}`);
-      for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "entity_top_partners", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county"])
+      for (const t of ["da_transactions", "contract_transactions", "contract_transactions_held", "national_stats", "entity_profile", "entity_top_partners", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county"])
         await tx.unsafe(`create table ${prefix}.${t} as table marts.${t} with no data`);
       await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
       const q = scoped(tx as unknown as DbSql, prefix);

@@ -79,6 +79,8 @@ describe("value cap disclosure on /harta (audit F09)", () => {
   it("states the contract cap in the ranking's note", () => {
     const source = readFileSync(new URL("../../app/harta/MapExplorer.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(source).toMatch(/<InfoMark title="De știut"[^]*GLOSSARY\["plafoane-totaluri"\]\.text/);
-    expect(GLOSSARY["plafoane-totaluri"].text).toContain("Un contract de peste 1 miliard lei intră doar dacă anunțul lui nu-i contrazice valoarea; cele ținute afară sunt listate");
+    expect(GLOSSARY["plafoane-totaluri"].text).toContain("Un contract de peste 1 miliard lei intră doar dacă anunțul lui nu-i contrazice valoarea.");
+    // Owner, 26 November 2026: a contract of any size can be held as a probable error, and the lists mark it.
+    expect(GLOSSARY["plafoane-totaluri"].text).toContain("Un contract cu valoarea probabil greșită în sursă rămâne afară, oricât de mic; în liste e marcat.");
   });
 });

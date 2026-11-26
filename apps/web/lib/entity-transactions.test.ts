@@ -44,7 +44,9 @@ describe("entity source pagination", () => {
     expect(page.values.slice(-2)).toEqual([10, 20]);
     for (const { query, values } of statements) {
       expect(query).toContain("where t.authority_id = ? and t.closing_value > 0");
-      expect(query).toContain("from marts.contract_transactions t");
+      // The counted contracts and, marked, the held ones (owner, 26 November 2026).
+      expect(query).toContain("from marts.contract_transactions x");
+      expect(query).toContain("union all select h.*, true from marts.contract_transactions_held h) t");
       expect(query).not.toContain("t.closing_value is null or");
       expect(values).toContainEqual(["2025"]);
     }

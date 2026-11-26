@@ -26,6 +26,10 @@
 .collection-admin .processing-decisions ul{padding-left:18px;line-height:1.7}
 .collection-admin .processing-decisions li+li{margin-top:8px}
 .collection-admin .processing-decisions li p{overflow-wrap:anywhere}
+.collection-admin .value-review-add{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 12px;margin:8px 0 12px}
+.collection-admin .value-review-add label{display:grid;gap:3px;min-width:0}
+.collection-admin .value-review-add label:nth-of-type(2){flex:1 1 280px}
+.collection-admin .value-review-add input{min-width:0;width:100%;padding:5px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit}
 .collection-admin .document-queue{margin-top:38px;padding-top:30px;border-top:1px solid var(--line);scroll-margin-top:24px}
 .collection-admin .document-queue>.section-heading>a{white-space:nowrap}
 .collection-admin .queue-filters{display:flex;flex-wrap:wrap;gap:7px;margin:22px 0 12px}

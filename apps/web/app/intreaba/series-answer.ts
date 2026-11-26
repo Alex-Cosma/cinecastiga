@@ -164,9 +164,9 @@ export function largestWords(point: SeriesPoint, max: { value: number; src: "da"
   const share = point.value > 0 ? ` (${formatShare(max.value / point.value)} din ${point.month ? "lună" : "an"})` : "";
   return `Cea mai mare înregistrare: ${formatRon(max.value)}${share}`;
 }
-/** The contracts above the cap of a bar („2 contracte peste 1 mld. lei, în afara barei”). */
+/** The contracts of a bar held out of the totals („2 contracte cu valoare probabil greșită, în afara barei”). */
 export function aboveWords(n: number): string {
-  return `${countWords(n, "contract", "contracte")} peste 1 mld. lei, în afara barei`;
+  return `${countWords(n, "contract", "contracte")} cu valoare probabil greșită, în afara barei`;
 }
 /** Every contract above the cap of the bars drawn: the note under the chart. */
 export function aboveTotal(facts: Pick<BarsResult, "above"> | null, bars: readonly { year: number; month?: number }[]): { n: number; first: string | null } {
