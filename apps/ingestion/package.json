@@ -36,7 +36,8 @@
     "replay-ted": "tsx src/scripts/replay-ted.ts",
     "monitoring-refresh": "tsx src/scripts/monitoring-refresh.ts",
     "index-topics": "tsx src/scripts/index-topics.ts",
-    "unit-prices": "tsx src/scripts/unit-prices.ts"
+    "unit-prices": "tsx src/scripts/unit-prices.ts",
+    "facts": "tsx src/scripts/facts.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",

@@ -13,6 +13,7 @@ import { runMonitoringRefresh, runShadowRefresh } from '../monitoring/refresh.js
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
 import {buildUnitPrices} from '../aggregate/unit-prices.js';
+import {buildFacts} from '../facts/build.js';
 import { ENTITIES_INDEX, ENTITIES_NEXT_INDEX, indexEntities, meiliClient, swapEntityIndexes } from '../search/index-entities.js';
 import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
 
@@ -147,6 +148,14 @@ async function main() {
    unitPrices={error:diagnosticError(error)};
    console.error(`Unit prices failed; the publication continues without them: ${JSON.stringify(unitPrices)}`);
   }
+  // „Știați că” (owner, 26 November 2026): this run's proposals, from its marts. Nothing is published by them (an
+  // administrator chooses in Admin → Știați că), so a failure must not stop the night's data either.
+  let facts:unknown;
+  try{facts=await buildFacts(sql,console.log);}
+  catch(error){
+   facts={error:diagnosticError(error)};
+   console.error(`Fact proposals failed; the publication continues without them: ${JSON.stringify(facts)}`);
+  }
   // A shadow build fills the next index from the shadow schemas; the live `entities` keeps serving until the swap.
   const indexUid=shadow?ENTITIES_NEXT_INDEX:ENTITIES_INDEX;
   const report=await indexEntities(sql,{log:console.log,indexUid});
@@ -154,7 +163,7 @@ async function main() {
   const [expected]=await sql`select count(distinct entity_id)::int n from marts.entity_profile`;
   const failures=await client.tasks.getTasks({indexUids:[indexUid],statuses:['failed','canceled'],types:['documentAdditionOrUpdate','documentDeletion','settingsUpdate'],afterEnqueuedAt:since,limit:1});
   if(stats.isIndexing||stats.numberOfDocuments!==expected!.n||failures.results.length)throw Error('Search validation failed');
-  await sql`update app.processing_runs set search_verified=${JSON.stringify({...report,topics,unitPrices})}::jsonb where id=${id!}::uuid`;
+  await sql`update app.processing_runs set search_verified=${JSON.stringify({...report,topics,unitPrices,facts})}::jsonb where id=${id!}::uuid`;
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }

@@ -827,6 +827,13 @@
       "when": 1795698000000,
       "tag": "0117_contract_value_held_more",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1795701600000,
+      "tag": "0118_facts",
+      "breakpoints": true
     }
   ]
 }

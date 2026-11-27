@@ -1,0 +1,74 @@
+/* /stiati-ca (owner, 26–27 November 2026): the facts as a mosaic of tiles of different sizes and tones (mosaic.ts), each
+   led by its figure; the newest is the large dark one. A fact's own page (.is-one) is one tile in a reading column. */
+.facts-page{display:flex;flex-direction:column;gap:22px;padding-block:28px 56px}
+.facts-page.is-one{max-width:680px}
+.facts-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+.facts-head h1{margin:0;font:700 clamp(30px,5.4vw,40px)/1.12 var(--display);letter-spacing:-.0075em}
+/* „Alte fapte”: deals the board again (shuffle-motion.ts); its arrows turn while the tiles do. */
+.facts-shuffle{gap:8px;padding:8px 14px;color:var(--accent)}
+.facts-shuffle svg{flex:none}
+.facts-mosaic{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.fact-card{grid-column:var(--col,auto)/span var(--span,6);grid-row:var(--row,auto)/span var(--rows,1);display:flex;flex-direction:column;gap:10px;min-width:0;padding:20px 20px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  --fact-ink:var(--ink);--fact-back:var(--surface);--fact-quiet:var(--muted);--fact-figure:var(--accent);--fact-unit:var(--ink2);--fact-track:var(--sunk);--fact-bar:var(--accent-line);--fact-now:var(--accent);--fact-rule:var(--line2)}
+.fact-card.is-soft{background:var(--accent-soft);border-color:transparent;--fact-track:var(--surface)}
+.fact-card.is-warm{background:var(--amber-soft);border-color:transparent;--fact-quiet:var(--amber-ink);--fact-track:var(--surface)}
+/* The dark tile: the page's own ink and paper, turned over. */
+.fact-card.is-dark{background:var(--accent);border-color:transparent;--fact-ink:var(--on-accent);--fact-back:var(--accent);--fact-quiet:color-mix(in srgb,var(--on-accent) 84%,var(--accent));--fact-figure:var(--on-accent);--fact-unit:var(--on-accent);
+  --fact-track:color-mix(in srgb,var(--on-accent) 22%,var(--accent));--fact-bar:color-mix(in srgb,var(--on-accent) 40%,var(--accent));--fact-now:var(--on-accent);--fact-rule:color-mix(in srgb,var(--on-accent) 50%,var(--accent))}
+.fact-card p,.fact-card h1{margin:0}
+.fact-day{font:500 11.5px/1.3 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--fact-quiet)}
+.fact-day a{color:inherit;text-decoration:none}
+.fact-day a:hover{text-decoration:underline;text-underline-offset:3px}
+.fact-figure{font:700 clamp(34px,3.6vw,44px)/1 var(--display);letter-spacing:-.0125em;color:var(--fact-figure);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fact-figure small{font:600 .42em/1 var(--display);letter-spacing:0;color:var(--fact-unit);white-space:nowrap}
+.fact-say{font:500 16.5px/1.42 var(--body);letter-spacing:0;color:var(--fact-ink);text-wrap:pretty}
+.fact-context{font-size:14px;line-height:1.5;color:var(--fact-quiet)}
+/* The links close the tile, whatever its height (two classes: `.fact-card p` resets every margin). */
+.fact-card .fact-links{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-top:auto;padding-top:6px;font:500 14px/1.4 var(--body)}
+.fact-links a{color:var(--fact-figure);text-decoration:underline;text-decoration-color:var(--fact-rule);text-underline-offset:3px}
+.fact-links a:hover{text-decoration-color:currentColor}
+/* The fact's address, copied: an icon button at the end of the row; „Link copiat” comes up right above it for a
+   moment (owner, 27 November 2026), in the tile's own ink turned over. */
+.fact-copy{position:relative;display:inline-flex;margin-left:auto}
+.fact-copy button{position:relative;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:none;color:var(--fact-quiet);cursor:pointer;transition:color var(--fast) var(--ease),background-color var(--fast) var(--ease)}
+.fact-copy button:hover{color:var(--fact-ink);background:color-mix(in srgb,var(--fact-ink) 9%,transparent)}
+.fact-copy button:focus-visible{outline:2px solid var(--fact-figure);outline-offset:2px}
+/* A finger gets a larger target than the icon shows. */
+@media (pointer:coarse){.fact-copy button::after{content:"";position:absolute;inset:-7px}}
+.fact-copied{position:absolute;right:0;bottom:calc(100% + 6px);z-index:1;display:inline-flex;align-items:center;padding:5px 10px;border-radius:8px;background:var(--fact-ink);color:var(--fact-back);font:600 13px/1.3 var(--body);white-space:nowrap;pointer-events:none;animation:fact-copied 1300ms linear both}
+@keyframes fact-copied{0%{opacity:0;transform:translateY(4px)}7%{opacity:1;transform:none}86%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.fact-copied{animation:none}}
+.fact-address{color:var(--fact-ink);font:500 13px/1.4 var(--mono);overflow-wrap:anywhere;user-select:all}
+/* The small charts, to scale. A bar's height is a share of the row above the labels. */
+.fact-share{display:flex;flex-direction:column;gap:5px}
+.fact-share-track{height:10px;border-radius:5px;background:var(--fact-track);overflow:hidden}
+.fact-share-track i{display:block;height:100%;border-radius:5px;background:var(--fact-now)}
+.fact-share span,.fact-two span{font:500 12.5px/1.3 var(--body);color:var(--fact-quiet)}
+.fact-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto;gap:6px 10px;height:130px;align-items:end;justify-items:center}
+.fact-two i{width:100%;border-radius:4px 4px 0 0;background:var(--fact-bar)}
+.fact-two i.is-now{background:var(--fact-now)}
+.fact-two span{white-space:nowrap;font-variant-numeric:tabular-nums}
+/* The lead tile: the figure larger, the chart beside the words. */
+/* In the mosaic the lead is as tall as its two neighbours: the day stays at the top, the fact sits at the bottom. */
+.fact-card.is-lead{padding:24px 24px 20px;gap:12px}
+.facts-mosaic .fact-card.is-lead .fact-day{margin-bottom:auto;padding-bottom:18px}
+.facts-mosaic .fact-card.is-lead .fact-links{margin-top:0}
+.fact-card.is-lead .fact-figure{font-size:clamp(46px,6.4vw,76px)}
+.fact-card.is-lead .fact-say{font-size:clamp(18px,1.9vw,21px)}
+.fact-lead{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:end}
+.fact-lead-words{display:flex;flex-direction:column;gap:12px;min-width:0}
+.fact-lead .fact-two{height:160px}
+/* A large tile half the board wide (mosaic.ts, arrangement 4): tall and narrow, so the chart goes under the words. */
+@media (min-width:981px){.fact-card.is-half .fact-figure{font-size:clamp(42px,5vw,62px)}.fact-card.is-half .fact-lead{grid-template-columns:minmax(0,1fr);gap:16px}}
+/* While the board is dealt again the tiles are face down: the coloured card stays, its content fades, and comes back
+   as each new tile lands (--deal is that tile's turn). */
+.facts-mosaic>.fact-card>*{transition:opacity 220ms linear calc(var(--deal,0ms) + 260ms)}
+.facts-mosaic[data-shuffling]>.fact-card>*{opacity:0;transition:opacity 140ms linear}
+.facts-mosaic[data-shuffling]>.fact-card{pointer-events:none}
+.facts-back,.facts-more,.facts-empty{margin:0;font-size:14.5px}
+.facts-back a,.facts-more a,.facts-empty a{color:var(--accent);text-underline-offset:3px}
+/* A narrower screen: two tiles a row, the lead across; a phone: one column. */
+@media (max-width:980px){.fact-card{grid-column:span 3;grid-row:auto}.fact-card.is-lead{grid-column:1/-1}
+  /* A tile left alone in the last row takes the row. */
+  .facts-mosaic.has-lead>.fact-card:last-child:nth-child(even),.facts-mosaic:not(.has-lead)>.fact-card:last-child:nth-child(odd){grid-column:1/-1}}
+@media (max-width:640px){.facts-mosaic{grid-template-columns:minmax(0,1fr);gap:12px}.fact-card,.fact-card.is-lead{grid-column:auto;padding:18px 16px 14px}.fact-lead{grid-template-columns:minmax(0,1fr);gap:16px}.fact-lead .fact-two{height:120px}}

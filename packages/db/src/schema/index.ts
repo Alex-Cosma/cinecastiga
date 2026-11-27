@@ -23,6 +23,7 @@ export * from "./contract-money-quality.js";
 export * from './data-repairs.js';
 export * from './contract-identity.js';
 export * from './contract-value-review.js';
+export * from './facts.js';
 export * from './operational-alerts.js';
 export * from "./short-links.js";
 export * from "./unit-prices.js";

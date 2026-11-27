@@ -132,7 +132,7 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
   if (!data || !pace || !schedule || !c) return <div className="collection-admin">
     <AdminNavigation data={data} stale={stale} drafts={drafts}/>
     <div id="admin-content">
-      {view === 'oameni' ? children : stale
+      {view === 'oameni' || view === 'stiati-ca' ? children : stale
         ? <div className="admin-error" role="alert"><p>Statusul colectării nu poate fi citit acum.</p><button className="button" onClick={() => { setStale(false); void refresh(true); }}>Reîncearcă</button></div>
         : <Ghost name="admin" label="Se citește statusul…" wait="client" className="admin-ghost">
           {view === 'acum' ? <div className="live-band" data-state="offline"><div className="live-copy"><G.Line w="55%"/><G.Line w="80%"/></div></div> : <G.Lines w={['38%', '92%', '86%']}/>}
@@ -144,7 +144,7 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
 
   const state = collectionState(data, stale, now);
   // Fișiere and Oameni read their own lists: the base is enough.
-  const ready = (page: AdminView) => page === 'fisiere' || page === 'oameni' || loaded.has(page);
+  const ready = (page: AdminView) => page === 'fisiere' || page === 'oameni' || page === 'stiati-ca' || loaded.has(page);
   const waiting = <Ghost name="admin" label="Se citește statusul…" wait="client" className="admin-ghost">
     <G.Lines w={['38%', '92%', '86%']}/>
     <G.Block h="160px" r="10px"/>
@@ -188,7 +188,7 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
         <WithheldDocuments enabled={view === 'fisiere'}/>
         <DocumentQueue enabled={view === 'fisiere'} retryAt={state.retry?.retry_at ? String(state.retry.retry_at) : null} quiet={state.quiet} paused={state.paused} maintenance={state.maintenance} blocked={state.blocked}/>
       </div>
-      <div className="admin-view" hidden={view !== 'oameni'}>{children}</div>
+      <div className="admin-view" hidden={view !== 'oameni' && view !== 'stiati-ca'}>{children}</div>
     </div>
   </div>;
 }

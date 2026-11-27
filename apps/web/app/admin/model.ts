@@ -4,12 +4,13 @@ import type {CollectionStatus} from '@/lib/admin/collection';
  * The administration's map and the collection's state, shared by its pages (owner, 7 November 2026: "Acum" first,
  * then four sections; Trafic SEAP keeps its three views as sub-pages so each stays one task long).
  */
-export type AdminView = 'acum' | 'trafic' | 'conexiune' | 'jurnal' | 'procesare' | 'fisiere' | 'oameni';
+export type AdminView = 'acum' | 'trafic' | 'conexiune' | 'jurnal' | 'procesare' | 'fisiere' | 'oameni' | 'stiati-ca';
 export const ADMIN_TABS = [
   {href: '/admin', label: 'Acum', icon: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'},
   {href: '/admin/trafic', label: 'Trafic SEAP', icon: 'M4 7h13m0 0-3-3m3 3-3 3M20 17H7m0 0 3-3m-3 3 3 3'},
   {href: '/admin/procesare', label: 'Procesare', icon: 'm9 5 10 7-10 7V5ZM4 5v14'},
   {href: '/admin/fisiere', label: 'Fișiere', icon: 'M14 3H5v18h14V8l-5-5Zm0 0v5h5M8 13h8M8 17h6'},
+  {href: '/admin/stiati-ca', label: 'Știați că', icon: 'M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z'},
   {href: '/admin/oameni', label: 'Oameni', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm7 .13a4 4 0 0 1 0 7.75'},
 ] as const;
 export const TRAFFIC_VIEWS = [
@@ -19,11 +20,11 @@ export const TRAFFIC_VIEWS = [
 ] as const;
 const VIEWS: Record<string, AdminView> = {
   '/admin': 'acum', '/admin/trafic': 'trafic', '/admin/trafic/conexiune': 'conexiune', '/admin/trafic/jurnal': 'jurnal',
-  '/admin/procesare': 'procesare', '/admin/fisiere': 'fisiere', '/admin/oameni': 'oameni',
+  '/admin/procesare': 'procesare', '/admin/fisiere': 'fisiere', '/admin/oameni': 'oameni', '/admin/stiati-ca': 'stiati-ca',
 };
 export const viewOf = (path: string): AdminView => VIEWS[path.replace(/\/$/, '') || '/admin'] ?? 'acum';
 export const TITLES: Record<AdminView, string> = {
-  acum: 'Acum', trafic: 'Trafic SEAP', conexiune: 'Trafic SEAP', jurnal: 'Trafic SEAP', procesare: 'Procesare', fisiere: 'Fișiere', oameni: 'Oameni',
+  acum: 'Acum', trafic: 'Trafic SEAP', conexiune: 'Trafic SEAP', jurnal: 'Trafic SEAP', procesare: 'Procesare', fisiere: 'Fișiere', oameni: 'Oameni', 'stiati-ca': 'Știați că',
 };
 export const tabOf = (view: AdminView) => view === 'conexiune' || view === 'jurnal' ? '/admin/trafic' : view === 'acum' ? '/admin' : `/admin/${view}`;
 

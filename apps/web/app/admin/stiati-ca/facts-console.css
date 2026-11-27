@@ -1,0 +1,31 @@
+/* Admin → Știați că (owner, 26 November 2026): each fact as its public card, beside its check and the choices. */
+.facts-console{display:flex;flex-direction:column;gap:14px;font-size:13.5px;color:var(--ink2)}
+.facts-console header p{margin:0}
+.fc-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.fc-tabs button{padding:6px 12px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--ink2);font:500 13px/1.3 var(--body);cursor:pointer}
+.fc-tabs button.is-on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.fc-tabs b{font-weight:600;font-variant-numeric:tabular-nums}
+.fc-error,.fc-empty{margin:0}
+.fc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.fc-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px 22px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.fc-card,.fc-side{min-width:0;display:flex;flex-direction:column;gap:6px}
+.fc-card p,.fc-side p{margin:0}
+.fc-fig{font:700 30px/1.05 var(--display);color:var(--accent);font-variant-numeric:tabular-nums}
+.fc-fig small{font:600 15px/1 var(--display);color:var(--ink2)}
+.fc-say{font:500 15px/1.4 var(--body);color:var(--ink)}
+.fc-ctx,.fc-link{font-size:13px;color:var(--muted)}
+.fc-meta{display:flex;flex-wrap:wrap;gap:5px}
+.fc-chip{padding:1px 8px;border-radius:999px;background:var(--sunk);color:var(--ink2);font:600 12px/1.6 var(--body);white-space:nowrap}
+.fc-chip.is-ok{background:var(--ok-soft);color:var(--ok)}
+.fc-chip.is-look{background:var(--amber-soft);color:var(--amber-pill)}
+.fc-chip.is-on{background:var(--accent-soft);color:var(--accent-ink)}
+.fc-chip.is-out{background:var(--risk-soft);color:var(--risk-pill)}
+.fc-note{padding:6px 9px;border-radius:8px;background:var(--amber-soft);color:var(--amber-ink)}
+.fc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.fc-when{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fc-when input,.fc-edit input{min-width:0;padding:4px 8px;border:1px solid var(--line2);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit}
+.fc-edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
+.fc-edit label{display:grid;gap:3px;min-width:0}
+.fc-edit .fc-wide,.fc-edit p{grid-column:1/-1}
+.fc-edit input{width:100%}
+@media (max-width:760px){.fc-item{grid-template-columns:minmax(0,1fr)}}

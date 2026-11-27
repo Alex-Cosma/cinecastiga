@@ -4,7 +4,7 @@ import { parseSignalState, signalUrl } from "./signals-shared";
 
 /** The public pages with one fixed address each, the home page first. */
 const MAIN_PAGES = [
-  "/", "/preturi", "/semnale", "/harta", "/domenii", "/supra-prag", "/intreaba", "/cauta",
+  "/", "/preturi", "/semnale", "/harta", "/domenii", "/supra-prag", "/intreaba", "/cauta", "/stiati-ca",
   "/metodologie", "/metodologie/excluderi", "/despre", "/date-personale",
 ];
 

@@ -49,7 +49,7 @@ export default function AdminNavigation({data, stale, drafts}: {data: Collection
     </nav>
     <div className="admin-head">
       <h1 ref={heading} tabIndex={-1}>{TITLES[view]}{traffic && <span className="sr-only"> · {TRAFFIC_VIEWS.find(v => v.href === path)?.label}</span>}</h1>
-      {view !== 'fisiere' && view !== 'oameni' && <span className={`connection${stale ? ' stale' : ''}`}><i aria-hidden="true"/>{stale ? 'Status neactualizat' : c ? `Actualizat la ${seconds(c.server_now)}` : 'Se citește statusul…'}</span>}
+      {view !== 'fisiere' && view !== 'oameni' && view !== 'stiati-ca' && <span className={`connection${stale ? ' stale' : ''}`}><i aria-hidden="true"/>{stale ? 'Status neactualizat' : c ? `Actualizat la ${seconds(c.server_now)}` : 'Se citește statusul…'}</span>}
     </div>
     {traffic && <nav className="admin-subnav" aria-label="Trafic SEAP">
       {TRAFFIC_VIEWS.map(v => <Link key={v.href} href={v.href} scroll={false} aria-current={path === v.href ? 'page' : undefined}>{v.label}</Link>)}

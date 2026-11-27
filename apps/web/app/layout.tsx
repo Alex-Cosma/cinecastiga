@@ -107,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {/* Ghid, Metodologie (the same page) and Hartă are in the header (owner, 13 November 2026). */}
                 <li><Link href="/?tur=1" prefetch={false}>Turul de bun venit</Link></li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
+                <li><Link href="/stiati-ca">Știați că</Link></li>
                 {/* Who runs the site and what it holds about people (legal audit; owner, 19 November 2026): in both modes. */}
                 <li><Link href="/despre">Despre și contact</Link></li>
                 <li><Link href="/date-personale">Date personale</Link></li>

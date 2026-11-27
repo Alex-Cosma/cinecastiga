@@ -44,6 +44,8 @@ export function navItems({ pathname, signedIn, news = 0 }: NavContext): NavItem[
     { href: "/harta", label: "Hartă", active: under(path, "/harta") },
     // Unit prices, a section of their own for every reader (owner, 20 November 2026): until then an administrator's link.
     { href: "/preturi", label: "Prețuri", active: under(path, "/preturi") },
+    // „Știați că”, between the prices and the guide (owner, 27 November 2026): without it nobody would reach the page.
+    { href: "/stiati-ca", label: "Știați că", active: under(path, "/stiati-ca") },
     // Investigations are private and invitation-only: an anonymous visitor
     // would only reach a login wall, so the item (and its dot) is hidden. It is
     // the private space: its tabs are the investigations, the follows and the
