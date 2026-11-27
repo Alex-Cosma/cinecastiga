@@ -518,10 +518,10 @@
   flex-shrink: 0;
 }
 .ask-ts .col:first-child .cv {
-  align-self: flex-start;
+  justify-self: start;
 }
 .ask-ts .col:last-child .cv {
-  align-self: flex-end;
+  justify-self: end;
 }
 /* An empty year of the continuous axis (from 2018): a baseline, not a link. The short year ('18) is the phone's. */
 .ask-ts .col.empty .bar {
@@ -996,7 +996,7 @@
     gap: 3px;
   }
   .ask-ts--months .col:first-child .cl {
-    align-self: flex-start;
+    justify-self: start;
   }
   /* '18 … '26 where 2018 does not fit; the full year stays for screen readers. */
   .ask-ts .ts-y {
