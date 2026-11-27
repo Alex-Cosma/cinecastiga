@@ -841,6 +841,13 @@
       "when": 1795705200000,
       "tag": "0119_contract_value_decisions_27nov",
       "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795708800000,
+      "tag": "0120_contract_notice_frameworks",
+      "breakpoints": true
     }
   ]
 }

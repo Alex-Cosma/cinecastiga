@@ -56,7 +56,7 @@ describe.skipIf(!anyIsolated)('framework title spellings',()=>{
   ];
   const actual=await sql`select ${contractKind(sql)} kind,${contractReportable(sql)} included
    from jsonb_to_recordset(${JSON.stringify(rows.map(([type,title],i)=>({i,type,title})))}::jsonb) x(i int,type int,title text)
-   cross join lateral (select case when x.type is null then null else 1::bigint end contract_type_raw_id,1::bigint raw_id,
+   cross join lateral (select (-1 - x.i)::bigint id,case when x.type is null then null else 1::bigint end contract_type_raw_id,1::bigint raw_id,
      x.type source_contract_type,null::text contract_no,x.title) c order by x.i`;
   expect(actual.map(r=>r.kind)).toEqual([
    'framework','framework','framework','framework','framework','framework','framework','framework','framework','framework',

@@ -131,7 +131,8 @@ function countedBelow(counted: string | null, declared: string | null): boolean 
 
 /** Why this value stays out of the totals, said once, beside the value. */
 const totalsNote = (c: ContractDetail) =>
-  c.financialKind === "framework" ? "Separat de totaluri: se numără comenzile subsecvente."
+  c.financialKind === "framework" && c.frameworkRule === "notice_total" ? <>Citit ca acord-cadru: totalul anunțului din SEAP adună doar contractele subsecvente. Separat de totaluri. <Link href="/metodologie#acord-din-anunt" data-only="complet">Cum hotărâm</Link></>
+  : c.financialKind === "framework" ? "Separat de totaluri: se numără comenzile subsecvente."
   : c.financialKind === "amendment" ? "Act adițional: nu se adaugă la totaluri."
   : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
   : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`} data-only="complet">Motivul</Link></>

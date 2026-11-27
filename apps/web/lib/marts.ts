@@ -1098,6 +1098,9 @@ export interface ContractDetail {
   countedOnce: boolean;
   financialKind: string;
   nonAdditive: boolean;
+  /** Why a publication without a SEAP type is read as a framework: 'notice_total' (its notice's total leaves it out,
+   * beside call-offs) or 'title' („Acordul-cadru…”); null when the source's type or the plain title rule says so. */
+  frameworkRule: string | null;
   excludedIdentity: string | null;
   /** Held out of the totals by the last processing run's value review: above 1 mld. lei and not admitted, or of any
    * size and excluded by an administrator (26 November 2026). */
@@ -1115,6 +1118,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
+           -- Read as a framework by the last processing run, from its notice or its title (27 November 2026).
+           (select nf.rule from marts.contract_notice_frameworks nf where nf.contract_id=c.id) framework_rule,
            -- Held out of the totals by the last processing run's value review (19 and 26 November 2026).
            coalesce(not ${contractValueAdmitted(sql)}, false) value_held_out,
            (select d.reason from app.contract_value_decisions d where d.contract_nat_id=c.ca_notice_contract_id and d.decision='exclude') value_reason,
@@ -1239,6 +1244,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     countedOnce:publications.length>1&&mart.length>0,
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,
+    frameworkRule:(r["framework_rule"] as string|null)??null,
     valueHeldOut:r["value_held_out"]===true,
     valueHeld:{guard:(r["value_guard"] as string|null)??null,decision:(r["value_decision"] as string|null)??null,
       reason:r["value_decision"]==="exclude"?((r["value_reason"] as string|null)??null):null},

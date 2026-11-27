@@ -91,7 +91,7 @@ describe.skipIf(!isolated)('automatic publication discovery inside the productio
    const prefix=`discovery_${process.pid}`;
    for(const [schema,tables] of Object.entries({app:['processing_runs','collection_control','collection_audit','data_repairs'],
      core:['contracts','awards','entities','contract_winners','direct_acquisitions','ted_notices','ted_lot_results'],raw:['raw_documents'],
-     marts:['data_coverage','contract_value_review','contract_transactions','contract_transactions_held','da_transactions','contract_identity_revisions','contract_identity_exclusions','contract_identity_archives','contract_identity_candidates','contract_identity_observations','contract_identity_decisions','contract_identity_members']})) {
+     marts:['data_coverage','contract_value_review','contract_notice_frameworks','contract_transactions','contract_transactions_held','da_transactions','contract_identity_revisions','contract_identity_exclusions','contract_identity_archives','contract_identity_candidates','contract_identity_observations','contract_identity_decisions','contract_identity_members']})) {
     await tx.unsafe(`create schema ${prefix}_${schema}`);
     for(const table of tables)await tx.unsafe(`create table ${prefix}_${schema}.${table} (like ${schema}.${table} including all)`);
    }

@@ -33,6 +33,7 @@ export const ENGINE_MARTS_TABLES = [
   "contract_identity_exclusions", "contract_identity_members", "contract_identity_decisions",
   // Contracts above 1 mld. lei: the last run's review (contractValueHeld, @seap/db; 19 November 2026).
   "contract_value_review",
+  "contract_notice_frameworks",
 ] as const;
 /** A marts table a database may predate (migration 0077): created empty with its own columns. */
 const MISSING_MARTS_DDL: Record<string, string> = {

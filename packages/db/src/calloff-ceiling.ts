@@ -1,7 +1,7 @@
 import type { DbSql } from './client.js';
 import { canonicalContract } from './contract-identity.js';
 import { contractRonValue } from './contract-money.js';
-import { contractKind } from './contract-reporting.js';
+import { contractKindBySource } from './contract-reporting.js';
 
 type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 type Fragment = ReturnType<DbSql>;
@@ -44,7 +44,7 @@ export function frameworkCalloffPairs(q: Query, tables: { contracts?: Fragment; 
     from (
       select c.id, c.ca_notice_id, c.ca_notice_contract_id, c.contract_no, c.lots_caption, ${contractRonValue(q)} ceiling
       from ${contracts} c
-      where ${contractKind(q, 'c')} = 'framework' and ${canonicalContract(q)} and nullif(btrim(c.lots_caption), '') is not null
+      where ${contractKindBySource(q, 'c')} = 'framework' and ${canonicalContract(q)} and nullif(btrim(c.lots_caption), '') is not null
     ) f
     join ${awards} parent on parent.ca_notice_id = f.ca_notice_id and parent.authority_entity_id is not null
     -- The notice itself and its versions (same buyer, same notice number), as two index lookups: an OR in the join
@@ -58,7 +58,7 @@ export function frameworkCalloffPairs(q: Query, tables: { contracts?: Fragment; 
     join (
       select c.id, c.ca_notice_id, c.lots_caption, ${contractRonValue(q)} value
       from ${contracts} c
-      where ${contractKind(q, 'c')} = 'calloff' and nullif(btrim(c.lots_caption), '') is not null
+      where ${contractKindBySource(q, 'c')} = 'calloff' and nullif(btrim(c.lots_caption), '') is not null
     ) x on x.ca_notice_id = p.ca_notice_id and x.id <> f.id
     where f.ceiling > 0 and x.value > 0
       and strpos(', ' || f.lots_caption || ',', ', ' || x.lots_caption || ',') > 0

@@ -1,4 +1,4 @@
-import { contractReportable } from './contract-reporting.js';
+import { contractReportableBySource } from './contract-reporting.js';
 import type { DbSql } from './client.js';
 import { contractRonValue } from './contract-money.js';
 type IdentitySql = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
@@ -34,7 +34,7 @@ export async function readContractIdentityMembers(q: IdentitySql, ids: string[])
         array(select we.cui_canonical from core.contract_winners w join core.entities we on we.id=w.entity_id where w.contract_id=c.id order by w.entity_id) "winnerCuis",
         coalesce(${contractRonValue(q)}>0 and ${contractRonValue(q)}<=1000000000 and c.contract_date is not null and a.authority_entity_id is not null
           and exists(select 1 from core.contract_winners w where w.contract_id=c.id)
-          and ${contractReportable(q)},false) eligible,
+          and ${contractReportableBySource(q)},false) eligible,
         jsonb_build_object('contract',(to_jsonb(c)-'contract_date'-'source_contract_type'-'contract_type_raw_id')||jsonb_build_object('date_epoch',extract(epoch from c.contract_date)),
           'award',(to_jsonb(a)-'state_date')||jsonb_build_object('date_epoch',extract(epoch from a.state_date)),
           'cohort',to_jsonb(cohort)) source_state

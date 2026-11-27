@@ -1,5 +1,5 @@
 import { calloffCeilingScale, scaledCalloffValue, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, buildContractValueReview, contractValueAdmitted, contractValueHeld, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, buildContractValueReview, buildNoticeFrameworks, contractValueAdmitted, contractValueHeld, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
 
@@ -107,6 +107,10 @@ export async function runMarts(
     await q`set local time zone 'Europe/Bucharest'`;
     // Contracts above the value cap (owner, 19 November 2026, contract-reporting-6): this run's answer for each one,
     // from the guard and the administrators' decisions, before anything counts contracts.
+    // Frameworks recorded as contracts (owner, 27 November 2026, contract-reporting-8): this run's reading of the
+    // notices, before the value review and everything else that asks what a publication is.
+    const frameworks = await buildNoticeFrameworks(q);
+    log(`marts frameworks read from their notices: ${frameworks.frameworks} (${frameworks.byNoticeTotal} by the notice's total, ${frameworks.byTitle} by the title), ${frameworks.value} lei`);
     const review = await buildContractValueReview(q);
     log(`marts contract values under review: ${review.above} (${review.admitted} counted, ${review.held} held, ${review.added} new)`);
     await q`
