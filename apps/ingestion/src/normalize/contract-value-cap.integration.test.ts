@@ -90,8 +90,8 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     from marts.contract_value_review order by 1`).map(r => [r.id, r.admitted, r.guard, r.decision, r.baseline]);
   const notice = (total: string | null, lowest: string | null = null) =>
     sql`update core.awards set ron_contract_value=${total}, lowest_offer_value=${lowest} where ca_notice_id=991092001`;
-  // Everything with a value in lei in the notice: contracts 1-5, 7, 8, 9 (converted) and 11.
-  const NOTICE_SUM = "19300000000.5";
+  // Everything with a value in lei in the notice but the framework's own row (4): contracts 1-3, 5, 7, 8, 9 (converted) and 11.
+  const NOTICE_SUM = "17300000000.5";
 
   it("before any review, holds every otherwise-included, canonical contract strictly above the cap", async () => {
     expect(await held()).toEqual([contract(1), contract(7), contract(9)]);
@@ -121,9 +121,12 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
   });
 
   it("holds contracts that add up to more than one and a half times the notice, or that dwarf its lowest offer", async () => {
-    await notice("12866666667");                       // 19.3 / 12.87 = 1.5 exactly: not more
+    await notice("11533333334");                       // 17.3 / 11.53 = 1.5 exactly: not more
     expect((await buildContractValueReview(sql)).held).toBe(0);
+    // With the framework's 2 mld. the notice would add up to 19,3 mld., over 1.5 × 12 mld.: a framework is not added to its call-offs.
     await notice("12000000000");
+    expect((await buildContractValueReview(sql)).held).toBe(0);
+    await notice("11000000000");
     await buildContractValueReview(sql);
     expect((await review()).map(r => r[2])).toEqual(["notice_sum", "notice_sum", "notice_sum"]);
     await notice(NOTICE_SUM, "400000000.01");          // 1,2 mld. is under three times the offer; 1,5 mld. is over

@@ -834,6 +834,13 @@
       "when": 1795701600000,
       "tag": "0118_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795705200000,
+      "tag": "0119_contract_value_decisions_27nov",
+      "breakpoints": true
     }
   ]
 }

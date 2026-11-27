@@ -1,7 +1,7 @@
 import type { DbSql } from './client.js';
 import { canonicalContract, contractHasSupplier, CONTRACT_VALUE_CAP_RON } from './contract-identity.js';
 import { contractRonValue } from './contract-money.js';
-import { contractReportable } from './contract-reporting.js';
+import { contractKind, contractReportable } from './contract-reporting.js';
 type ReviewSql = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /*
@@ -35,8 +35,10 @@ export type ContractValueDecision = 'include' | 'exclude';
  *  - 'lowest_offer': the value is over three times the lowest offer the notice records (a spital's cleaning supplies at
  *    3,2 mld. lei against an offer of 11,3 mil.);
  *  - 'notice_value_missing': the notice carries no total value, so nothing in it confirms the contract's;
- *  - 'notice_sum': the notice's contracts add up to more than one and a half times its total (call-offs worth twice
- *    their framework, a lot worth twelve times the notice).
+ *  - 'notice_sum': the notice's contracts add up to more than one and a half times its total (a lot worth twelve
+ *    times the notice). A framework's own row is left out of the sum (owner, 27 November 2026): a framework is a
+ *    ceiling and its call-offs are what was ordered under it, so adding both doubled every large framework and held
+ *    three real call-offs for military trucks (3,37 mld. lei against a framework of 3,36 mld.).
  * A value repeated identically in the notice passes: that is what the administrators' exclusions are for.
  */
 export function contractValueGuard(q: ReviewSql, award = 'a') {
@@ -48,7 +50,7 @@ export function contractValueGuard(q: ReviewSql, award = 'a') {
         -- contractRonValue, on the alias c2
         when c2.amount_status in ('ron','converted') and c2.amount_raw_id = c2.raw_id then c2.value_ron
         when c2.amount_status is null and upper(trim(c2.currency)) = 'RON' then c2.contract_value end)
-      from core.contracts c2 where c2.ca_notice_id = c.ca_notice_id) > ${CONTRACT_VALUE_NOTICE_SUM_FACTOR} * ${a}.ron_contract_value then 'notice_sum'
+      from core.contracts c2 where c2.ca_notice_id = c.ca_notice_id and ${contractKind(q, 'c2')} <> 'framework') > ${CONTRACT_VALUE_NOTICE_SUM_FACTOR} * ${a}.ron_contract_value then 'notice_sum'
   end`;
 }
 
